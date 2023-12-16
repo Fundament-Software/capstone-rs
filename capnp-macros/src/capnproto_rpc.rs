@@ -20,8 +20,7 @@ fn process_signature(namespace: TokenStream2, sig: Signature) -> Signature {
     let params_type = format_ident!("{}Params", type_prefix);
     let params: syn::FnArg = syn::parse_quote!(params: #namespace::#params_type);
 
-    // TODO Possibly should do it this way? Otherwise we're ignoring user
-    //let result_type = &sig.output;
+    // TODO We're ignoring user's return type, might lead to confusion
     let result_type = format_ident!("{}Results", type_prefix);
     let result: syn::FnArg = syn::parse_quote!(mut result: #namespace::#result_type); // just straight up output type
     inputs.push(sig.receiver().unwrap().to_owned().into());
