@@ -3,14 +3,31 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, ToTokens};
 use syn::{punctuated::Punctuated, Block, Signature};
 
-pub fn process_capnproto_rpc(namespace: TokenStream2, item: syn::ImplItemFn) -> TokenStream2 {
+pub fn process_capnproto_rpc(namespace: TokenStream2, item: syn::ItemImpl) -> TokenStream2 {
+    let syn::ItemImpl { items, .. } = item;
+    let mut new_items = Vec::new();
+    for impl_item in items {
+        let syn::ImplItem::Fn(impl_item_fn) = impl_item else {
+            continue;
+        };
+        let to_append = process_fn_item(namespace.clone(), impl_item_fn);
+        new_items.push(syn::ImplItem::Fn(to_append));
+    }
+    syn::ItemImpl {
+        items: new_items,
+        ..item
+    }
+    .into_token_stream()
+}
+
+fn process_fn_item(namespace: TokenStream2, item: syn::ImplItemFn) -> syn::ImplItemFn {
     let syn::ImplItemFn { sig, block, .. } = item;
     let args = sig.inputs.iter().skip(1).map(|x| x.to_owned()).collect();
 
     let sig = process_signature(namespace, sig);
     let block = process_block(block, args);
 
-    syn::ImplItemFn { sig, block, ..item }.to_token_stream()
+    syn::ImplItemFn { sig, block, ..item }
 }
 
 fn process_signature(namespace: TokenStream2, sig: Signature) -> Signature {
@@ -23,7 +40,7 @@ fn process_signature(namespace: TokenStream2, sig: Signature) -> Signature {
     // TODO Possibly should do it this way? Otherwise we're ignoring user
     //let result_type = &sig.output;
     let result_type = format_ident!("{}Results", type_prefix);
-    let result: syn::FnArg = syn::parse_quote!(mut result: #namespace::#result_type); // just straight up output type
+    let result: syn::FnArg = syn::parse_quote!(mut results: #namespace::#result_type); // just straight up output type
     inputs.push(sig.receiver().unwrap().to_owned().into());
     inputs.push(params);
     inputs.push(result);

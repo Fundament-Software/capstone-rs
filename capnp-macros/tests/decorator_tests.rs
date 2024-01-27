@@ -31,16 +31,16 @@ struct TestInterfaceImpl {
     value: u64,
 }
 
+
+#[capnproto_rpc(test_interface)]
 impl test_interface::Server for TestInterfaceImpl {
-    #[capnproto_rpc(test_interface)]
     fn set_value(&mut self, value: u64) {
         self.value = value;
         Promise::ok(())
     }
 
-    #[capnproto_rpc(test_interface)]
     fn get_value(&mut self) {
-        let mut rresult = result.get();
+        let mut rresult = results.get();
         capnp_build!(rresult, { value = self.value });
         Promise::ok(())
     }

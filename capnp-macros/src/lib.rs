@@ -67,7 +67,7 @@ pub fn capnp_build(input: TokenStream) -> TokenStream {
 
 #[proc_macro_attribute]
 pub fn capnproto_rpc(attr: TokenStream, item: TokenStream) -> TokenStream {
-    let item = syn::parse_macro_input!(item as syn::ImplItemFn);
+    let item = syn::parse_macro_input!(item as syn::ItemImpl);
     let result = process_capnproto_rpc(attr.into(), item);
     result.into()
 }
