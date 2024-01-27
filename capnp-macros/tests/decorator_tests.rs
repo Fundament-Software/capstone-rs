@@ -31,7 +31,6 @@ struct TestInterfaceImpl {
     value: u64,
 }
 
-
 #[capnproto_rpc(test_interface)]
 impl test_interface::Server for TestInterfaceImpl {
     fn set_value(&mut self, value: u64) {
