@@ -13,7 +13,7 @@ on:
 
 jobs:
   Linux-musl:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     # We depend on both clang and libc++. Alpine Linux 3.17 seems to be the first version to include
     # a libc++ package (based on LLVM 15), but building capnproto failed when I tried it.
     # Alpine Linux 3.18's libc++ package is from LLVM 16, however, and worked out-of-the-box, so
