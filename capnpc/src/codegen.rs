@@ -3068,6 +3068,7 @@ fn generate_node(
 
             mod_interior.push(line("#![allow(unused_variables)]"));
             let methods = interface.get_methods()?;
+            let mut result_introspect_paths = String::new();
             for (ordinal, method) in methods.into_iter().enumerate() {
                 let name = method.get_name()?.to_str()?;
 
@@ -3196,6 +3197,14 @@ fn generate_node(
                 client_impl_interior.push(line("}"));
 
                 method.get_annotations()?;
+                if params.params.is_empty() {
+                    let mut result_type = result_type;
+                    if let Some(id) = result_type.find("::Owned<") {
+                        result_type.insert_str(id + 7, "::");
+                    }
+                    result_type.push_str("::introspect, ");
+                    result_introspect_paths.push_str(result_type.as_str());
+                }
             }
 
             let mut base_dispatch_arms = Vec::new();
@@ -3264,14 +3273,20 @@ fn generate_node(
                     indent(indent(line("&*self.client.hook"))),
                     indent(line("}")),
                     line("}"),
-                    Line(fmt!(ctx,"impl {bracketed_params} {capnp}::introspect::Introspect for Client{bracketed_params} {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Capability({capnp}::introspect::RawCapabilitySchema {{ encoded_node: &_private::ENCODED_NODE }}).into() }} }}")),
+                    Line(fmt!(ctx,"impl {bracketed_params} {capnp}::introspect::Introspect for Client{bracketed_params} {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Capability({capnp}::introspect::RawCapabilitySchema {{ ")),
+                    indent(Line(format!("encoded_node: &_private::ENCODED_NODE,"))),
+                    indent(Line(format!("params_types: &[],"))),
+                    indent(Line(format!("result_types: &[{}] }}).into() }} }}", result_introspect_paths))),
                     ]));
 
             mod_interior.push(if !is_generic {
                 Branch(vec![
                     Line("#[derive(Copy, Clone)]".into()),
                     line("pub struct Owned(());"),
-                    Line(fmt!(ctx,"impl {capnp}::introspect::Introspect for Owned {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Capability({capnp}::introspect::RawCapabilitySchema {{ encoded_node: &_private::ENCODED_NODE }}).into() }} }}")),
+                    Line(fmt!(ctx,"impl {capnp}::introspect::Introspect for Owned {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Capability({capnp}::introspect::RawCapabilitySchema {{ ")),
+                    indent(Line(format!("encoded_node: &_private::ENCODED_NODE,"))),
+                    indent(Line(format!("params_types: &[],"))),
+                    indent(Line(format!("result_types: &[{}] }}).into() }} }}", result_introspect_paths))),
                     line("impl ::capnp::traits::Owned for Owned { type Reader<'a> = Client; type Builder<'a> = Client; }"),
                     Line(fmt!(ctx,"impl {capnp}::traits::Pipelined for Owned {{ type Pipeline = Client; }}"))])
             } else {
@@ -3281,8 +3296,11 @@ fn generate_node(
                     indent(Line(params.phantom_data_type.clone())),
                     line("}"),
                     Line(fmt!(ctx,
-                              "impl <{0}> {capnp}::introspect::Introspect for Owned <{0}> {1} {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Capability({capnp}::introspect::RawCapabilitySchema {{ encoded_node: &_private::ENCODED_NODE }}).into() }} }}",
+                              "impl <{0}> {capnp}::introspect::Introspect for Owned <{0}> {1} {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Capability({capnp}::introspect::RawCapabilitySchema {{ ",
                               params.params, params.where_clause)),
+                    indent(Line(format!("encoded_node: &_private::ENCODED_NODE,"))),
+                    indent(Line(format!("params_types: &[],"))),
+                    indent(Line(format!("result_types: &[{}] }}).into() }} }}", result_introspect_paths))),
                     Line(fmt!(ctx,
                         "impl <{0}> {capnp}::traits::Owned for Owned <{0}> {1} {{ type Reader<'a> = Client<{0}>; type Builder<'a> = Client<{0}>; }}",
                         params.params, params.where_clause)),
