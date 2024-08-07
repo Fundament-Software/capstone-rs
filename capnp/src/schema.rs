@@ -266,7 +266,7 @@ impl DynamicSchema {
                 let leak = Self::leak_chunk(*node, node.total_size()?)?;
                 nodes.insert(
                     id,
-                    TypeVariant::Capability(RawCapabilitySchema { encoded_node: leak }),
+                    TypeVariant::Capability(RawCapabilitySchema { encoded_node: leak, params_types: &[], result_types: &[] }),
                 );
             }
         }
@@ -930,7 +930,7 @@ impl AnnotationList {
                     todo!();
                 }
                 crate::schema_capnp::value::Which::Interface(_) => {
-                    TypeVariant::Capability(RawCapabilitySchema { encoded_node: &[] })
+                    TypeVariant::Capability(RawCapabilitySchema { encoded_node: &[], params_types: &[], result_types: &[] })
                 }
                 crate::schema_capnp::value::Which::AnyPointer(_) => TypeVariant::AnyPointer,
             }
