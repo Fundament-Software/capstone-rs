@@ -55,13 +55,9 @@ pub trait ReaderArena {
 impl core::fmt::Debug for dyn ReaderArena + '_ {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut id = 0;
-        loop {
-            if let Ok((p, len)) = self.get_segment(id) {
-                f.write_fmt(format_args!("Segment {}: {:?} ({} bytes)", id, p, len))?;
-            } else {
-                break;
-            }
-            id = id + 1
+        while let Ok((p, len)) = self.get_segment(id) {
+            f.write_fmt(format_args!("Segment {}: {:?} ({} bytes)", id, p, len))?;
+            id += 1
         }
         f.write_fmt(format_args!("Nesting Limit: {}", self.nesting_limit()))
     }
@@ -327,9 +323,11 @@ where
     A: Allocator,
 {
     fn get_segment(&self, id: u32) -> Result<(*const u8, u32)> {
-        match self.inner.segments.get(id as usize) {
-            Some(seg) => Ok((seg.ptr, seg.allocated)),
-            None => Err(Error::from_kind(ErrorKind::InvalidSegmentId(id))),
+        if (id as usize) < self.inner.segments.len() {
+            let seg = &self.inner.segments[id as usize];
+            Ok((seg.ptr, seg.allocated))
+        } else {
+            Err(Error::from_kind(ErrorKind::InvalidSegmentId(id)))
         }
     }
 
