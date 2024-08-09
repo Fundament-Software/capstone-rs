@@ -52,7 +52,7 @@ pub trait ReaderArena {
     //   layout::StructReader, layout::ListReader, etc. could drop their `cap_table` fields.
 }
 
-impl core::fmt::Debug for dyn ReaderArena {
+impl core::fmt::Debug for dyn ReaderArena + '_ {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut id = 0;
         loop {
@@ -327,8 +327,10 @@ where
     A: Allocator,
 {
     fn get_segment(&self, id: u32) -> Result<(*const u8, u32)> {
-        let seg = &self.inner.segments[id as usize];
-        Ok((seg.ptr, seg.allocated))
+        match self.inner.segments.get(id as usize) {
+            Some(seg) => Ok((seg.ptr, seg.allocated)),
+            None => Err(Error::from_kind(ErrorKind::InvalidSegmentId(id))),
+        }
     }
 
     unsafe fn check_offset(

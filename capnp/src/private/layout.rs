@@ -3387,7 +3387,7 @@ impl<'a> PointerBuilder<'a> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct StructReader<'a> {
     arena: &'a dyn ReaderArena,
     cap_table: CapTableReader,
@@ -3397,31 +3397,6 @@ pub struct StructReader<'a> {
     data_size: BitCount32,
     pointer_count: WirePointerCount16,
     nesting_limit: i32,
-}
-
-impl<'a> core::fmt::Debug for StructReader<'a> {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let s = format!("{:?}", self.arena);
-        f.write_fmt(format_args!(
-            "arena: {}
-        cap_table: {:?}
-        data: {:?}
-        pointers: {:?}
-        segment_id: {}
-        data_size: {}
-        pointer_count: {}
-        nesting_limit: {}
-        ",
-            s,
-            self.cap_table,
-            self.data,
-            self.pointers,
-            self.segment_id,
-            self.data_size,
-            self.pointer_count,
-            self.nesting_limit
-        ))
-    }
 }
 
 impl<'a> StructReader<'a> {
