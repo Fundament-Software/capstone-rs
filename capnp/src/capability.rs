@@ -463,6 +463,7 @@ pub async fn get_resolved_cap<C: FromClientHook>(cap: C) -> C {
     FromClientHook::new(hook)
 }
 
+#[cfg(feature = "alloc")]
 impl core::fmt::Debug for dyn ClientHook {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_fmt(format_args!(
