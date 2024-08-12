@@ -2725,7 +2725,7 @@ pub type CapTable = Vec<Option<Box<dyn ClientHook>>>;
 #[cfg(not(feature = "alloc"))]
 pub struct CapTable;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum CapTableReader {
     // At one point, we had a `Dummy` variant here, but that ended up
     // making values of this type take 16 bytes of memory. Now we instead
@@ -3387,7 +3387,7 @@ impl<'a> PointerBuilder<'a> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct StructReader<'a> {
     arena: &'a dyn ReaderArena,
     cap_table: CapTableReader,
