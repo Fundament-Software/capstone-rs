@@ -24,6 +24,8 @@ path = "src/capnpc-rust.rs"
 name = "capnpc-rust-bootstrap"
 path = "src/capnpc-rust-bootstrap.rs"
 
-
-[dependencies.capstone]
-workspace = true
+[dependencies]
+wax = "0.6.0"
+walkdir = "2"
+convert_case = "0.6"
+capstone.workspace = true

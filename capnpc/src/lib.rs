@@ -70,10 +70,15 @@
 pub mod codegen;
 pub mod codegen_types;
 mod pointer_constants;
+use convert_case::{Case, Casing};
+use walkdir::WalkDir;
+use wax::Glob;
 
 use std::{
     collections::HashMap,
+    io::Write,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 // Copied from capnp/src/lib.rs, where this conversion lives behind the "std" feature flag,
@@ -120,6 +125,7 @@ pub struct CompilerCommand {
     default_parent_module: Vec<String>,
     raw_code_generator_request_path: Option<PathBuf>,
     crate_provides_map: HashMap<u64, String>,
+    collect_file: Option<PathBuf>,
 }
 
 impl CompilerCommand {
@@ -139,6 +145,10 @@ impl CompilerCommand {
 
     pub fn file_count(&self) -> usize {
         self.files.len()
+    }
+
+    pub fn files(&self) -> &[PathBuf] {
+        &self.files
     }
 
     /// Adds a --src-prefix flag. For all files specified for compilation that start
@@ -380,7 +390,7 @@ impl CompilerCommand {
 
         let mut code_generation_command = crate::codegen::CodeGenerationCommand::new();
         code_generation_command
-            .output_directory(output_path)
+            .output_directory(output_path.clone())
             .default_parent_module(self.default_parent_module.clone())
             .crates_provide_map(self.crate_provides_map.clone());
         if let Some(raw_code_generator_request_path) = &self.raw_code_generator_request_path {
@@ -393,6 +403,145 @@ impl CompilerCommand {
             ::capnp::Error::failed(format!(
                 "Error while trying to execute `{cmd_string}`: {error}."
             ))
-        })
+        })?;
+
+        if let Some(omnibus) = self.collect_file.as_ref() {
+            let mut f =
+                std::fs::File::create(omnibus).map_err(|e| capnp::Error::failed(e.to_string()))?;
+            for entry_result in WalkDir::new(output_path) {
+                let file_path = entry_result
+                    .map_err(|e| capnp::Error::failed(e.to_string()))?
+                    .into_path();
+                if file_path.is_file()
+                    && file_path
+                        .file_name()
+                        .ok_or(capnp::Error::failed(format!(
+                            "Couldn't parse file: {:?}",
+                            file_path
+                        )))?
+                        .to_str()
+                        .ok_or(capnp::Error::failed(format!(
+                            "Couldn't convert to &str: {:?}",
+                            file_path,
+                        )))?
+                        .ends_with("_capnp.rs")
+                {
+                    let file_stem = file_path
+                        .file_stem()
+                        .ok_or(capnp::Error::failed(format!(
+                            "Couldn't parse file: {:?}",
+                            file_path
+                        )))?
+                        .to_str()
+                        .ok_or(capnp::Error::failed(format!(
+                            "Couldn't convert to &str: {:?}",
+                            file_path
+                        )))?
+                        .to_case(Case::Snake);
+
+                    f.write_all(format!("pub mod {} {{", file_stem).as_bytes())
+                        .map_err(|e| capnp::Error::failed(e.to_string()))?;
+                    f.write_all(
+                        std::fs::read_to_string(file_path)
+                            .map_err(|e| capnp::Error::failed(e.to_string()))?
+                            .as_bytes(),
+                    )
+                    .map_err(|e| capnp::Error::failed(e.to_string()))?;
+                    f.write_all("\n}\n".as_bytes())
+                        .map_err(|e| capnp::Error::failed(e.to_string()))?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    /// Automatically adds all files in `path_patterns`, either relative to the
+    /// cargo manifest directory of the current project, or by looking in all
+    /// searchable directories that were added via import_path().
+    ///
+    /// # Arguments
+    ///
+    /// - `path_patterns`: An array of valid wax::Glob path search patterns, as strings.
+    ///
+    /// # Example
+    /// Adding all capnproto files in the current manifest directory under `/capnp/``:
+    /// ```ignore
+    /// self.add_paths(["capnp/*.capnp"]);
+    /// ```
+    ///
+    /// Adding all capnproto files any import path in any subdirectory``:
+    /// ```ignore
+    /// self.add_paths(["/**/*.capnp"]);
+    /// ```
+    pub fn add_paths(&mut self, path_patterns: &[impl AsRef<str>]) -> ::capnp::Result<()> {
+        let manifest: [PathBuf; 1] = [PathBuf::from_str(
+            &std::env::var("CARGO_MANIFEST_DIR")
+                .map_err(|e| capnp::Error::failed(e.to_string()))?,
+        )
+        .unwrap()];
+
+        let search_paths: &[PathBuf] = &self.import_paths;
+        let glob_matches = path_patterns
+            .iter()
+            .map(|pattern| -> ::capnp::Result<_> {
+                let pattern = pattern.as_ref();
+                let (search_prefix, glob) = Glob::new(pattern.trim_start_matches('/')).map_err(|e| ::capnp::Error::failed(e.to_string()))?.partition();
+                Ok((pattern, search_prefix, glob))
+            }).map(|maybe_pattern| {
+                match maybe_pattern {
+                    Ok((pattern, search_prefix, glob)) => {
+                        let initial_paths = if pattern.starts_with('/')  { search_paths } else { &manifest };
+                        let mut ensure_some = initial_paths
+                        .iter()
+                        .flat_map(move |dir: &PathBuf| -> _ {
+                            // build glob and partition it into a static prefix and shorter glob pattern
+                            // For example, converts "../schemas/*.capnp" into Path(../schemas) and Glob(*.capnp)
+                            glob.walk(dir.join(&search_prefix)).into_owned().flatten()
+                        }).peekable();
+                        if ensure_some.peek().is_none() {
+                            return Err(capnp::Error::failed(format!(
+                                "No capnp files found matching {pattern}, did you mean to use an absolute path instead of a relative one?
+                    Manifest directory for relative paths: {:#?}
+                    Potential directories for absolute paths: {:#?}",
+                                manifest,
+                                search_paths
+                            )));
+                        }
+                        Ok(ensure_some)
+                    },
+                    Err(err) => Err(err),
+                }
+            });
+
+        for entry in glob_matches {
+            for entry in entry? {
+                if entry.file_type().is_file() {
+                    self.files.push(entry.path().to_path_buf());
+                }
+            }
+        }
+
+        if self.file_count() == 0 {
+            // I think the only way we can reach this now is by failing the is_file() check above
+            return Err(::capnp::Error::failed(format!(
+            "No capnp files found, did you mean to use an absolute path instead of a relative one?
+  Manifest directory for relative paths: {:#?}
+  Potential directories for absolute paths: {:#?}",
+            manifest,
+            search_paths
+        )));
+        }
+        Ok(())
+    }
+
+    /// After compilation, collects all compiled files in the output directory
+    /// into a single "omnibus" file created at the given path.
+    ///
+    /// # Arguments
+    ///
+    /// - `target`: Path where omnibus file should be created.
+    pub fn omnibus<P: AsRef<Path>>(&mut self, target: P) -> &mut Self {
+        self.collect_file.replace(target.as_ref().to_path_buf());
+        self
     }
 }
