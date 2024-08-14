@@ -25,7 +25,7 @@ pub(crate) fn struct_size_from_schema(schema: StructSchema) -> Result<layout::St
 /// A read-only dynamically-typed struct.
 #[derive(Clone, Copy)]
 pub struct Reader<'a> {
-    pub(crate) reader: layout::StructReader<'a>,
+    pub reader: layout::StructReader<'a>,
     schema: StructSchema,
 }
 

@@ -986,7 +986,19 @@ impl CapabilitySchema {
     pub fn get_proto(self) -> node::Reader<'static> {
         self.proto
     }
-
+    //TODO probably use internally in get methods
+    pub fn get_params_struct_schema(&self, id: usize) -> RawBrandedStructSchema {
+        match self._raw.params_types[id]().which() {
+            TypeVariant::Struct(res_struct) => res_struct,
+            _ => unreachable!()
+        }
+    }
+    pub fn get_results_struct_schema(&self, id: usize) -> RawBrandedStructSchema {
+        match self._raw.result_types[id]().which() {
+            TypeVariant::Struct(res_struct) => res_struct,
+            _ => unreachable!()
+        }
+    }
     pub fn get_methods(self) -> Result<()> {
         todo!();
     }
