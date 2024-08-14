@@ -1,6 +1,7 @@
 //! Dynamically-typed structs.
 
 use crate::introspect::TypeVariant;
+use crate::private::capability::ClientHook;
 use crate::private::layout;
 use crate::schema::{Field, StructSchema};
 use crate::schema_capnp::{field, node, value};
@@ -25,7 +26,7 @@ pub(crate) fn struct_size_from_schema(schema: StructSchema) -> Result<layout::St
 /// A read-only dynamically-typed struct.
 #[derive(Clone, Copy)]
 pub struct Reader<'a> {
-    pub reader: layout::StructReader<'a>,
+    pub(crate) reader: layout::StructReader<'a>,
     schema: StructSchema,
 }
 
@@ -172,6 +173,25 @@ impl<'a> Reader<'a> {
                     Err(Error::from_kind(ErrorKind::GroupFieldButTypeIsNotStruct))
                 }
             }
+        }
+    }
+
+    pub fn get_clienthook(self, field: Field) -> Result<Box<dyn ClientHook>> {
+        assert_eq!(self.schema.raw, field.parent.raw);
+        let ty = field.get_type();
+        match field.get_proto().which()? {
+            field::Slot(slot) => {
+                let offset = slot.get_offset();
+                let default_value = slot.get_default_value()?;
+                match (ty.which(), default_value.which()?) {
+                    (TypeVariant::Capability(_), value::Interface(())) => Ok(self
+                        .reader
+                        .get_pointer_field(offset as usize)
+                        .get_capability()?),
+                    _ => Err(Error::failed("Field is not a capability".to_string())),
+                }
+            }
+            field::Group(_) => Err(Error::failed("Field is not a capability".to_string())),
         }
     }
 
