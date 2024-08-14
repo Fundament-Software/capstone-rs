@@ -2744,6 +2744,9 @@ impl CapTableReader {
     pub fn len(&self) -> usize {
         match *self {
             Self::Plain(phooks) => {
+                if phooks.is_null() {
+                    return 0;
+                }
                 let hooks: &Vec<Option<Box<dyn ClientHook>>> = unsafe { &*phooks };
                 hooks.len()
             }
