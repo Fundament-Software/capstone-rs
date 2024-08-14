@@ -266,7 +266,11 @@ impl DynamicSchema {
                 let leak = Self::leak_chunk(*node, node.total_size()?)?;
                 nodes.insert(
                     id,
-                    TypeVariant::Capability(RawCapabilitySchema { encoded_node: leak, params_types: &[], result_types: &[] }),
+                    TypeVariant::Capability(RawCapabilitySchema {
+                        encoded_node: leak,
+                        params_types: &[],
+                        result_types: &[],
+                    }),
                 );
             }
         }
@@ -930,7 +934,11 @@ impl AnnotationList {
                     todo!();
                 }
                 crate::schema_capnp::value::Which::Interface(_) => {
-                    TypeVariant::Capability(RawCapabilitySchema { encoded_node: &[], params_types: &[], result_types: &[] })
+                    TypeVariant::Capability(RawCapabilitySchema {
+                        encoded_node: &[],
+                        params_types: &[],
+                        result_types: &[],
+                    })
                 }
                 crate::schema_capnp::value::Which::AnyPointer(_) => TypeVariant::AnyPointer,
             }
@@ -987,16 +995,16 @@ impl CapabilitySchema {
         self.proto
     }
     //TODO probably use internally in get methods
-    pub fn get_params_struct_schema(&self, id: usize) -> RawBrandedStructSchema {
-        match self._raw.params_types[id]().which() {
-            TypeVariant::Struct(res_struct) => res_struct,
-            _ => unreachable!()
+    pub fn get_params_struct_schema(&self, id: usize) -> Option<RawBrandedStructSchema> {
+        match self._raw.params_types.get(id)?().which() {
+            TypeVariant::Struct(res_struct) => Some(res_struct),
+            _ => unreachable!(),
         }
     }
-    pub fn get_results_struct_schema(&self, id: usize) -> RawBrandedStructSchema {
-        match self._raw.result_types[id]().which() {
-            TypeVariant::Struct(res_struct) => res_struct,
-            _ => unreachable!()
+    pub fn get_results_struct_schema(&self, id: usize) -> Option<RawBrandedStructSchema> {
+        match self._raw.result_types.get(id)?().which() {
+            TypeVariant::Struct(res_struct) => Some(res_struct),
+            _ => unreachable!(),
         }
     }
     pub fn get_methods(self) -> Result<()> {
