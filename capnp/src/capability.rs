@@ -403,8 +403,8 @@ impl crate::introspect::Introspect for Client {
     fn introspect() -> crate::introspect::Type {
         crate::introspect::TypeVariant::Capability(crate::introspect::RawCapabilitySchema {
             encoded_node: &[],
-            params_types: &[],
-            result_types: &[],
+            params_types: crate::schema::dynamic_struct_marker,
+            result_types: crate::schema::dynamic_struct_marker,
         })
         .into()
     }
