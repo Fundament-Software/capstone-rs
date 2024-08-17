@@ -1000,17 +1000,27 @@ impl CapabilitySchema {
     pub fn get_proto(self) -> node::Reader<'static> {
         self.proto
     }
-    //TODO probably use internally in get methods
-    pub fn get_params_struct_schema(&self, id: u16) -> Option<RawBrandedStructSchema> {
-        match (self._raw.params_types)(id).which() {
-            TypeVariant::Struct(res_struct) => Some(res_struct),
-            _ => unreachable!(),
+
+    pub fn get_params_struct_schema(&self, id: u16) -> RawBrandedStructSchema {
+        #[allow(clippy::fn_address_comparisons)]
+        if self._raw.params_types != dynamic_struct_marker {
+            match (self._raw.params_types)(id).which() {
+                TypeVariant::Struct(res_struct) => res_struct,
+                _ => unreachable!(),
+            }
+        } else {
+            todo!()
         }
     }
-    pub fn get_results_struct_schema(&self, id: u16) -> Option<RawBrandedStructSchema> {
-        match (self._raw.result_types)(id).which() {
-            TypeVariant::Struct(res_struct) => Some(res_struct),
-            _ => unreachable!(),
+    pub fn get_results_struct_schema(&self, id: u16) -> RawBrandedStructSchema {
+        #[allow(clippy::fn_address_comparisons)]
+        if self._raw.params_types != dynamic_struct_marker {
+            match (self._raw.result_types)(id).which() {
+                TypeVariant::Struct(res_struct) => res_struct,
+                _ => unreachable!(),
+            }
+        } else {
+            todo!()
         }
     }
     pub fn get_methods(self) -> Result<()> {
