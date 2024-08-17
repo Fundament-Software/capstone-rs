@@ -52,6 +52,17 @@ pub trait ReaderArena {
     //   layout::StructReader, layout::ListReader, etc. could drop their `cap_table` fields.
 }
 
+impl core::fmt::Debug for dyn ReaderArena + '_ {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let mut id = 0;
+        while let Ok((p, len)) = self.get_segment(id) {
+            f.write_fmt(format_args!("Segment {}: {:?} ({} bytes)", id, p, len))?;
+            id += 1
+        }
+        f.write_fmt(format_args!("Nesting Limit: {}", self.nesting_limit()))
+    }
+}
+
 pub struct ReaderArenaImpl<S> {
     segments: S,
     read_limiter: ReadLimiter,
@@ -312,8 +323,12 @@ where
     A: Allocator,
 {
     fn get_segment(&self, id: u32) -> Result<(*const u8, u32)> {
-        let seg = &self.inner.segments[id as usize];
-        Ok((seg.ptr, seg.allocated))
+        if (id as usize) < self.inner.segments.len() {
+            let seg = &self.inner.segments[id as usize];
+            Ok((seg.ptr, seg.allocated))
+        } else {
+            Err(Error::from_kind(ErrorKind::InvalidSegmentId(id)))
+        }
     }
 
     unsafe fn check_offset(
