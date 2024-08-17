@@ -1,7 +1,6 @@
 //! Dynamically-typed structs.
 
 use crate::introspect::TypeVariant;
-use crate::private::capability::ClientHook;
 use crate::private::layout;
 use crate::schema::{Field, StructSchema};
 use crate::schema_capnp::{field, node, value};
@@ -176,7 +175,11 @@ impl<'a> Reader<'a> {
         }
     }
 
-    pub fn get_clienthook(self, field: Field) -> Result<Box<dyn ClientHook>> {
+    #[cfg(feature = "alloc")]
+    pub fn get_clienthook(
+        self,
+        field: Field,
+    ) -> Result<Box<dyn crate::private::capability::ClientHook>> {
         assert_eq!(self.schema.raw, field.parent.raw);
         let ty = field.get_type();
         match field.get_proto().which()? {
@@ -188,10 +191,10 @@ impl<'a> Reader<'a> {
                         .reader
                         .get_pointer_field(offset as usize)
                         .get_capability()?),
-                    _ => Err(Error::failed("Field is not a capability".to_string())),
+                    _ => Err(Error::from_kind(ErrorKind::TypeMismatch)),
                 }
             }
-            field::Group(_) => Err(Error::failed("Field is not a capability".to_string())),
+            field::Group(_) => Err(Error::from_kind(ErrorKind::TypeMismatch)),
         }
     }
 
