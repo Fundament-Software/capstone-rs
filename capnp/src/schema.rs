@@ -29,7 +29,7 @@ pub struct DynamicSchema {
     // so never expose this directly or clone it
     nodes: Arc<HashMap<u64, TypeVariant>>,
     token: DynamicSchemaToken,
-    root: u64,
+    files: HashMap<String, u64>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
@@ -287,7 +287,6 @@ impl DynamicSchema {
     pub fn new<S: crate::message::ReaderSegments>(msg: Reader<S>) -> Result<Self> {
         let mut scopes = HashMap::new();
         let mut node_parents = HashMap::new();
-        let mut root = 0;
         let token = DynamicSchemaToken::new();
 
         let mut nodes = HashMap::new();
@@ -316,8 +315,10 @@ impl DynamicSchema {
         }
 
         // Fix up imported files
+        let mut files = HashMap::new();
         for requested_file in request.get_requested_files()? {
             let id = requested_file.get_id();
+            files.insert(requested_file.get_filename()?.to_string()?, id);
 
             for import in requested_file.get_imports()? {
                 let import_id = import.get_id();
@@ -329,15 +330,6 @@ impl DynamicSchema {
         }
 
         for node in request.get_nodes()? {
-            if node_parents[&node.get_id()] == 0 {
-                root = match root {
-                    0 => Ok(node.get_id()),
-                    _ => Err(crate::Error::from_kind(
-                        crate::ErrorKind::MessageIsTooDeeplyNestedOrContainsCycles,
-                    )),
-                }?;
-            }
-
             Self::process_node(&mut nodes, node.get_id(), &mut scopes, &node_map, token)?;
         }
 
@@ -345,7 +337,7 @@ impl DynamicSchema {
             msg: S::reader_into_owned(msg).ok(),
             scopes,
             nodes: Arc::new(nodes),
-            root,
+            files,
             token,
         };
 
@@ -360,25 +352,37 @@ impl DynamicSchema {
         self.nodes.get(&id)
     }
 
-    pub fn get_type_by_scope(&self, scope: Vec<String>) -> Option<&TypeVariant> {
-        let mut parent = self.root;
+    pub fn get_type_by_scope(
+        &self,
+        scope: &[impl AsRef<str>],
+        file: Option<&str>,
+    ) -> Result<&TypeVariant> {
+        let mut parent = if let Some(f) = file {
+            *self.files.get(f).ok_or(crate::Error::failed(format!(
+                "{} is not a file in this DynamicSchema",
+                f
+            )))?
+        } else if self.files.len() > 1 {
+            return Err(crate::Error::failed(
+                "Cannot infer root filename because DynamicSchema set has more than one file"
+                    .into(),
+            ));
+        } else {
+            *self.files.values().next().ok_or(crate::Error::failed(
+                "DynamicSchema does not contain a root file.".into(),
+            ))?
+        };
         let mut result = None;
 
         for name in scope {
-            let key = &(parent, name);
+            let key = &(parent, name.as_ref().to_string());
             result = self.scopes.get(key);
-            if let Some(x) = result {
-                parent = *x;
-            } else {
-                return None;
-            }
+            parent = *result.ok_or(crate::Error::failed(format!("{} was not in scope", key.1)))?;
         }
 
-        if let Some(k) = result {
-            self.nodes.get(k)
-        } else {
-            None
-        }
+        self.nodes
+            .get(result.ok_or(crate::Error::failed("Invalid scope".into()))?)
+            .ok_or(crate::Error::failed("Internal child lookup failure".into()))
     }
 }
 
