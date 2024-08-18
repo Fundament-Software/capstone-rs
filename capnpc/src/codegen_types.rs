@@ -127,7 +127,7 @@ impl<'a> RustNodeInfo for node::Reader<'a> {
                     .join(", ")
                     + " ");
             let pipeline_where_clause = "where ".to_string() + &*(params.iter().map(|param| {
-                fmt!(ctx, "{param}: {capnp}::traits::Pipelined, <{param} as {capnp}::traits::Pipelined>::Pipeline: {capnp}::capability::FromTypelessPipeline")
+                fmt!(ctx, "{param}: {capnp}::traits::Pipelined + {capnp}::traits::Owned, <{param} as {capnp}::traits::Pipelined>::Pipeline: {capnp}::capability::FromTypelessPipeline")
             }).collect::<Vec<String>>().join(", ") + " ");
             let phantom_data_type = if params.len() == 1 {
                 // omit parens to avoid linter error
