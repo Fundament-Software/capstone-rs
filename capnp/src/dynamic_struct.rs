@@ -175,6 +175,29 @@ impl<'a> Reader<'a> {
         }
     }
 
+    #[cfg(feature = "alloc")]
+    pub fn get_clienthook(
+        self,
+        field: Field,
+    ) -> Result<Box<dyn crate::private::capability::ClientHook>> {
+        assert_eq!(self.schema.raw, field.parent.raw);
+        let ty = field.get_type();
+        match field.get_proto().which()? {
+            field::Slot(slot) => {
+                let offset = slot.get_offset();
+                let default_value = slot.get_default_value()?;
+                match (ty.which(), default_value.which()?) {
+                    (TypeVariant::Capability(_), value::Interface(())) => Ok(self
+                        .reader
+                        .get_pointer_field(offset as usize)
+                        .get_capability()?),
+                    _ => Err(Error::from_kind(ErrorKind::TypeMismatch)),
+                }
+            }
+            field::Group(_) => Err(Error::from_kind(ErrorKind::TypeMismatch)),
+        }
+    }
+
     /// Gets the field with the given name.
     pub fn get_named(self, field_name: &str) -> Result<dynamic_value::Reader<'a>> {
         self.get(self.schema.get_field_by_name(field_name)?)

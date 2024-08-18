@@ -292,6 +292,8 @@ impl core::fmt::Debug for RawEnumSchema {
 pub struct RawCapabilitySchema {
     /// The Node (as defined in schema.capnp), as a single segment message.
     pub encoded_node: &'static [crate::Word],
+    pub params_types: fn(u16) -> Type,
+    pub result_types: fn(u16) -> Type,
 }
 
 impl core::cmp::PartialEq for RawCapabilitySchema {
