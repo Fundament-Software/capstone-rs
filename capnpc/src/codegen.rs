@@ -2178,6 +2178,130 @@ fn generate_get_field_types(
     }
 }
 
+fn generate_get_params_results(
+    ctx: &GeneratorContext,
+    names: &Vec<String>,
+    node_reader: schema_capnp::node::Reader,
+) -> ::capnp::Result<FormattedText> {
+    let i = match node_reader.which()? {
+        schema_capnp::node::Interface(i) => i,
+        _ => return Err(Error::failed("not an interface".into())),
+    };
+    let mut params_branches = vec![];
+    let mut results_branches = vec![];
+    let methods = i.get_methods()?;
+    for (ordinal, method) in methods.into_iter().enumerate() {
+        let name = method.get_name()?.to_str()?;
+        let param_id = method.get_param_struct_type();
+        let param_node = &ctx.node_map[&param_id];
+        let param_scopes = if param_node.get_scope_id() == 0 {
+            let mut names = names.to_owned();
+            let local_name = module_name(&format!("{name}Params"));
+            names.push(local_name);
+            names
+        } else {
+            ctx.scope_map[&param_node.get_id()].clone()
+        };
+        let param_type = do_branding(
+            ctx,
+            param_id,
+            method.get_param_brand()?,
+            Leaf::Owned,
+            &param_scopes.join("::"),
+        )?;
+        params_branches.push(Line(fmt!(
+            ctx,
+            "{} => <{} as {capnp}::introspect::Introspect>::introspect(),",
+            ordinal,
+            param_type
+        )));
+
+        let result_id = method.get_result_struct_type();
+        let result_node = &ctx.node_map[&result_id];
+        let result_scopes = if result_node.get_scope_id() == 0 {
+            let mut names = names.to_owned();
+            let local_name = module_name(&format!("{name}Results"));
+            names.push(local_name);
+            names
+        } else {
+            ctx.scope_map[&result_node.get_id()].clone()
+        };
+        let result_type = do_branding(
+            ctx,
+            result_id,
+            method.get_result_brand()?,
+            Leaf::Owned,
+            &result_scopes.join("::"),
+        )?;
+        results_branches.push(Line(fmt!(
+            ctx,
+            "{} => <{} as {capnp}::introspect::Introspect>::introspect(),",
+            ordinal,
+            result_type
+        )));
+    }
+    let params_body = if params_branches.is_empty() {
+        Line("panic!(\"invalid field index {}\", index)".into())
+    } else {
+        params_branches.push(Line(
+            "_ => panic!(\"invalid field index {}\", index),".into(),
+        ));
+        Branch(vec![
+            Line("match index {".into()),
+            indent(params_branches),
+            Line("}".into()),
+        ])
+    };
+    let results_body = if results_branches.is_empty() {
+        Line("panic!(\"invalid field index {}\", index)".into())
+    } else {
+        results_branches.push(Line(
+            "_ => panic!(\"invalid field index {}\", index),".into(),
+        ));
+        Branch(vec![
+            Line("match index {".into()),
+            indent(results_branches),
+            Line("}".into()),
+        ])
+    };
+    if !node_reader.get_is_generic() {
+        Ok(Branch(vec![
+            Line(fmt!(
+                ctx,
+                "pub fn get_param_type(index: u16) -> {capnp}::introspect::Type {{"
+            )),
+            indent(params_body),
+            Line("}".into()),
+            Line(fmt!(
+                ctx,
+                "pub fn get_result_type(index: u16) -> {capnp}::introspect::Type {{"
+            )),
+            indent(results_body),
+            Line("}".into()),
+        ]))
+    } else {
+        let params = node_reader.parameters_texts(ctx);
+        Ok(Branch(vec![
+            Line(fmt!(
+                ctx,
+                "pub fn get_param_type<{0}>(index: u16) -> {capnp}::introspect::Type {1} {{",
+                params.params,
+                params.where_clause
+            )),
+            indent(params_body),
+            Line("}".into()),
+            Line(fmt!(
+                ctx,
+                "pub fn get_result_type<{0}>(index: u16) -> {capnp}::introspect::Type {1} {{",
+                params.params,
+                params.where_clause
+            )),
+            indent(results_body),
+            Line("}".into()),
+        ]))
+    }
+}
+
 fn annotation_branch(
     ctx: &GeneratorContext,
     annotation: schema_capnp::annotation::Reader,
@@ -2920,7 +3044,7 @@ fn generate_node(
                         line("}")]),
                 line("}"),
                 Line(format!("impl{0} Pipeline{0} {1} {{", bracketed_params,
-                             params.pipeline_where_clause)),
+                            params.pipeline_where_clause)),
                 indent(pipeline_impl_interior),
                 line("}"),
                 line("mod _private {"),
@@ -3253,7 +3377,7 @@ fn generate_node(
             mod_interior.push(line("}"));
             mod_interior.push(
                 Branch(vec![
-                    Line(fmt!(ctx,"impl {bracketed_params} {capnp}::capability::FromClientHook for Client{bracketed_params} {{")),
+                    Line(fmt!(ctx,"impl {bracketed_params} {capnp}::capability::FromClientHook for Client{bracketed_params} {} {{", params.where_clause)),
                     indent(Line(fmt!(ctx,"fn new(hook: Box<dyn ({capnp}::private::capability::ClientHook)>) -> Self {{"))),
                     indent(indent(Line(fmt!(ctx,"Self {{ client: {capnp}::capability::Client::new(hook), {} }}", params.phantom_data_value)))),
                     indent(line("}")),
@@ -3264,14 +3388,20 @@ fn generate_node(
                     indent(indent(line("&*self.client.hook"))),
                     indent(line("}")),
                     line("}"),
-                    Line(fmt!(ctx,"impl {bracketed_params} {capnp}::introspect::Introspect for Client{bracketed_params} {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Capability({capnp}::introspect::RawCapabilitySchema {{ encoded_node: &_private::ENCODED_NODE }}).into() }} }}")),
+                    Line(fmt!(ctx,"impl {bracketed_params} {capnp}::introspect::Introspect for Client{bracketed_params} {} {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Capability({capnp}::introspect::RawCapabilitySchema {{ ", params.where_clause)),
+                    indent(Line("encoded_node: &_private::ENCODED_NODE,".to_string())),
+                    indent(Line(format!("params_types: _private::get_param_type::<{}>,", params.params))),
+                    indent(Line(format!("result_types: _private::get_result_type::<{}> }}).into() }}  }}", params.params))),
                     ]));
 
             mod_interior.push(if !is_generic {
                 Branch(vec![
                     Line("#[derive(Copy, Clone)]".into()),
                     line("pub struct Owned(());"),
-                    Line(fmt!(ctx,"impl {capnp}::introspect::Introspect for Owned {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Capability({capnp}::introspect::RawCapabilitySchema {{ encoded_node: &_private::ENCODED_NODE }}).into() }} }}")),
+                    Line(fmt!(ctx,"impl {capnp}::introspect::Introspect for Owned {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Capability({capnp}::introspect::RawCapabilitySchema {{ ")),
+                    indent(Line("encoded_node: &_private::ENCODED_NODE,".to_string())),
+                    indent(Line("params_types: _private::get_param_type,".to_string())),
+                    indent(Line("result_types: _private::get_result_type }).into()}}".to_string())),
                     line("impl ::capnp::traits::Owned for Owned { type Reader<'a> = Client; type Builder<'a> = Client; }"),
                     Line(fmt!(ctx,"impl {capnp}::traits::Pipelined for Owned {{ type Pipeline = Client; }}"))])
             } else {
@@ -3281,8 +3411,11 @@ fn generate_node(
                     indent(Line(params.phantom_data_type.clone())),
                     line("}"),
                     Line(fmt!(ctx,
-                              "impl <{0}> {capnp}::introspect::Introspect for Owned <{0}> {1} {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Capability({capnp}::introspect::RawCapabilitySchema {{ encoded_node: &_private::ENCODED_NODE }}).into() }} }}",
+                              "impl <{0}> {capnp}::introspect::Introspect for Owned <{0}> {1} {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Capability({capnp}::introspect::RawCapabilitySchema {{ ",
                               params.params, params.where_clause)),
+                    indent(Line("encoded_node: &_private::ENCODED_NODE,".to_string())),
+                    indent(Line(format!("params_types: _private::get_param_type::<{}>,", params.params))),
+                    indent(Line(format!("result_types: _private::get_result_type::<{}> }}).into() }} }}", params.params))),
                     Line(fmt!(ctx,
                         "impl <{0}> {capnp}::traits::Owned for Owned <{0}> {1} {{ type Reader<'a> = Client<{0}>; type Builder<'a> = Client<{0}>; }}",
                         params.params, params.where_clause)),
@@ -3443,8 +3576,9 @@ fn generate_node(
                     indent(line("}")),
                     line("}")]));
 
+            private_mod_interior.push(generate_get_params_results(ctx, names, *node_reader)?);
             mod_interior.push(Branch(vec![
-                line("pub mod _private {"),
+                line("mod _private {"),
                 indent(private_mod_interior),
                 line("}"),
             ]));

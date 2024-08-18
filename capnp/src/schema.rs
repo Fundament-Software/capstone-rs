@@ -100,6 +100,12 @@ fn dynamic_field_marker(_: u16) -> crate::introspect::Type {
 
 #[no_mangle]
 #[inline(never)]
+pub fn dynamic_struct_marker(_: u16) -> crate::introspect::Type {
+    panic!("dynamic_struct_marker should never be called!");
+}
+
+#[no_mangle]
+#[inline(never)]
 fn dynamic_annotation_marker(_: Option<u16>, _: u32) -> crate::introspect::Type {
     panic!("dynamic_annotation_marker should never be called!");
 }
@@ -266,7 +272,11 @@ impl DynamicSchema {
                 let leak = Self::leak_chunk(*node, node.total_size()?)?;
                 nodes.insert(
                     id,
-                    TypeVariant::Capability(RawCapabilitySchema { encoded_node: leak }),
+                    TypeVariant::Capability(RawCapabilitySchema {
+                        encoded_node: leak,
+                        params_types: dynamic_struct_marker,
+                        result_types: dynamic_struct_marker,
+                    }),
                 );
             }
         }
@@ -934,7 +944,11 @@ impl AnnotationList {
                     todo!();
                 }
                 crate::schema_capnp::value::Which::Interface(_) => {
-                    TypeVariant::Capability(RawCapabilitySchema { encoded_node: &[] })
+                    TypeVariant::Capability(RawCapabilitySchema {
+                        encoded_node: &[],
+                        params_types: dynamic_struct_marker,
+                        result_types: dynamic_struct_marker,
+                    })
                 }
                 crate::schema_capnp::value::Which::AnyPointer(_) => TypeVariant::AnyPointer,
             }
@@ -991,6 +1005,28 @@ impl CapabilitySchema {
         self.proto
     }
 
+    pub fn get_params_struct_schema(&self, id: u16) -> RawBrandedStructSchema {
+        #[allow(clippy::fn_address_comparisons)]
+        if self._raw.params_types != dynamic_struct_marker {
+            match (self._raw.params_types)(id).which() {
+                TypeVariant::Struct(res_struct) => res_struct,
+                _ => unreachable!(),
+            }
+        } else {
+            todo!()
+        }
+    }
+    pub fn get_results_struct_schema(&self, id: u16) -> RawBrandedStructSchema {
+        #[allow(clippy::fn_address_comparisons)]
+        if self._raw.params_types != dynamic_struct_marker {
+            match (self._raw.result_types)(id).which() {
+                TypeVariant::Struct(res_struct) => res_struct,
+                _ => unreachable!(),
+            }
+        } else {
+            todo!()
+        }
+    }
     pub fn get_methods(self) -> Result<()> {
         todo!();
     }
