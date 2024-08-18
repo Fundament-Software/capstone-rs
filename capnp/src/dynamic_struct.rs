@@ -7,6 +7,9 @@ use crate::schema_capnp::{field, node, value};
 use crate::{dynamic_list, dynamic_value};
 use crate::{Error, ErrorKind, Result};
 
+#[cfg(feature = "alloc")]
+use alloc::boxed::Box;
+
 fn has_discriminant_value(reader: field::Reader) -> bool {
     reader.get_discriminant_value() != field::NO_DISCRIMINANT
 }
