@@ -1,4 +1,6 @@
-capnp_import::capnp_import!("tests/test_schema.capnp");
+pub mod test_schema_capnp {
+    include!(concat!(env!("OUT_DIR"), "/test_schema_capnp.rs"));
+}
 
 use capnp_macros::capnp_let;
 use test_schema_capnp::test_struct;

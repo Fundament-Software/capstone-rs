@@ -7,7 +7,6 @@ members = [
     "capnpc",
     "capnp-futures",
     "capnp-rpc",
-    "capnp-import",
     "capnp-macros",
 
     # testing and examples
@@ -26,7 +25,7 @@ members = [
     "example/addressbook_send",
     "example/fill_random_values",
 ]
-default-members = ["capnp", "capnp-import"]
+default-members = ["capnp"]
 
 [workspace.package]
 version = "0.18.0"
@@ -50,9 +49,9 @@ tokio-stream = "0.1"
 capstone = { version = "0.18", path = "./capnp" }
 capstone-gen = { version = "0.18", path = "./capnpc" }
 capstone-rpc = { version = "0.18", path = "./capnp-rpc" }
-capstone-import = { version = "0.18", path = "./capnp-import" }
 capstone-macros = { version = "0.18", path = "./capnp-macros" }
 capstone-futures = { version = "0.18", path = "./capnp-futures" }
+capnpc-sys = { git = "https://github.com/Fundament-Software/capstone" }
 async-byte-channel = { path = "./async-byte-channel" }
 futures-util = "0.3"
 syn = { version = "2.0", features = ["full"] }
