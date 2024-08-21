@@ -30,7 +30,9 @@ use futures_util::{FutureExt, TryFutureExt};
 use std::future::Future;
 use tokio::sync::oneshot;
 
-capnp_import::capnp_import!("test.capnp");
+pub mod test_capnp {
+    include!(concat!(env!("OUT_DIR"), "/test_capnp.rs"));
+}
 
 pub mod impls;
 pub mod reconnect_test;

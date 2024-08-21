@@ -18,5 +18,5 @@ async-byte-channel.workspace = true
 tokio.workspace = true
 futures-util.workspace = true
 
-[dev-dependencies]
-capstone-import.workspace = true
+[build-dependencies]
+capstone-gen.workspace = true

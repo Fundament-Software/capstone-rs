@@ -14,7 +14,6 @@ path = "test.rs"
 
 [build-dependencies]
 capstone-gen.workspace = true
-capstone-import.workspace = true
 tempfile.workspace = true
 eyre.workspace = true
 
