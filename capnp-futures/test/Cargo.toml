@@ -14,7 +14,9 @@ path = "test.rs"
 [dependencies]
 capstone-futures.workspace = true
 capstone.workspace = true
-capstone-import.workspace = true
 tokio.workspace = true
 async-byte-channel.workspace = true
 futures-util.workspace = true
+
+[build-dependencies]
+capstone-gen.workspace = true

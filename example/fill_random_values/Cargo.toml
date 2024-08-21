@@ -12,8 +12,10 @@ keywords = ["encoding", "protocol", "serialization"]
 
 [dependencies]
 rand = "0.8.5"
-capstone-import.workspace = true
 capstone.workspace = true
+
+[build-dependencies]
+capstone-gen.workspace = true
 
 [[bin]]
 name = "fill_addressbook"

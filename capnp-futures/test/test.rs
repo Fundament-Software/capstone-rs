@@ -19,7 +19,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-capnp_import::capnp_import!("addressbook.capnp");
+pub mod addressbook_capnp {
+    include!(concat!(env!("OUT_DIR"), "/addressbook_capnp.rs"));
+}
 
 #[cfg(test)]
 mod tests {
