@@ -1,11 +1,5 @@
-capnp_import::capnp_extract_bin!();
-
 fn main() {
-    let output_dir = commandhandle().unwrap();
-    let cmdpath = output_dir.path().join("capnp");
-
     capnpc::CompilerCommand::new()
-        .capnp_executable(&cmdpath)
         .crate_provides("external_crate", [0xe6f94f52f7be8fe2])
         .file("test.capnp")
         .file("in-submodule.capnp")
@@ -22,7 +16,6 @@ fn main() {
         .expect("compiling schema");
 
     capnpc::CompilerCommand::new()
-        .capnp_executable(&cmdpath)
         .file("test-default-parent-module.capnp")
         .file("test-default-parent-module-override.capnp")
         .import_path("..")
@@ -39,7 +32,6 @@ fn main() {
     // `capnp compile` will create this directory
     output_path.push("inner-output-path");
     capnpc::CompilerCommand::new()
-        .capnp_executable(&cmdpath)
         .file("test-output-path.capnp")
         .import_path("..")
         .output_path(output_path)
@@ -48,10 +40,6 @@ fn main() {
 
     // Have to do this test last
     std::env::remove_var("OUT_DIR");
-    let error = capnpc::CompilerCommand::new()
-        .capnp_executable(&cmdpath)
-        .run()
-        .unwrap_err()
-        .extra;
+    let error = capnpc::CompilerCommand::new().run().unwrap_err().extra;
     assert!(error.starts_with("Could not access `OUT_DIR` environment variable"));
 }
