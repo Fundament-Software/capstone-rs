@@ -1,7 +1,9 @@
 // Original file with tests for capnp_build! and capnp_let!.
 // They should be restructured or maybe deleted, but some of these might be more readable than
 // the ones in the other files.
-capnp_import::capnp_import!("tests/example.capnp");
+pub mod example_capnp {
+    include!(concat!(env!("OUT_DIR"), "/example_capnp.rs"));
+}
 
 use capnp::capability::Promise;
 use capnp_macros::{capnp_build, capnp_let};

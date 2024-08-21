@@ -19,7 +19,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-capnp_import::capnp_import!("hello_world.capnp");
+pub mod hello_world_capnp {
+    include!(concat!(env!("OUT_DIR"), "/hello_world_capnp.rs"));
+}
 
 pub mod client;
 pub mod server;
