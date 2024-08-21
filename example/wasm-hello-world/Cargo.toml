@@ -14,5 +14,5 @@ wasmer = "4.0.0"
 [dependencies.capstone]
 path = "../../capstone"
 
-[dependencies.capstone-import]
-path = "../../capstone-import"
+[build-dependencies.capstone-gen]
+path = "../../capstone-gen"

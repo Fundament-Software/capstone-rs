@@ -23,9 +23,7 @@
 //!
 //! This library allows you to do
 //! [Cap'n Proto code generation](https://capnproto.org/otherlang.html#how-to-write-compiler-plugins)
-//! within a Cargo build. You still need the `capnp` binary (implemented in C++).
-//! (If you use a package manager, try looking for a package called
-//! `capnproto`.)
+//! within a Cargo build. This links against the capnpc-sys crate, so you don't need the capnp binary
 //!
 //! In your Cargo.toml:
 //!
@@ -60,12 +58,6 @@
 //!     include!(concat!(env!("OUT_DIR"), "/bar_capnp.rs"));
 //! }
 //! ```
-//!
-//! This will be equivalent to executing the shell command
-//!
-//! ```ignore
-//!   capnp compile -orust:$OUT_DIR --src-prefix=schema schema/foo.capnp schema/bar.capnp
-//! ```
 
 pub mod codegen;
 pub mod codegen_types;
@@ -97,22 +89,6 @@ pub(crate) fn convert_io_err(err: std::io::Error) -> capnp::Error {
     capnp::Error::from_kind_context(kind, format!("{err}"))
 }
 
-fn run_command(
-    mut command: ::std::process::Command,
-    mut code_generation_command: codegen::CodeGenerationCommand,
-) -> ::capnp::Result<()> {
-    let mut p = command.spawn().map_err(convert_io_err)?;
-    code_generation_command.run(p.stdout.take().unwrap())?;
-    let exit_status = p.wait().map_err(convert_io_err)?;
-    if !exit_status.success() {
-        Err(::capnp::Error::failed(format!(
-            "Non-success exit status: {exit_status}"
-        )))
-    } else {
-        Ok(())
-    }
-}
-
 /// A builder object for schema compiler commands.
 #[derive(Default)]
 pub struct CompilerCommand {
@@ -120,7 +96,6 @@ pub struct CompilerCommand {
     src_prefixes: Vec<PathBuf>,
     import_paths: Vec<PathBuf>,
     no_standard_import: bool,
-    executable_path: Option<PathBuf>,
     output_path: Option<PathBuf>,
     default_parent_module: Vec<String>,
     raw_code_generator_request_path: Option<PathBuf>,
@@ -256,25 +231,6 @@ impl CompilerCommand {
         self
     }
 
-    /// Specify the executable which is used for the 'capnp' tool. When this method is not called, the command looks for a name 'capnp'
-    /// on the system (e.g. in working directory or in PATH environment variable).
-    pub fn capnp_executable<P>(&mut self, path: P) -> &mut Self
-    where
-        P: AsRef<Path>,
-    {
-        self.executable_path = Some(path.as_ref().to_path_buf());
-        self
-    }
-
-    /// Internal function for starting to build a capnp command.
-    fn new_command(&self) -> ::std::process::Command {
-        if let Some(executable) = &self.executable_path {
-            ::std::process::Command::new(executable)
-        } else {
-            ::std::process::Command::new("capnp")
-        }
-    }
-
     /// Sets the default parent module. This indicates the scope in your crate where you will
     /// add a module containing the generated code. For example, if you set this option to
     /// `vec!["foo".into(), "bar".into()]`, and you are generating code for `baz.capnp`, then your crate
@@ -311,48 +267,10 @@ impl CompilerCommand {
     /// Runs the command.
     /// Returns an error if `OUT_DIR` or a custom output directory was not set, or if `capnp compile` fails.
     pub fn run(&mut self) -> ::capnp::Result<()> {
-        match self.new_command().arg("--version").output() {
-            Err(error) => {
-                return Err(::capnp::Error::failed(format!(
-                    "Failed to execute `capnp --version`: {error}. \
-                     Please verify that version 0.5.2 or higher of the capnp executable \
-                     is installed on your system. See https://capnproto.org/install.html"
-                )))
-            }
-            Ok(output) => {
-                if !output.status.success() {
-                    return Err(::capnp::Error::failed(format!(
-                        "`capnp --version` returned an error: {:?}. \
-                         Please verify that version 0.5.2 or higher of the capnp executable \
-                         is installed on your system. See https://capnproto.org/install.html",
-                        output.status
-                    )));
-                }
-                // TODO Parse the version string?
-            }
-        }
-
-        let mut command = self.new_command();
-
         // We remove PWD from the env to avoid the following warning.
         // kj/filesystem-disk-unix.c++:1690:
         //    warning: PWD environment variable doesn't match current directory
-        command.env_remove("PWD");
-
-        command.arg("compile").arg("-o").arg("-");
-
-        if self.no_standard_import {
-            command.arg("--no-standard-import");
-        }
-
-        for import_path in &self.import_paths {
-            command.arg(&format!("--import-path={}", import_path.display()));
-        }
-
-        for src_prefix in &self.src_prefixes {
-            command.arg(&format!("--src-prefix={}", src_prefix.display()));
-        }
-
+        // command.env_remove("PWD");
         for file in &self.files {
             std::fs::metadata(file).map_err(|error| {
                 let current_dir = match std::env::current_dir() {
@@ -368,8 +286,6 @@ impl CompilerCommand {
                     error
                 ))
             })?;
-
-            command.arg(file);
         }
 
         let output_path = if let Some(output_path) = &self.output_path {
@@ -385,9 +301,6 @@ impl CompilerCommand {
             })?)
         };
 
-        command.stdout(::std::process::Stdio::piped());
-        command.stderr(::std::process::Stdio::inherit());
-
         let mut code_generation_command = crate::codegen::CodeGenerationCommand::new();
         code_generation_command
             .output_directory(output_path.clone())
@@ -397,13 +310,14 @@ impl CompilerCommand {
             code_generation_command
                 .raw_code_generator_request_path(raw_code_generator_request_path.clone());
         }
-
-        let cmd_string = format!("{:?}", &command);
-        run_command(command, code_generation_command).map_err(|error| {
-            ::capnp::Error::failed(format!(
-                "Error while trying to execute `{cmd_string}`: {error}."
-            ))
-        })?;
+        let output = capnpc_sys::call(
+            self.files.iter().map(|p| p.display().to_string()),
+            self.import_paths.iter().map(|p| p.display().to_string()),
+            self.src_prefixes.iter().map(|p| p.display().to_string()),
+            !self.no_standard_import,
+        )
+        .map_err(|e| capnp::Error::failed(e.to_string()))?;
+        code_generation_command.run(output.as_slice())?;
 
         if let Some(omnibus) = self.collect_file.as_ref() {
             let mut f =

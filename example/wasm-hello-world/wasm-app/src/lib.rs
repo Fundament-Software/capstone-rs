@@ -30,7 +30,9 @@ fn panic(_: &PanicInfo) -> ! {
     core::intrinsics::abort()
 }
 
-capnp_import::capnp_import!("../wasm-hello-world.capnp");
+pub mod wasm_hello_world_capnp {
+    include!(concat!(env!("OUT_DIR"), "/wasm_hello_world_capnp.rs"));
+}
 
 #[no_mangle]
 pub extern "C" fn add_numbers(ptr: i32, len: i32) -> i32 {
