@@ -10,7 +10,6 @@ license.workspace = true
 capstone.workspace = true
 
 [build-dependencies]
-capstone-import.workspace = true
 capstone-gen.workspace = true
 tempfile.workspace = true
 eyre.workspace = true
