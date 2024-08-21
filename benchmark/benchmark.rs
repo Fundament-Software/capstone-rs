@@ -26,10 +26,19 @@ use capnp::{message, serialize, serialize_packed};
 
 pub mod common;
 
-capnp_import::capnp_import!("carsales.capnp", "catrank.capnp", "eval.capnp");
-
+pub mod carsales_capnp {
+    include!(concat!(env!("OUT_DIR"), "/carsales_capnp.rs"));
+}
 pub mod carsales;
+
+pub mod catrank_capnp {
+    include!(concat!(env!("OUT_DIR"), "/catrank_capnp.rs"));
+}
 pub mod catrank;
+
+pub mod eval_capnp {
+    include!(concat!(env!("OUT_DIR"), "/eval_capnp.rs"));
+}
 pub mod eval;
 
 trait TestCase {

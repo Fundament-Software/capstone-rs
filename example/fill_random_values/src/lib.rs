@@ -5,7 +5,9 @@ use capnp::introspect::TypeVariant;
 use capnp::schema;
 use capnp::{dynamic_struct, dynamic_value};
 
-capnp_import::capnp_import!("fill.capnp");
+pub mod fill_capnp {
+    include!(concat!(env!("OUT_DIR"), "/fill_capnp.rs"));
+}
 
 pub struct Filler<R: Rng> {
     rng: R,

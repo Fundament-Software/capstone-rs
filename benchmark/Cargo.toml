@@ -18,4 +18,6 @@ path = "run_all.rs"
 
 [dependencies]
 capstone.workspace = true
-capstone-import.workspace = true
+
+[build-dependencies]
+capstone-gen.workspace = true
