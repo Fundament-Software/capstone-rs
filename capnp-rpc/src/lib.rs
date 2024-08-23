@@ -100,7 +100,7 @@ macro_rules! pry {
 
 mod attach;
 mod broken;
-mod local;
+pub mod local;
 pub mod queued;
 mod reconnect;
 pub mod rpc;
