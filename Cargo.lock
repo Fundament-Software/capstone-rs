@@ -148,7 +148,7 @@ dependencies = [
 [[package]]
 name = "capnp-sys"
 version = "1.1.0"
-source = "git+https://github.com/Fundament-Software/capstone#303888b1f1f7aa830778741b148c23c14bd0f82f"
+source = "git+https://github.com/Fundament-Software/capstone#21f64e52fb65cfbee3f47dd0643a41324b42d625"
 dependencies = [
  "cc",
  "cxx",
@@ -161,7 +161,7 @@ dependencies = [
 [[package]]
 name = "capnpc-sys"
 version = "1.1.0"
-source = "git+https://github.com/Fundament-Software/capstone#303888b1f1f7aa830778741b148c23c14bd0f82f"
+source = "git+https://github.com/Fundament-Software/capstone#21f64e52fb65cfbee3f47dd0643a41324b42d625"
 dependencies = [
  "capnp-sys",
  "cc",
@@ -572,7 +572,7 @@ checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 [[package]]
 name = "kj-build"
 version = "1.1.0"
-source = "git+https://github.com/Fundament-Software/capstone#303888b1f1f7aa830778741b148c23c14bd0f82f"
+source = "git+https://github.com/Fundament-Software/capstone#21f64e52fb65cfbee3f47dd0643a41324b42d625"
 dependencies = [
  "cc",
  "eyre",
@@ -582,7 +582,7 @@ dependencies = [
 [[package]]
 name = "kj-sys"
 version = "1.1.0"
-source = "git+https://github.com/Fundament-Software/capstone#303888b1f1f7aa830778741b148c23c14bd0f82f"
+source = "git+https://github.com/Fundament-Software/capstone#21f64e52fb65cfbee3f47dd0643a41324b42d625"
 dependencies = [
  "cc",
  "cxx",
