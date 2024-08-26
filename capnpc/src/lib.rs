@@ -459,3 +459,7 @@ impl CompilerCommand {
         self
     }
 }
+
+pub fn generate_random_id() -> u64 {
+    capnpc_sys::id()
+}
