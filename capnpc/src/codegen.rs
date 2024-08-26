@@ -1165,7 +1165,7 @@ fn generate_setter(
                         rust_struct_inner.push_str(
                             format!("{params_struct_prefix}_{styled_name}: Vec<u8>,").as_str(),
                         );
-                        rust_struct_impl_inner.push_str(format!("\n  _builder.set_{styled_name}({params_struct_impl_prefix}_{styled_name}.as_slice().into());").as_str());
+                        rust_struct_impl_inner.push_str(format!("\n  _builder.set_{styled_name}({params_struct_impl_prefix}_{styled_name}.as_slice());").as_str());
                     }
                     (
                         Some(fmt!(ctx, "{capnp}::data::Reader<'_>")),
@@ -1461,7 +1461,7 @@ fn build_impl_for_list_type(
         type_::Which::Text(_) => {
             format!(
                 "
-            \nif {vec_source}.len() > 0 {{
+            \nif !{vec_source}.is_empty() {{
                 let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
                 for (i, item) in {vec_source}.into_iter().enumerate() {{
                     list_builder.reborrow().set(i as u32, item.as_str().into());
@@ -1472,7 +1472,7 @@ fn build_impl_for_list_type(
         type_::Which::Data(_) => {
             format!(
                 "
-            \nif {vec_source}.len() > 0 {{
+            \nif !{vec_source}.is_empty() {{
                 let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
                 for (i, item) in {vec_source}.into_iter().enumerate() {{
                     list_builder.reborrow().set(i as u32, item.as_slice());
@@ -1483,7 +1483,7 @@ fn build_impl_for_list_type(
         type_::Which::List(_) => {
             format!(
                 "
-            \nif {vec_source}.len() > 0 {{
+            \nif !{vec_source}.is_empty() {{
                 let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
                 for (i, item) in {vec_source}.into_iter().enumerate() {{
                     {}
@@ -1495,7 +1495,7 @@ fn build_impl_for_list_type(
         type_::Which::Struct(_) => {
             format!(
                 "
-            \nif {vec_source}.len() > 0 {{
+            \nif !{vec_source}.is_empty() {{
                 let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
                 for (i, item) in {vec_source}.into_iter().enumerate() {{
                     item.build_capnp_struct(list_builder.reborrow().get(i as u32));
@@ -1506,7 +1506,7 @@ fn build_impl_for_list_type(
         type_::Which::Interface(_) => {
             format!(
                 "
-            \nif {vec_source}.len() > 0 {{
+            \nif !{vec_source}.is_empty() {{
                 let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
                 for (i, item) in {vec_source}.into_iter().enumerate() {{
                     list_builder.reborrow().set(i as u32, item.client.hook);
@@ -1518,7 +1518,7 @@ fn build_impl_for_list_type(
         _ => {
             format!(
                 "
-            \nif {vec_source}.len() > 0 {{
+            \nif !{vec_source}.is_empty() {{
                 let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
                 for (i, item) in {vec_source}.into_iter().enumerate() {{
                     list_builder.reborrow().set(i as u32, item);
@@ -1538,7 +1538,7 @@ fn build_list_of_list_impl(list: type_::list::Reader) -> capnp::Result<String> {
         }
         type_::Which::List(reader) => {
             format!("\n
-                if item.len() > 0 {{
+                if !item.is_empty() {{
                     let mut list_builder = list_builder.reborrow().init(i as u32, item.len() as u32);
                     for (i, item) in item.into_iter().enumerate() {{ {} }}
                 }}",
@@ -2373,7 +2373,7 @@ fn generate_get_annotation_types(
     }
 
     let body = if branches.is_empty() {
-        Line("panic!(\"invalid annotation indices ({:?}, {}) \", child_index, index)".into())
+        Line("panic!(\"invalid annotation indices ({:?}, {}) \", child_index, index);".into())
     } else {
         branches.push(Line(
             "_ => panic!(\"invalid annotation indices ({:?}, {}) \", child_index, index),".into(),
@@ -2587,6 +2587,8 @@ fn generate_node(
             } else {
                 output.push(Line(format!("pub mod {node_name} {{")));
             }
+            output.push(line("#![allow(clippy::extra_unused_type_parameters)]"));
+            output.push(BlankLine);
             let bracketed_params = if params.params.is_empty() {
                 "".to_string()
             } else {
@@ -2638,7 +2640,7 @@ fn generate_node(
                 .push_str(format!("impl {} {{", snake_to_camel_case(node_name)).as_str());
             params_struct_impl_string.push_str(
                 format!(
-                    "\npub fn build_capnp_struct<'a,{}>(self, mut _builder: Builder<'a,{}>) {} {{",
+                    "\npub fn build_capnp_struct<{}>(self, mut _builder: Builder<'_,{}>) {} {{",
                     params.params, params.params, params.where_clause
                 )
                 .as_str(),
@@ -3191,6 +3193,9 @@ fn generate_node(
             )?);
 
             mod_interior.push(line("#![allow(unused_variables)]"));
+            mod_interior.push(line("#![allow(clippy::extra_unused_type_parameters)]"));
+            mod_interior.push(line("#![allow(clippy::wrong_self_convention)]"));
+            mod_interior.push(BlankLine);
             let methods = interface.get_methods()?;
             for (ordinal, method) in methods.into_iter().enumerate() {
                 let name = method.get_name()?.to_str()?;
@@ -3569,10 +3574,15 @@ fn generate_node(
                         line("impl <_T :Server> ServerDispatch<_T> {")
                     }),
                     indent(Line(fmt!(ctx,"pub async fn dispatch_call_internal(server: &_T, method_id: u16, params: {capnp}::capability::Params<{capnp}::any_pointer::Owned>, results: {capnp}::capability::Results<{capnp}::any_pointer::Owned>) -> Result<(), {capnp}::Error> {{"))),
-                    indent(indent(indent(line("match method_id {")))),
-                    indent(indent(indent(indent(dispatch_arms)))),
-                    indent(indent(indent(indent(Line(fmt!(ctx,"_ => Err({capnp}::Error::unimplemented(\"Method not implemented.\".to_string())) ")))))),
-                    indent(indent(line("}"))),
+                    (if !dispatch_arms.is_empty() {
+                        indent(vec![
+                            (indent(indent(line("match method_id {")))),
+                            (indent(indent(indent(dispatch_arms)))),
+                            (indent(indent(indent(Line(fmt!(ctx,"_ => Err({capnp}::Error::unimplemented(\"Method not implemented.\".to_string())) ")))))),
+                            (indent(line("}")))])
+                    } else {
+                        indent(indent(indent(line(fmt!(ctx, "Err({capnp}::Error::unimplemented(\"Method not implemented.\".to_string()))")))))
+                    }),
                     indent(line("}")),
                     line("}")]));
 
