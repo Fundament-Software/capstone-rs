@@ -10,7 +10,7 @@ pub type CapnpLetStruct = CapnpAnonStruct<CapnpLetFieldPattern>;
 // capnp_let!(struct_pattern = subject)
 pub struct CapnpLet {
     pub struct_pattern: CapnpLetStruct,
-    pub equal_token: Token![=],
+    pub _equal_token: Token![=],
     pub ident: Ident,
 }
 
@@ -24,7 +24,7 @@ impl Parse for CapnpLet {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Ok(CapnpLet {
             struct_pattern: input.parse()?,
-            equal_token: input.parse()?,
+            _equal_token: input.parse()?,
             ident: input.parse()?,
         })
     }
