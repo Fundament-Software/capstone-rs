@@ -352,6 +352,10 @@ impl DynamicSchema {
         self.nodes.get(&id)
     }
 
+    pub fn get_files(&self) -> std::collections::hash_map::Keys<String, u64> {
+        self.files.keys()
+    }
+
     pub fn get_type_by_scope(
         &self,
         scope: &[impl AsRef<str>],
