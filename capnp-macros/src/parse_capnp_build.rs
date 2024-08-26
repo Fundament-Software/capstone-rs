@@ -12,7 +12,7 @@ pub type CapnpBuildStruct = CapnpAnonStruct<CapnpBuildFieldPattern>;
 // capnp_build!(person_builder, build_pattern)
 pub struct CapnpBuild {
     pub subject: Ident,
-    pub comma_token: Token![,],
+    pub _comma_token: Token![,],
     pub build_pattern: CapnpBuildPattern,
 }
 
@@ -43,7 +43,7 @@ impl Parse for CapnpBuild {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         Ok(CapnpBuild {
             subject: input.parse()?,
-            comma_token: input.parse()?,
+            _comma_token: input.parse()?,
             build_pattern: input.parse()?,
         })
     }
