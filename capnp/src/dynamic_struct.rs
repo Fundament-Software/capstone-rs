@@ -491,9 +491,9 @@ impl<'a> Builder<'a> {
             field::Slot(slot) => {
                 let offset = slot.get_offset() as usize;
                 match ty.which() {
-                    TypeVariant::Capability(_) => {
+                    TypeVariant::Capability(_) | TypeVariant::AnyPointer => {
                         let mut builder = self.builder.reborrow().get_pointer_field(offset);
-                        builder.set_capability_directly(value);
+                        builder.set_other_pointer(value.into());
                         Ok(())
                     }
                     _ => Err(Error::from_kind(ErrorKind::TypeMismatch)),
