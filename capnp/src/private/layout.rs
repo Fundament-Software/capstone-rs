@@ -115,6 +115,7 @@ pub enum PointerType {
     Struct,
     List,
     Capability(u32),
+    OtherPointer(u64),
 }
 
 impl WirePointerKind {
@@ -256,6 +257,14 @@ impl WirePointer {
     pub fn set_cap(&mut self, index: u32) {
         self.offset_and_kind.set(WirePointerKind::Other as u32);
         self.upper32bits.set(index);
+    }
+
+    #[inline]
+    pub fn set_other_pointer(&mut self, pointer: u64) {
+        assert_eq!(pointer >> 62, 0, "Detected an integer larger than 62 bits, which is too large to fit inside the other pointer");
+        self.offset_and_kind
+            .set(WirePointerKind::Other as u32 | ((pointer as u32) << 2));
+        self.upper32bits.set((pointer >> 30) as u32);
     }
 
     #[inline]
@@ -3051,14 +3060,19 @@ impl<'a> PointerReader<'a> {
                 unsafe { wire_helpers::follow_fars(self.arena, self.pointer, self.segment_id)? };
 
             match unsafe { (*reff).kind() } {
-                WirePointerKind::Far => Err(Error::from_kind(ErrorKind::UnexepectedFarPointer)),
+                WirePointerKind::Far => Err(Error::from_kind(ErrorKind::UnexpectedFarPointer)),
                 WirePointerKind::Struct => Ok(PointerType::Struct),
                 WirePointerKind::List => Ok(PointerType::List),
                 WirePointerKind::Other => {
                     if unsafe { (*reff).is_capability() } {
                         unsafe { Ok(PointerType::Capability((*reff).cap_index())) }
                     } else {
-                        Err(Error::from_kind(ErrorKind::UnknownPointerType))
+                        unsafe {
+                            Ok(PointerType::OtherPointer(
+                                (*reff).inline_composite_list_element_count() as u64
+                                    | ((*reff).cap_index() as u64) << 30,
+                            ))
+                        }
                     }
                 }
             }
@@ -3089,6 +3103,7 @@ impl<'a> PointerReader<'a> {
                     .is_canonical(read_head, self.pointer)
             },
             PointerType::Capability(_) => Ok(false),
+            PointerType::OtherPointer(_) => Ok(false),
         }
     }
 }
@@ -3331,8 +3346,8 @@ impl<'a> PointerBuilder<'a> {
         );
     }
 
-    pub unsafe fn set_capability_directly(&mut self, cap: u32) {
-        (*self.pointer).set_cap(cap);
+    pub unsafe fn set_other_pointer(&mut self, index: u64) {
+        (*self.pointer).set_other_pointer(index);
     }
 
     pub fn copy_from(&mut self, other: PointerReader, canonicalize: bool) -> Result<()> {
