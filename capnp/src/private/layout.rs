@@ -175,7 +175,11 @@ impl WirePointer {
     ) -> Result<*const u8> {
         let this_addr: *const u8 = ptr as *const _;
         unsafe {
-            let offset = 1 + (((*ptr).offset_and_kind.get() as i32) >> 2);
+            let offset = 1 + if (*ptr).kind() == WirePointerKind::Other {
+                0
+            } else {
+                ((*ptr).offset_and_kind.get() as i32) >> 2
+            };
             arena.check_offset(segment_id, this_addr, offset)
         }
     }
