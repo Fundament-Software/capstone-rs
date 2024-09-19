@@ -652,8 +652,8 @@ pub mod test {
         }
     }
 
-    #[cfg_attr(miri, ignore)] // Miri takes a long time with proptest
     proptest! {
+        #[cfg_attr(miri, ignore)] // Miri takes a long time with proptest
         #[test]
         fn check_round_trip_async(
             read_blocking_period: usize,
