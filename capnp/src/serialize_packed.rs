@@ -561,8 +561,8 @@ mod tests {
         );
     }
 
-    #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
     proptest! {
+        #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
         #[test]
         fn test_round_trip(segments: Vec<Vec<crate::Word>>) {
             use crate::message::ReaderSegments;
@@ -578,6 +578,7 @@ mod tests {
             }))
         }
 
+        #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
         #[test]
         fn test_unpack(packed: Vec<u8>) {
             let len = packed.len();

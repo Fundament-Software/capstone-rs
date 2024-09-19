@@ -726,8 +726,8 @@ pub mod test {
         );
     }
 
-    #[cfg_attr(miri, ignore)]
     proptest! {
+        #[cfg_attr(miri, ignore)]
         #[test]
         fn check_packed_round_trip_async(
             read_blocking_period: usize,
