@@ -455,8 +455,7 @@ mod tests {
     use alloc::vec::Vec;
 
     use crate::io::{Read, Write};
-
-    use quickcheck::{quickcheck, TestResult};
+    use proptest::prelude::*;
 
     use super::read_message;
     use crate::message::ReaderOptions;
@@ -562,31 +561,31 @@ mod tests {
         );
     }
 
-    quickcheck! {
-        #[cfg_attr(miri, ignore)] // miri takes a long time with quickcheck
-        fn test_round_trip(segments: Vec<Vec<crate::Word>>) -> TestResult {
+    #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
+    proptest! {
+        #[test]
+        fn test_round_trip(segments: Vec<Vec<crate::Word>>) {
             use crate::message::ReaderSegments;
-            if segments.is_empty() { return TestResult::discard(); }
+            if segments.is_empty() { return Ok(()); }
             let mut buf: Vec<u8> = Vec::new();
 
             write_message_segments(&mut PackedWrite { inner: &mut buf }, &segments);
             let message = read_message(&mut &buf[..], ReaderOptions::new()).unwrap();
             let result_segments = message.into_segments();
 
-            TestResult::from_bool(segments.iter().enumerate().all(|(i, segment)| {
+            assert!(segments.iter().enumerate().all(|(i, segment)| {
                 crate::Word::words_to_bytes(&segment[..]) == result_segments.get_segment(i as u32).unwrap()
             }))
         }
 
-        #[cfg_attr(miri, ignore)] // miri takes a long time with quickcheck
-        fn test_unpack(packed: Vec<u8>) -> TestResult {
+        #[test]
+        fn test_unpack(packed: Vec<u8>) {
             let len = packed.len();
             let mut packed_read = PackedRead { inner: &packed[..] };
 
             let mut out_buffer: Vec<u8> = vec![0; len * 8];
 
             let _ = packed_read.read_exact(&mut out_buffer);
-            TestResult::from_bool(true)
         }
     }
 
