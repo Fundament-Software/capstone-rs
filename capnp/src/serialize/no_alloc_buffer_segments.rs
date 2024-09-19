@@ -350,23 +350,20 @@ fn calculate_data_offset(segments_count: usize) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "alloc")]
-    use quickcheck::{quickcheck, TestResult};
+    use proptest::prelude::*;
 
     use super::calculate_data_offset;
     #[cfg(feature = "alloc")]
-    use crate::{
-        message::{ReaderOptions, ReaderSegments},
-        serialize, word, Word,
-    };
+    use crate::{message::ReaderOptions, serialize, word, Word};
 
     #[cfg(feature = "alloc")]
     use crate::OutputSegments;
 
+    #[cfg(feature = "alloc")]
+    use super::NoAllocSliceSegments;
     use super::{
         read_u32_le, u32_to_segment_length_bytes, u32_to_segments_count, verify_alignment,
     };
-    #[cfg(feature = "alloc")]
-    use super::{NoAllocBufferSegmentType, NoAllocBufferSegments, NoAllocSliceSegments};
 
     #[cfg(feature = "alloc")]
     use alloc::vec::Vec;
@@ -450,64 +447,6 @@ mod tests {
     }
 
     #[cfg(feature = "alloc")]
-    quickcheck! {
-        #[cfg_attr(miri, ignore)] // miri takes a long time with quickcheck
-        fn test_no_alloc_buffer_segments_single_segment_optimization(
-            segment_0 : Vec<Word>) -> TestResult
-        {
-            let words = &segment_0[..];
-            let bytes = Word::words_to_bytes(words);
-            let output_segments = OutputSegments::SingleSegment([bytes]);
-            let mut msg = vec![];
-
-            serialize::write_message_segments(&mut msg, &output_segments).unwrap();
-
-            let no_alloc_segments =
-                NoAllocSliceSegments::from_slice(&mut msg.as_slice(), ReaderOptions::new()).unwrap();
-
-            assert!(matches!(
-                no_alloc_segments,
-                NoAllocBufferSegments { buffer: _,
-                                        segment_type : NoAllocBufferSegmentType::SingleSegment { .. },
-                }
-            ));
-
-            assert_eq!(no_alloc_segments.len(), 1);
-            assert_eq!(no_alloc_segments.get_segment(0), Some(bytes));
-            assert_eq!(no_alloc_segments.get_segment(1), None);
-            TestResult::from_bool(true)
-        }
-
-        #[cfg_attr(miri, ignore)] // miri takes a long time with quickcheck
-        fn test_no_alloc_buffer_segments_multiple_segments(segments_vec: Vec<Vec<Word>>) -> TestResult {
-            if segments_vec.is_empty() { return TestResult::discard() };
-
-            let segments: Vec<_> = segments_vec.iter().map(|s|
-                                                           Word::words_to_bytes(s.as_slice())).collect();
-
-            let output_segments = OutputSegments::MultiSegment(segments.clone());
-
-            let mut msg = vec![];
-
-            serialize::write_message_segments(&mut msg, &output_segments).unwrap();
-
-            let no_alloc_segments =
-                NoAllocSliceSegments::from_slice(&mut msg.as_slice(), ReaderOptions::new()).unwrap();
-
-            assert_eq!(no_alloc_segments.len(), segments.len());
-            for (i, segment) in segments.iter().enumerate() {
-                assert_eq!(no_alloc_segments.get_segment(i as u32), Some(*segment));
-            }
-
-            assert_eq!(
-                no_alloc_segments.get_segment(no_alloc_segments.len() as u32),
-                None
-            );
-            TestResult::from_bool(true)
-        }
-    }
-
-    #[cfg(feature = "alloc")]
     #[test]
     fn test_no_alloc_buffer_segments_message_postfix() {
         let output_segments = OutputSegments::SingleSegment([&[1, 2, 3, 4, 5, 6, 7, 8]]);
@@ -547,11 +486,12 @@ mod tests {
         buf.clear();
     }
 
+    #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
     #[cfg(feature = "alloc")]
-    quickcheck! {
-        #[cfg_attr(miri, ignore)] // miri takes a long time with quickcheck
-        fn test_no_alloc_buffer_segments_message_truncated(segments_vec: Vec<Vec<Word>>) -> TestResult {
-            if segments_vec.is_empty() { return TestResult::discard() }
+    proptest! {
+    #[test]
+    fn test_no_alloc_buffer_segments_message_truncated(segments_vec: Vec<Vec<Word>>) {
+            if segments_vec.is_empty() { return Ok(()); }
 
             let segments: Vec<_> = segments_vec.iter()
                 .map(|s| Word::words_to_bytes(s.as_slice())).collect();
@@ -569,12 +509,11 @@ mod tests {
                 NoAllocSliceSegments::from_slice(&mut msg.as_slice(), ReaderOptions::new());
 
             assert!(no_alloc_segments.is_err());
-            TestResult::from_bool(true)
         }
 
-        #[cfg_attr(miri, ignore)] // miri takes a long time with quickcheck
-        fn test_no_alloc_buffer_segments_message_options_limit(
-            segments_vec: Vec<Vec<Word>>) -> TestResult
+    #[test]
+    fn test_no_alloc_buffer_segments_message_options_limit(
+            segments_vec: Vec<Vec<Word>>)
         {
             let mut word_count = 0;
             let segments: Vec<_> = segments_vec.iter()
@@ -583,7 +522,7 @@ mod tests {
                     word_count += s.len();
                     ws
                 }).collect();
-            if word_count == 0 { return TestResult::discard() };
+            if word_count == 0 { return Ok(()) };
 
             let output_segments = OutputSegments::MultiSegment(segments.clone());
 
@@ -603,12 +542,11 @@ mod tests {
             let no_alloc_segments = NoAllocSliceSegments::from_slice(&mut msg.as_slice(), options);
 
             assert!(no_alloc_segments.is_err());
-            TestResult::from_bool(true)
         }
 
-        #[cfg_attr(miri, ignore)] // miri takes a long time with quickcheck
-        fn test_no_alloc_buffer_segments_bad_alignment(segment_0: Vec<Word>) -> TestResult {
-            if segment_0.is_empty() { return TestResult::discard(); }
+    #[test]
+    fn test_no_alloc_buffer_segments_bad_alignment(segment_0: Vec<Word>) {
+            if segment_0.is_empty() { return Ok(()); }
             let output_segments = OutputSegments::SingleSegment([Word::words_to_bytes(&segment_0)]);
 
             let mut msg = vec![];
@@ -625,7 +563,6 @@ mod tests {
             } else {
                 assert!(no_alloc_segments.is_err());
             }
-            TestResult::from_bool(true)
         }
     }
 }

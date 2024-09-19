@@ -16,15 +16,15 @@ name = "capnp_futures"
 
 [dependencies]
 capstone.workspace = true
-quickcheck = { version = "1", optional = true }
+proptest = { version = "1.5", optional = true }
 tokio = { workspace = true, features = ["io-util"] }
 tokio-stream.workspace = true
 futures-util.workspace = true
 
 [dev-dependencies]
-capstone = { workspace = true, features = ["quickcheck"] }
+capstone = { workspace = true, features = ["proptest"] }
 tokio = { workspace = true, features = ["io-util", "rt"] }
-quickcheck = "1"
+proptest = "1.5"
 
 [lints]
 workspace = true
