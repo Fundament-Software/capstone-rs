@@ -999,8 +999,8 @@ pub mod test {
         buf.clear();
     }
 
-    #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
     proptest! {
+        #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
         #[test]
         fn test_round_trip(segments: Vec<Vec<crate::Word>>) {
             if segments.is_empty() { return Ok(()); }
@@ -1015,6 +1015,7 @@ pub mod test {
             }))
         }
 
+        #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
         #[test]
         fn test_round_trip_slice_segments(segments: Vec<Vec<crate::Word>>) {
             if segments.is_empty() { return Ok(());  }

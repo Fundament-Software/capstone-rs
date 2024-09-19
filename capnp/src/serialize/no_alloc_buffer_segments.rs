@@ -486,11 +486,11 @@ mod tests {
         buf.clear();
     }
 
-    #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
     #[cfg(feature = "alloc")]
     proptest! {
-    #[test]
-    fn test_no_alloc_buffer_segments_message_truncated(segments_vec: Vec<Vec<Word>>) {
+        #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
+        #[test]
+        fn test_no_alloc_buffer_segments_message_truncated(segments_vec: Vec<Vec<Word>>) {
             if segments_vec.is_empty() { return Ok(()); }
 
             let segments: Vec<_> = segments_vec.iter()
@@ -511,8 +511,9 @@ mod tests {
             assert!(no_alloc_segments.is_err());
         }
 
-    #[test]
-    fn test_no_alloc_buffer_segments_message_options_limit(
+        #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
+        #[test]
+        fn test_no_alloc_buffer_segments_message_options_limit(
             segments_vec: Vec<Vec<Word>>)
         {
             let mut word_count = 0;
@@ -544,8 +545,9 @@ mod tests {
             assert!(no_alloc_segments.is_err());
         }
 
-    #[test]
-    fn test_no_alloc_buffer_segments_bad_alignment(segment_0: Vec<Word>) {
+        #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
+        #[test]
+        fn test_no_alloc_buffer_segments_bad_alignment(segment_0: Vec<Word>) {
             if segment_0.is_empty() { return Ok(()); }
             let output_segments = OutputSegments::SingleSegment([Word::words_to_bytes(&segment_0)]);
 
