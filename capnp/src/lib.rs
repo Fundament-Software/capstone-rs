@@ -106,20 +106,38 @@ impl Word {
     }
 }
 
-#[cfg(any(feature = "quickcheck", test))]
-impl quickcheck::Arbitrary for Word {
-    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
-        crate::word(
-            quickcheck::Arbitrary::arbitrary(g),
-            quickcheck::Arbitrary::arbitrary(g),
-            quickcheck::Arbitrary::arbitrary(g),
-            quickcheck::Arbitrary::arbitrary(g),
-            quickcheck::Arbitrary::arbitrary(g),
-            quickcheck::Arbitrary::arbitrary(g),
-            quickcheck::Arbitrary::arbitrary(g),
-            quickcheck::Arbitrary::arbitrary(g),
-        )
+#[cfg(any(feature = "proptest", test))]
+pub const fn word_u64(n: u64) -> Word {
+    Word {
+        raw_content: [
+            n as u8,
+            (n >> 8) as u8,
+            (n >> 16) as u8,
+            (n >> 24) as u8,
+            (n >> 32) as u8,
+            (n >> 40) as u8,
+            (n >> 48) as u8,
+            (n >> 56) as u8,
+        ],
     }
+}
+
+#[cfg(any(feature = "proptest", test))]
+fn word_strategy() -> proptest::strategy::BoxedStrategy<Word> {
+    use proptest::prelude::*;
+
+    any::<u64>().prop_map(word_u64).boxed()
+}
+
+#[cfg(any(feature = "proptest", test))]
+impl proptest::arbitrary::Arbitrary for Word {
+    type Parameters = ();
+
+    fn arbitrary_with(_: Self::Parameters) -> Self::Strategy {
+        word_strategy()
+    }
+
+    type Strategy = proptest::strategy::BoxedStrategy<Word>;
 }
 
 /// Size of a message. Every generated struct has a method `.total_size()` that returns this.

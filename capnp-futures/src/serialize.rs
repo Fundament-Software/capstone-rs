@@ -263,10 +263,9 @@ pub mod test {
     use std::pin::Pin;
     use std::task::{Context, Poll};
 
+    use proptest::prelude::*;
     use std::io::Cursor;
     use tokio::io::{AsyncRead, AsyncWrite};
-
-    use quickcheck::{quickcheck, TestResult};
 
     use capnp::message::ReaderSegments;
     use capnp::{message, OutputSegments};
@@ -653,16 +652,16 @@ pub mod test {
         }
     }
 
-    #[cfg_attr(miri, ignore)] // Miri takes a long time with quickcheck
-    #[test]
-    fn check_round_trip_async() {
-        fn round_trip(
+    #[cfg_attr(miri, ignore)] // Miri takes a long time with proptest
+    proptest! {
+        #[test]
+        fn check_round_trip_async(
             read_blocking_period: usize,
             write_blocking_period: usize,
             segments: Vec<Vec<capnp::Word>>,
-        ) -> TestResult {
+        ) {
             if segments.is_empty() || read_blocking_period == 0 || write_blocking_period == 0 {
-                return TestResult::discard();
+                return Ok(());
             }
             let (mut read, segments) = {
                 let cursor = std::io::Cursor::new(Vec::new());
@@ -684,12 +683,10 @@ pub mod test {
                 .unwrap();
             let message_segments = message.into_segments();
 
-            TestResult::from_bool(segments.iter().enumerate().all(|(i, segment)| {
+            assert!(segments.iter().enumerate().all(|(i, segment)| {
                 capnp::Word::words_to_bytes(&segment[..])
                     == message_segments.get_segment(i as u32).unwrap()
             }))
         }
-
-        quickcheck(round_trip as fn(usize, usize, Vec<Vec<capnp::Word>>) -> TestResult);
     }
 }
