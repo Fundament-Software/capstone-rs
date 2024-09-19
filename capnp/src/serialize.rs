@@ -706,8 +706,7 @@ pub mod test {
     use alloc::vec::Vec;
 
     use crate::io::{Read, Write};
-
-    use quickcheck::{quickcheck, TestResult};
+    use proptest::prelude::*;
 
     use super::{
         flatten_segments, read_message, read_message_from_flat_slice, read_segment_table,
@@ -1000,24 +999,25 @@ pub mod test {
         buf.clear();
     }
 
-    quickcheck! {
-        #[cfg_attr(miri, ignore)] // miri takes a long time with quickcheck
-        fn test_round_trip(segments: Vec<Vec<crate::Word>>) -> TestResult {
-            if segments.is_empty() { return TestResult::discard(); }
+    #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
+    proptest! {
+        #[test]
+        fn test_round_trip(segments: Vec<Vec<crate::Word>>) {
+            if segments.is_empty() { return Ok(()); }
             let mut buf: Vec<u8> = vec![];
 
             write_message_segments(&mut buf, &segments);
             let message = read_message(&mut &buf[..], message::ReaderOptions::new()).unwrap();
             let result_segments = message.into_segments();
 
-            TestResult::from_bool(segments.iter().enumerate().all(|(i, segment)| {
+            assert!(segments.iter().enumerate().all(|(i, segment)| {
                 crate::Word::words_to_bytes(&segment[..]) == result_segments.get_segment(i as u32).unwrap()
             }))
         }
 
-        #[cfg_attr(miri, ignore)] // miri takes a long time with quickcheck
-        fn test_round_trip_slice_segments(segments: Vec<Vec<crate::Word>>) -> TestResult {
-            if segments.is_empty() { return TestResult::discard(); }
+        #[test]
+        fn test_round_trip_slice_segments(segments: Vec<Vec<crate::Word>>) {
+            if segments.is_empty() { return Ok(());  }
             let borrowed_segments: &[&[u8]] = &segments.iter()
                 .map(|segment| crate::Word::words_to_bytes(&segment[..]))
                 .collect::<Vec<_>>()[..];
@@ -1027,7 +1027,7 @@ pub mod test {
             assert!(word_slice.is_empty());  // no remaining words
             let result_segments = message.into_segments();
 
-            TestResult::from_bool(segments.iter().enumerate().all(|(i, segment)| {
+            assert!(segments.iter().enumerate().all(|(i, segment)| {
                 crate::Word::words_to_bytes(&segment[..]) == result_segments.get_segment(i as u32).unwrap()
             }))
         }

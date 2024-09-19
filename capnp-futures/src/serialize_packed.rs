@@ -550,7 +550,7 @@ pub mod test {
     use crate::serialize::test::{BlockingRead, BlockingWrite};
     use crate::serialize_packed::{try_read_message, PackedRead, PackedWrite};
     use capnp::message::ReaderSegments;
-    use quickcheck::{quickcheck, TestResult};
+    use proptest::prelude::*;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     pub fn check_unpacks_to(blocking_period: usize, packed: &[u8], unpacked: &[u8]) {
@@ -674,9 +674,9 @@ pub mod test {
         read_blocking_period: usize,
         write_blocking_period: usize,
         segments: Vec<Vec<capnp::Word>>,
-    ) -> TestResult {
+    ) {
         if segments.is_empty() || read_blocking_period == 0 || write_blocking_period == 0 {
-            return TestResult::discard();
+            return;
         }
         let (mut read, segments) = {
             let cursor = std::io::Cursor::new(Vec::new());
@@ -708,7 +708,7 @@ pub mod test {
             .unwrap();
         let message_segments = message.into_segments();
 
-        TestResult::from_bool(segments.iter().enumerate().all(|(i, segment)| {
+        assert!(segments.iter().enumerate().all(|(i, segment)| {
             capnp::Word::words_to_bytes(&segment[..])
                 == message_segments.get_segment(i as u32).unwrap()
         }))
@@ -716,21 +716,26 @@ pub mod test {
 
     #[test]
     fn check_packed_round_trip_async_bug() {
-        assert!(!round_trip(
+        round_trip(
             1,
             1,
             vec![vec![
                 capnp::word(8, 14, 90, 7, 21, 13, 59, 17),
-                capnp::word(0, 31, 21, 73, 0, 54, 61, 12)
-            ]]
-        )
-        .is_failure());
+                capnp::word(0, 31, 21, 73, 0, 54, 61, 12),
+            ]],
+        );
     }
 
     #[cfg_attr(miri, ignore)]
-    #[test]
-    fn check_packed_round_trip_async() {
-        quickcheck(round_trip as fn(usize, usize, Vec<Vec<capnp::Word>>) -> TestResult);
+    proptest! {
+        #[test]
+        fn check_packed_round_trip_async(
+            read_blocking_period: usize,
+            write_blocking_period: usize,
+            segments: Vec<Vec<capnp::Word>>,
+        ) {
+            round_trip(read_blocking_period, write_blocking_period, segments)
+        }
     }
 
     #[test]
