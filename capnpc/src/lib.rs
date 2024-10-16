@@ -310,7 +310,7 @@ impl CompilerCommand {
             code_generation_command
                 .raw_code_generator_request_path(raw_code_generator_request_path.clone());
         }
-        let output = capnpc_sys::call(
+        let output = capnp_sys::call(
             self.files.iter().map(|p| p.display().to_string()),
             self.import_paths.iter().map(|p| p.display().to_string()),
             self.src_prefixes.iter().map(|p| p.display().to_string()),
@@ -461,5 +461,5 @@ impl CompilerCommand {
 }
 
 pub fn generate_random_id() -> u64 {
-    capnpc_sys::id()
+    capnp_sys::id()
 }
