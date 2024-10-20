@@ -388,10 +388,14 @@ where
     pub fn new_client(&mut self, s: S) -> C {
         let dispatch = <C as capnp::capability::FromServer<S>>::from_server(s);
         let wrapped = Rc::new(dispatch);
-        let ptr =
-            Rc::<<C as capnp::capability::FromServer<S>>::Dispatch>::as_ptr(&wrapped) as usize;
-        self.caps.insert(ptr, Rc::downgrade(&wrapped));
-        capnp::capability::FromClientHook::new(Box::new(local::Client::from_rc(wrapped)))
+        self.from_rc(wrapped)
+    }
+
+    /// Adds a new capability to the set and returns a client backed by it.
+    pub fn from_rc(&mut self, server: Rc<<C as capnp::capability::FromServer<S>>::Dispatch>) -> C {
+        let ptr = Rc::<<C as capnp::capability::FromServer<S>>::Dispatch>::as_ptr(&server) as usize;
+        self.caps.insert(ptr, Rc::downgrade(&server));
+        capnp::capability::FromClientHook::new(Box::new(local::Client::from_rc(server)))
     }
 
     /// Looks up a capability and returns its underlying server object, if found.
