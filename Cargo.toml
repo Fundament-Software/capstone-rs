@@ -30,7 +30,7 @@ default-members = ["capnp"]
 [workspace.package]
 version = "0.18.0"
 edition = "2021"
-rust-version = "1.80.0"
+rust-version = "1.81.0"
 license = "MIT"
 repository = "https://github.com/fundament-software/capstone-rs"
 documentation = "https://docs.rs/capstone/"
