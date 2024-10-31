@@ -3197,8 +3197,10 @@ fn generate_node(
             mod_interior.push(line("#![allow(clippy::wrong_self_convention)]"));
             mod_interior.push(BlankLine);
             let methods = interface.get_methods()?;
+            let mut method_count = 0;
             for (ordinal, method) in methods.into_iter().enumerate() {
                 let name = method.get_name()?.to_str()?;
+                method_count += 1;
 
                 let param_id = method.get_param_struct_type();
                 let param_node = &ctx.node_map[&param_id];
@@ -3262,7 +3264,7 @@ fn generate_node(
 
                 dispatch_arms.push(
                     Line(fmt!(ctx,
-                        "{ordinal} => server.{}({capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,",
+                        "{ordinal} => self.server.{}({capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,",
                         module_name(name))));
                 mod_interior.push(Line(fmt!(
                     ctx,
@@ -3280,7 +3282,7 @@ fn generate_node(
                 )));
                 server_interior.push(
                     Line(fmt!(ctx,
-                        "async fn {}(&self, _: {}Params<{}>, _: {}Results<{}>) -> Result<(), {capnp}::Error> {{ Result::<(), capnp::Error>::Err({capnp}::Error::unimplemented(\"method {}::Server::{} not implemented\".to_string())) }}",
+                        "async fn {}(self: std::rc::Rc<Self>, _: {}Params<{}>, _: {}Results<{}>) -> Result<(), {capnp}::Error> {{ Result::<(), capnp::Error>::Err({capnp}::Error::unimplemented(\"method {}::Server::{} not implemented\".to_string())) }}",
                         module_name(name),
                         capitalize_first_letter(name), params_ty_params,
                         capitalize_first_letter(name), results_ty_params,
@@ -3300,27 +3302,21 @@ fn generate_node(
                 ))));
                 client_impl_interior.push(line("}"));
 
-                let params_type_string = format!(", {builder_params_string}");
-                let param_build_call =
-                    format!("let mut _builder = req.get();\n{builder_params_inner_string}");
-
                 client_impl_interior.push(Line(fmt!(
                     ctx,
-                    "pub fn build_{}_request(&self{}) -> {capnp}::capability::Request<{},{}> {} {{",
+                    "pub fn build_{}_request(&self, {}) -> {capnp}::capability::Request<{},{}> {} {{",
                     camel_to_snake_case(name),
-                    params_type_string,
+                    builder_params_string,
                     param_type,
                     result_type,
                     params.where_clause
                 )));
 
                 client_impl_interior.push(indent(Line(fmt!(ctx,
-                    "let mut req: {capnp}::capability::Request<{},{}> = self.client.new_call(_private::TYPE_ID, {ordinal}, ::core::option::Option::None);
-                    {}
-                    req",
+                    "let mut req: {capnp}::capability::Request<{},{}> = self.client.new_call(_private::TYPE_ID, {ordinal}, ::core::option::Option::None);\n      let mut _builder = req.get();\n      {}\n      req",
                     param_type,
                     result_type,
-                    param_build_call
+                    builder_params_inner_string
                 ))));
                 client_impl_interior.push(line("}"));
 
@@ -3356,12 +3352,269 @@ fn generate_node(
                     let type_id = interface.get_id();
                     let brand = interface.get_brand()?;
                     let the_mod = ctx.get_qualified_module(type_id);
-
                     base_dispatch_arms.push(Line(format!(
-                        "0x{type_id:x} => {}::dispatch_call_internal(&self.server, method_id, params, results).await,",
-                        do_branding(
-                            ctx, type_id, brand, Leaf::ServerDispatch, &the_mod)?)));
+                        "0x{type_id:x} => Self::dispatch_call_internal(self, method_id + {method_count}, params, results).await,")));
                     base_traits.push(do_branding(ctx, type_id, brand, Leaf::Server, &the_mod)?);
+
+                    let node_reader = &ctx.node_map[&interface.get_id()];
+                    let node::Which::Interface(interface) = node_reader.which()? else {
+                        todo!()
+                    };
+                    let names = &ctx.scope_map[&node_reader.get_id()];
+                    let methods = interface.get_methods()?;
+                    for (ordinal, method) in methods.into_iter().enumerate() {
+                        let name = method.get_name()?.to_str()?;
+
+                        let mut builder_params_string = String::new();
+                        let mut builder_params_impl_string = String::new();
+                        let param_id = method.get_param_struct_type();
+                        let param_node = &ctx.node_map[&param_id];
+                        let schema_capnp::node::Struct(struct_r) = param_node.which()? else {
+                            todo!()
+                        };
+                        let fields = struct_r.get_fields()?;
+                        for field in fields {
+                            let name = get_field_name(field)?;
+                            let styled_name = camel_to_snake_case(name);
+                            let no_discriminant =
+                                field.get_discriminant_value() == field::NO_DISCRIMINANT;
+                            match field.which()? {
+                                field::Group(group) => {
+                                    let the_mod = ctx.get_qualified_module(group.get_type_id());
+                                    let params = get_params(ctx, group.get_type_id())?;
+
+                                    if no_discriminant {
+                                        builder_params_string.push_str(
+                                            format!(
+                                                "_{styled_name}: {}::{},",
+                                                the_mod,
+                                                snake_to_camel_case(
+                                                    ctx.get_last_name(group.get_type_id())?
+                                                )
+                                            )
+                                            .as_str(),
+                                        );
+                                        builder_params_impl_string.push_str(format!("\n  _{styled_name}.build_capnp_struct(_builder.reborrow().init_{styled_name}());").as_str());
+                                    }
+                                }
+                                field::Slot(reg_field) => {
+                                    let offset = reg_field.get_offset() as usize;
+                                    let typ = reg_field.get_type()?;
+                                    match typ.which()? {
+                                        type_::Void(()) => {
+                                            if no_discriminant {
+                                                builder_params_string.push_str(
+                                                    format!("_{styled_name}: (),").as_str(),
+                                                );
+                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name});").as_str());
+                                            }
+                                        }
+                                        type_::Bool(()) => {
+                                            if no_discriminant {
+                                                builder_params_string.push_str(
+                                                    format!("_{styled_name}: bool,").as_str(),
+                                                );
+                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name});").as_str());
+                                            }
+                                        }
+                                        _ if typ.is_prim()? => {
+                                            let tstr = typ.type_string(ctx, Leaf::Reader("'a"))?;
+                                            if no_discriminant {
+                                                builder_params_string.push_str(
+                                                    format!("_{styled_name}: {tstr},").as_str(),
+                                                );
+                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name});").as_str());
+                                            }
+                                        }
+                                        type_::Text(()) => {
+                                            if no_discriminant {
+                                                builder_params_string.push_str(
+                                                    format!("_{styled_name}: String,").as_str(),
+                                                );
+                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name}.as_str().into());").as_str());
+                                            }
+                                        }
+                                        type_::Data(()) => {
+                                            if no_discriminant {
+                                                builder_params_string.push_str(
+                                                    format!("_{styled_name}: Vec<u8>,").as_str(),
+                                                );
+                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name}.as_slice());").as_str());
+                                            }
+                                        }
+                                        type_::List(ot1) => {
+                                            if no_discriminant {
+                                                if let Ok(vec_of_list_element_types) =
+                                                    vec_of_list_element_types(ctx, ot1.reborrow())
+                                                {
+                                                    builder_params_string.push_str(
+                                                        format!(
+                                                            "_{styled_name}: {},",
+                                                            vec_of_list_element_types
+                                                        )
+                                                        .as_str(),
+                                                    );
+                                                    builder_params_impl_string.push_str(
+                                                        build_impl_for_list_type(
+                                                            styled_name.as_str(),
+                                                            ot1.reborrow(),
+                                                            false,
+                                                            is_params_struct,
+                                                        )?
+                                                        .as_str(),
+                                                    );
+                                                }
+                                            }
+                                        }
+                                        type_::Enum(e) => {
+                                            let id = e.get_type_id();
+                                            let the_mod = ctx.get_qualified_module(id);
+                                            if no_discriminant
+                                                && get_params(ctx, e.get_type_id())?.is_empty()
+                                            {
+                                                builder_params_string.push_str(
+                                                    format!("_{styled_name}: {the_mod},").as_str(),
+                                                );
+                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name});").as_str());
+                                            }
+                                        }
+                                        type_::Struct(st) => {
+                                            let type_string =
+                                                get_params_struct_path_string(ctx, st)?;
+                                            if no_discriminant
+                                                && get_params(ctx, st.get_type_id())?.is_empty()
+                                            {
+                                                if type_string
+                                                    .rfind(snake_to_camel_case(node_name).as_str())
+                                                    .is_some()
+                                                {
+                                                    builder_params_string.push_str(
+                                                        format!(
+                                                            "_{styled_name}: Option<Box<{}>>,",
+                                                            type_string
+                                                        )
+                                                        .as_str(),
+                                                    );
+                                                    builder_params_impl_string.push_str(format!("\n  if let Some(st) = _{styled_name} {{st.build_capnp_struct(_builder.reborrow().init_{styled_name}());}}").as_str());
+                                                } else {
+                                                    builder_params_string.push_str(
+                                                        format!(
+                                                            "_{styled_name}: Option<{}>,",
+                                                            type_string
+                                                        )
+                                                        .as_str(),
+                                                    );
+                                                    builder_params_impl_string.push_str(format!("\n  if let Some(st) = _{styled_name} {{st.build_capnp_struct(_builder.reborrow().init_{styled_name}());}}").as_str());
+                                                }
+                                            }
+                                        }
+                                        type_::Interface(i_t) => {
+                                            if no_discriminant
+                                                && get_params(ctx, i_t.get_type_id())?.is_empty()
+                                            {
+                                                builder_params_string.push_str(
+                                                    format!(
+                                                        "_{styled_name}: {},",
+                                                        typ.type_string(ctx, Leaf::Client)?
+                                                    )
+                                                    .as_str(),
+                                                );
+                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name});").as_str());
+                                            }
+                                        }
+                                        type_::AnyPointer(_) => {
+                                            if typ.is_parameter()? {
+                                                //let reader_type = typ.type_string(ctx, Leaf::Reader("'a"))?;
+                                                //params_struct_string.push_str(format!("\n   pub {styled_name}: {reader_type},").as_str());
+                                                //params_struct_impl_string.push_str(format!("\n  builder.set_{styled_name}(self.{styled_name});").as_str());
+                                            } else {
+                                                //TODO implement for anypointers besides caps
+                                                if no_discriminant {
+                                                    builder_params_string.push_str(fmt!(ctx, "_{styled_name}: Box<dyn {capnp}::private::capability::ClientHook>,").as_str());
+                                                    builder_params_impl_string.push_str(format!("\n  _builder.reborrow().init_{styled_name}().set_as_capability(_{styled_name});").as_str());
+                                                }
+                                            }
+                                        }
+                                        _ => {
+                                            return Err(Error::failed(
+                                                "unrecognized type".to_string(),
+                                            ))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        let param_scopes = if param_node.get_scope_id() == 0 {
+                            let mut names = names.clone();
+                            let local_name = module_name(&format!("{name}Params"));
+                            names.push(local_name);
+                            names
+                        } else {
+                            ctx.scope_map[&param_node.get_id()].clone()
+                        };
+                        let param_type = do_branding(
+                            ctx,
+                            param_id,
+                            method.get_param_brand()?,
+                            Leaf::Owned,
+                            &param_scopes.join("::"),
+                        )?;
+
+                        let result_id = method.get_result_struct_type();
+                        let result_node = &ctx.node_map[&result_id];
+                        let result_scopes = if result_node.get_scope_id() == 0 {
+                            let mut names = names.clone();
+                            let local_name = module_name(&format!("{name}Results"));
+                            names.push(local_name);
+                            names
+                        } else {
+                            ctx.scope_map[&result_node.get_id()].clone()
+                        };
+                        let result_type = do_branding(
+                            ctx,
+                            result_id,
+                            method.get_result_brand()?,
+                            Leaf::Owned,
+                            &result_scopes.join("::"),
+                        )?;
+
+                        client_impl_interior.push(Line(fmt!(
+                            ctx,
+                            "pub fn {}_request(&self) -> {capnp}::capability::Request<{},{}> {{",
+                            camel_to_snake_case(name),
+                            param_type,
+                            result_type
+                        )));
+
+                        client_impl_interior.push(indent(Line(format!(
+                            "self.client.new_call(_private::TYPE_ID, {method_count}, ::core::option::Option::None)"
+                        ))));
+                        client_impl_interior.push(line("}"));
+
+                        client_impl_interior.push(Line(fmt!(ctx,
+                            "pub fn build_{}_request(&self, {}) -> {capnp}::capability::Request<{},{}> {} {{",
+                            camel_to_snake_case(name),
+                            builder_params_string,
+                            param_type,
+                            result_type,
+                            params.where_clause
+                        )));
+
+                        client_impl_interior.push(indent(Line(fmt!(ctx,
+                            "let mut req: {capnp}::capability::Request<{},{}> = self.client.new_call(_private::TYPE_ID, {method_count}, ::core::option::Option::None);\n      let mut _builder = req.get();\n      {}\n      req",
+                            param_type,
+                            result_type,
+                            builder_params_impl_string
+                        ))));
+                        client_impl_interior.push(line("}"));
+
+                        dispatch_arms.push(
+                            Line(fmt!(ctx,
+                                "{method_count} => self.server.{}({capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,",
+                                module_name(name))));
+                        method_count += 1;
+                    }
                 }
                 if !extends.is_empty() {
                     format!(": {}", base_traits.join(" + "))
@@ -3505,7 +3758,34 @@ fn generate_node(
                     "pub struct ServerDispatch<_T,{}> {{",
                     params.params
                 )),
-                indent(line("pub server: _T,")),
+                indent(line("pub server: std::rc::Rc<_T>,")),
+                indent(if is_generic {
+                    vec![Line(params.phantom_data_type.clone())]
+                } else {
+                    vec![]
+                }),
+                line("}"),
+            ]));
+
+            mod_interior.push(Branch(vec![
+                Line(format!(
+                    "impl <_S: Server{1} + 'static, {0}> Clone for ServerDispatch<_S, {0}> {2} {{",
+                    params.params, bracketed_params, params.where_clause
+                )),
+                indent(vec![
+                    Line(format!("fn clone(&self) -> Self {{")),
+                    indent(Line(format!(
+                        "ServerDispatch {{ server: self.server.clone(), {} }}",
+                        params.phantom_data_value
+                    ))),
+                    line("}"),
+                ]),
+                line("}"),
+            ]));
+
+            mod_interior.push(Branch(vec![
+                Line(format!("pub struct WeakDispatch<_T,{}> {{", params.params)),
+                indent(line("pub server: std::rc::Weak<_T>,")),
                 indent(if is_generic {
                     vec![Line(params.phantom_data_type.clone())]
                 } else {
@@ -3516,12 +3796,42 @@ fn generate_node(
 
             mod_interior.push(Branch(vec![
                 Line(
+                    fmt!(ctx,"impl <_S: Server{1} + 'static, {0}> {capnp}::capability::WeakDispatchTrait<ServerDispatch<_S, {0}>> for WeakDispatch<_S, {0}> {2} {{",
+                            params.params, bracketed_params, params.where_clause)),
+                indent(vec![
+                    Line(format!("fn get_dispatch(&self) -> Option<ServerDispatch<_S, {}>> {{", params.params)),
+                    indent(Line(format!("Some(ServerDispatch {{ server: self.server.upgrade()?, {} }})", params.phantom_data_value))),
+                    line("}"),
+                ]),
+                indent(vec![
+                    Line(format!("fn get_strong_count(&self) -> usize {{")),
+                    indent(Line(format!("self.server.strong_count()"))),
+                    line("}"),
+                ]),
+                line("}"),
+            ]));
+
+            mod_interior.push(Branch(vec![
+                Line(
+                    fmt!(ctx,"impl <_S: Server{1} + 'static, {0}> {capnp}::capability::StrongDispatchTrait<WeakDispatch<_S, {0}>> for ServerDispatch<_S, {0}> {2} {{",
+                            params.params, bracketed_params, params.where_clause)),
+                indent(vec![
+                    Line(format!("fn get_weak(&self) -> WeakDispatch<_S, {}> {{", params.params)),
+                    indent(Line(format!("WeakDispatch {{ server: std::rc::Rc::<_S>::downgrade(&self.server), {} }}", params.phantom_data_value))),
+                    line("}"),
+                ]),
+                line("}"),
+            ]));
+
+            mod_interior.push(Branch(vec![
+                Line(
                     fmt!(ctx,"impl <_S: Server{1} + 'static, {0}> {capnp}::capability::FromServer<_S> for Client{1} {2}  {{",
                             params.params, bracketed_params, params.where_clause_with_static)),
                 indent(vec![
                     Line(format!("type Dispatch = ServerDispatch<_S, {}>;", params.params)),
+                    Line(format!("type WeakDispatch = WeakDispatch<_S, {}>;", params.params)),
                     Line(format!("fn from_server(s: _S) -> ServerDispatch<_S, {}> {{", params.params)),
-                    indent(Line(format!("ServerDispatch {{ server: s, {} }}", params.phantom_data_value))),
+                    indent(Line(format!("ServerDispatch {{ server: std::rc::Rc::new(s), {} }}", params.phantom_data_value))),
                     line("}"),
                 ]),
                 line("}"),
@@ -3535,18 +3845,7 @@ fn generate_node(
                         line("impl <_T: Server> ::core::ops::Deref for ServerDispatch<_T> {")
                     }),
                     indent(line("type Target = _T;")),
-                    indent(line("fn deref(&self) -> &_T { &self.server}")),
-                    line("}"),
-                    ]));
-
-            mod_interior.push(
-                Branch(vec![
-                    (if is_generic {
-                        Line(format!("impl <{}, _T: Server{}> ::core::ops::DerefMut for ServerDispatch<_T,{}> {} {{", params.params, bracketed_params, params.params, params.where_clause))
-                    } else {
-                        line("impl <_T: Server> ::core::ops::DerefMut for ServerDispatch<_T> {")
-                    }),
-                    indent(line("fn deref_mut(&mut self) -> &mut _T { &mut self.server}")),
+                    indent(line("fn deref(&self) -> &_T { self.server.as_ref() }")),
                     line("}"),
                     ]));
 
@@ -3557,12 +3856,15 @@ fn generate_node(
                     } else {
                         Line(fmt!(ctx,"impl <_T: Server> {capnp}::capability::Server for ServerDispatch<_T> {{"))
                     }),
-                    indent(Line(fmt!(ctx,"async fn dispatch_call(&self, interface_id: u64, method_id: u16, params: {capnp}::capability::Params<{capnp}::any_pointer::Owned>, results: {capnp}::capability::Results<{capnp}::any_pointer::Owned>) -> Result<(), {capnp}::Error> {{"))),
+                    indent(Line(fmt!(ctx,"async fn dispatch_call(self, interface_id: u64, method_id: u16, params: {capnp}::capability::Params<{capnp}::any_pointer::Owned>, results: {capnp}::capability::Results<{capnp}::any_pointer::Owned>) -> Result<(), {capnp}::Error> {{"))),
                     indent(indent(line("match interface_id {"))),
-                    indent(indent(indent(line("_private::TYPE_ID => Self::dispatch_call_internal(&self.server, method_id, params, results).await,")))),
-                    indent(indent(indent(base_dispatch_arms))),
+                    indent(indent(indent(line("_private::TYPE_ID => Self::dispatch_call_internal(self, method_id, params, results).await,")))),
+                    indent(indent(indent(base_dispatch_arms.clone()))),
                     indent(indent(indent(Line(fmt!(ctx,"_ =>  Err({capnp}::Error::unimplemented(\"Method not implemented.\".to_string())) "))))),
                     indent(indent(line("}"))),
+                    indent(line("}")),
+                    indent(line("fn get_ptr(&self) -> usize {")),
+                    indent(indent(line("std::rc::Rc::<_T>::as_ptr(&self.server) as usize"))),
                     indent(line("}")),
                     line("}")]));
 
@@ -3573,7 +3875,7 @@ fn generate_node(
                     } else {
                         line("impl <_T :Server> ServerDispatch<_T> {")
                     }),
-                    indent(Line(fmt!(ctx,"pub async fn dispatch_call_internal(server: &_T, method_id: u16, params: {capnp}::capability::Params<{capnp}::any_pointer::Owned>, results: {capnp}::capability::Results<{capnp}::any_pointer::Owned>) -> Result<(), {capnp}::Error> {{"))),
+                    indent(Line(fmt!(ctx,"pub async fn dispatch_call_internal(self, method_id: u16, params: {capnp}::capability::Params<{capnp}::any_pointer::Owned>, results: {capnp}::capability::Results<{capnp}::any_pointer::Owned>) -> Result<(), {capnp}::Error> {{"))),
                     (if !dispatch_arms.is_empty() {
                         indent(vec![
                             (indent(indent(line("match method_id {")))),

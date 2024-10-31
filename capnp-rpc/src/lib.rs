@@ -58,14 +58,14 @@
 //!
 //! For a more complete example, see <https://github.com/capnproto/capnproto-rust/tree/master/capnp-rpc/examples/calculator>
 
-use capnp::capability::Promise;
+use capnp::capability::{Promise, Server, StrongDispatchTrait, WeakDispatchTrait};
 use capnp::private::capability::ClientHook;
 use capnp::Error;
 use futures_util::{FutureExt, TryFutureExt};
 use std::cell::RefCell;
 use std::future::Future;
 use std::pin::Pin;
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
 use std::task::{Context, Poll};
 use tokio::sync::oneshot;
 
@@ -362,7 +362,7 @@ pub struct CapabilityServerSet<S, C>
 where
     C: capnp::capability::FromServer<S>,
 {
-    caps: std::collections::HashMap<usize, Weak<C::Dispatch>>,
+    caps: std::collections::HashMap<usize, C::WeakDispatch>,
 }
 
 impl<S, C> Default for CapabilityServerSet<S, C>
@@ -387,16 +387,14 @@ where
     /// Adds a new capability to the set and returns a client backed by it.
     pub fn new_client(&mut self, s: S) -> C {
         let dispatch = <C as capnp::capability::FromServer<S>>::from_server(s);
-        let wrapped = Rc::new(dispatch);
-        let ptr =
-            Rc::<<C as capnp::capability::FromServer<S>>::Dispatch>::as_ptr(&wrapped) as usize;
-        self.caps.insert(ptr, Rc::downgrade(&wrapped));
-        capnp::capability::FromClientHook::new(Box::new(local::Client::from_rc(wrapped)))
+        let ptr = dispatch.get_ptr();
+        self.caps.insert(ptr, dispatch.get_weak());
+        capnp::capability::FromClientHook::new(Box::new(local::Client::new(dispatch)))
     }
 
     /// Looks up a capability and returns its underlying server object, if found.
     /// Fully resolves the capability before looking it up.
-    pub async fn get_local_server(&self, client: &C) -> Option<Rc<C::Dispatch>>
+    pub async fn get_local_server(&self, client: &C) -> Option<C::Dispatch>
     where
         C: capnp::capability::FromClientHook,
     {
@@ -406,7 +404,7 @@ where
         .await;
         let hook = resolved.into_client_hook();
         let ptr = hook.get_ptr();
-        self.caps.get(&ptr).and_then(|c| c.upgrade())
+        self.caps.get(&ptr)?.get_dispatch()
     }
 
     /// Looks up a capability and returns its underlying server object, if found.
@@ -414,18 +412,18 @@ where
     /// to call `get_resolved_cap()` before calling this. The advantage of this method
     /// over `get_local_server()` is that this one is synchronous and borrows `self`
     /// over a shorter span (which can be very important if `self` is inside a `RefCell`).
-    pub fn get_local_server_of_resolved(&self, client: &C) -> Option<Rc<C::Dispatch>>
+    pub fn get_local_server_of_resolved(&self, client: &C) -> Option<C::Dispatch>
     where
         C: capnp::capability::FromClientHook,
     {
         let hook = client.as_client_hook();
         let ptr = hook.get_ptr();
-        self.caps.get(&ptr).and_then(|c| c.upgrade())
+        self.caps.get(&ptr)?.get_dispatch()
     }
 
     /// Reclaim memory used for Server objects that no longer exist.
     pub fn gc(&mut self) {
-        self.caps.retain(|_, c| c.strong_count() > 0);
+        self.caps.retain(|_, c| c.get_strong_count() > 0);
     }
 }
 
