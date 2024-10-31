@@ -300,29 +300,23 @@ impl PipelineHook for Pipeline {
 
 pub struct Client<S>
 where
-    S: capability::Server,
+    S: capability::Server + Clone,
 {
-    inner: Rc<S>,
+    inner: S,
 }
 
 impl<S> Client<S>
 where
-    S: capability::Server,
+    S: capability::Server + Clone,
 {
     pub fn new(server: S) -> Self {
-        Self {
-            inner: Rc::new(server),
-        }
-    }
-
-    pub fn from_rc(inner: Rc<S>) -> Self {
-        Self { inner }
+        Self { inner: server }
     }
 }
 
 impl<S> Clone for Client<S>
 where
-    S: capability::Server,
+    S: capability::Server + Clone,
 {
     fn clone(&self) -> Self {
         Self {
@@ -333,7 +327,7 @@ where
 
 impl<S> ClientHook for Client<S>
 where
-    S: capability::Server + 'static,
+    S: capability::Server + 'static + Clone,
 {
     fn add_ref(&self) -> Box<dyn ClientHook> {
         Box::new(self.clone())
@@ -379,7 +373,7 @@ where
     }
 
     fn get_ptr(&self) -> usize {
-        Rc::<S>::as_ptr(&self.inner) as usize
+        self.inner.get_ptr()
     }
 
     fn get_brand(&self) -> usize {
