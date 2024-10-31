@@ -3358,19 +3358,18 @@ fn generate_node(
 
                     let node_reader = &ctx.node_map[&interface.get_id()];
                     let node::Which::Interface(interface) = node_reader.which()? else {
-                        todo!()
+                        return Err(capnp::Error::from_kind(capnp::ErrorKind::TypeMismatch));
                     };
                     let names = &ctx.scope_map[&node_reader.get_id()];
                     let methods = interface.get_methods()?;
-                    for (ordinal, method) in methods.into_iter().enumerate() {
+                    for (_, method) in methods.into_iter().enumerate() {
                         let name = method.get_name()?.to_str()?;
-
                         let mut builder_params_string = String::new();
                         let mut builder_params_impl_string = String::new();
                         let param_id = method.get_param_struct_type();
                         let param_node = &ctx.node_map[&param_id];
                         let schema_capnp::node::Struct(struct_r) = param_node.which()? else {
-                            todo!()
+                            return Err(capnp::Error::from_kind(capnp::ErrorKind::TypeMismatch));
                         };
                         let fields = struct_r.get_fields()?;
                         for field in fields {
@@ -3381,8 +3380,6 @@ fn generate_node(
                             match field.which()? {
                                 field::Group(group) => {
                                     let the_mod = ctx.get_qualified_module(group.get_type_id());
-                                    let params = get_params(ctx, group.get_type_id())?;
-
                                     if no_discriminant {
                                         builder_params_string.push_str(
                                             format!(
@@ -3398,7 +3395,6 @@ fn generate_node(
                                     }
                                 }
                                 field::Slot(reg_field) => {
-                                    let offset = reg_field.get_offset() as usize;
                                     let typ = reg_field.get_type()?;
                                     match typ.which()? {
                                         type_::Void(()) => {
@@ -3524,9 +3520,7 @@ fn generate_node(
                                         }
                                         type_::AnyPointer(_) => {
                                             if typ.is_parameter()? {
-                                                //let reader_type = typ.type_string(ctx, Leaf::Reader("'a"))?;
-                                                //params_struct_string.push_str(format!("\n   pub {styled_name}: {reader_type},").as_str());
-                                                //params_struct_impl_string.push_str(format!("\n  builder.set_{styled_name}(self.{styled_name});").as_str());
+                                                //TODO
                                             } else {
                                                 //TODO implement for anypointers besides caps
                                                 if no_discriminant {
