@@ -30,7 +30,7 @@ default-members = ["capnp"]
 [workspace.package]
 version = "0.18.0"
 edition = "2021"
-rust-version = "1.80.0"
+rust-version = "1.81.0"
 license = "MIT"
 repository = "https://github.com/fundament-software/capstone-rs"
 documentation = "https://docs.rs/capstone/"
@@ -51,7 +51,7 @@ capstone-gen = { version = "0.18", path = "./capnpc" }
 capstone-rpc = { version = "0.18", path = "./capnp-rpc" }
 capstone-macros = { version = "0.18", path = "./capnp-macros" }
 capstone-futures = { version = "0.18", path = "./capnp-futures" }
-capnpc-sys = { git = "https://github.com/Fundament-Software/capstone" }
+capnp-sys = { git = "https://github.com/Fundament-Software/capstone" }
 async-byte-channel = { path = "./async-byte-channel" }
 futures-util = "0.3"
 syn = { version = "2.0", features = ["full"] }
