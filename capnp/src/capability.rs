@@ -379,37 +379,9 @@ impl<_T> Clone for UntypedDispatch<_T> {
 }
 
 #[cfg(feature = "alloc")]
-impl<_T: Server> StrongDispatchTrait<WeakUntypedDispatch<_T>> for UntypedDispatch<_T> {
-    fn get_weak(&self) -> WeakUntypedDispatch<_T> {
-        WeakUntypedDispatch {
-            server: std::rc::Rc::<_T>::downgrade(&self.server),
-        }
-    }
-}
-
-#[cfg(feature = "alloc")]
-pub struct WeakUntypedDispatch<_T> {
-    pub server: Weak<_T>,
-}
-
-#[cfg(feature = "alloc")]
-impl<_T> Clone for WeakUntypedDispatch<_T> {
-    fn clone(&self) -> Self {
-        Self {
-            server: self.server.clone(),
-        }
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl<_T: Server> WeakDispatchTrait<UntypedDispatch<_T>> for WeakUntypedDispatch<_T> {
-    fn get_dispatch(&self) -> Option<UntypedDispatch<_T>> {
-        Some(UntypedDispatch {
-            server: Weak::upgrade(&self.server)?,
-        })
-    }
-    fn get_strong_count(&self) -> usize {
-        self.server.strong_count()
+impl<_T: Server> StrongDispatchTrait<Weak<_T>> for UntypedDispatch<_T> {
+    fn get_weak(&self) -> Weak<_T> {
+        std::rc::Rc::<_T>::downgrade(&self.server)
     }
 }
 
@@ -450,15 +422,14 @@ impl crate::introspect::Introspect for Client {
         .into()
     }
 }
-
+/* 
 #[cfg(feature = "alloc")]
 impl<_S: Server + 'static + Clone> crate::capability::FromServer<_S> for Client {
-    type Dispatch = UntypedDispatch<_S>;
-    type WeakDispatch = WeakUntypedDispatch<_S>;
+    type Dispatch = Weak<_S>;
     fn from_server(s: _S) -> UntypedDispatch<_S> {
         UntypedDispatch { server: Rc::new(s) }
     }
-}
+}*/
 
 #[cfg(feature = "alloc")]
 impl crate::capability::FromClientHook for Client {
@@ -487,11 +458,6 @@ pub trait Server {
     fn get_ptr(&self) -> usize;
 }
 
-pub trait WeakDispatchTrait<D> {
-    fn get_dispatch(&self) -> Option<D>;
-    fn get_strong_count(&self) -> usize;
-}
-
 pub trait StrongDispatchTrait<W> {
     fn get_weak(&self) -> W;
 }
@@ -500,8 +466,7 @@ pub trait StrongDispatchTrait<W> {
 #[cfg(feature = "alloc")]
 pub trait FromServer<S>: FromClientHook {
     // Implemented by the generated ServerDispatch struct.
-    type Dispatch: Server + 'static + StrongDispatchTrait<Self::WeakDispatch> + Clone;
-    type WeakDispatch: WeakDispatchTrait<Self::Dispatch>;
+    type Dispatch: Server + 'static + StrongDispatchTrait<Weak<S>> + Clone;
 
     fn from_server(s: S) -> Self::Dispatch;
 }
