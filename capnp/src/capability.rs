@@ -382,7 +382,7 @@ impl<_T> Clone for UntypedDispatch<_T> {
 #[cfg(feature = "alloc")]
 impl<_T: Server> StrongDispatchTrait<Weak<_T>> for UntypedDispatch<_T> {
     fn get_weak(&self) -> Weak<_T> {
-        std::rc::Rc::<_T>::downgrade(&self.server)
+        Rc::<_T>::downgrade(&self.server)
     }
 }
 
@@ -408,7 +408,7 @@ impl<_T: Server + Clone> crate::capability::Server for UntypedDispatch<_T> {
             .await
     }
     fn get_ptr(&self) -> usize {
-        std::rc::Rc::<_T>::as_ptr(&self.server) as usize
+        Rc::<_T>::as_ptr(&self.server) as usize
     }
 }
 
