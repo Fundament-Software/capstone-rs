@@ -364,7 +364,7 @@ where
     C: capnp::capability::FromServer<S>,
 {
     caps: std::collections::HashMap<usize, Weak<S>>,
-    phantom: PhantomData<C>
+    phantom: PhantomData<C>,
 }
 
 impl<S, C> Default for CapabilityServerSet<S, C>
