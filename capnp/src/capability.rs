@@ -26,6 +26,8 @@
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 #[cfg(feature = "alloc")]
+use alloc::rc::{Rc, Weak};
+#[cfg(feature = "alloc")]
 use core::future::Future;
 #[cfg(feature = "alloc")]
 use core::marker::{PhantomData, Unpin};
@@ -35,8 +37,6 @@ use core::ops::Try;
 use core::pin::Pin;
 #[cfg(feature = "alloc")]
 use core::task::Poll;
-#[cfg(feature = "alloc")]
-use alloc::rc::{Rc, Weak};
 
 use crate::any_pointer;
 #[cfg(feature = "alloc")]
