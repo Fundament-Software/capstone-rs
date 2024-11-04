@@ -36,7 +36,7 @@ use core::pin::Pin;
 #[cfg(feature = "alloc")]
 use core::task::Poll;
 #[cfg(feature = "alloc")]
-use std::rc::{Rc, Weak};
+use alloc::rc::{Rc, Weak};
 
 use crate::any_pointer;
 #[cfg(feature = "alloc")]
@@ -423,14 +423,14 @@ impl crate::introspect::Introspect for Client {
         .into()
     }
 }
-/*
+
 #[cfg(feature = "alloc")]
 impl<_S: Server + 'static + Clone> crate::capability::FromServer<_S> for Client {
-    type Dispatch = Weak<_S>;
+    type Dispatch = UntypedDispatch<_S>;
     fn from_server(s: _S) -> UntypedDispatch<_S> {
         UntypedDispatch { server: Rc::new(s) }
     }
-}*/
+}
 
 #[cfg(feature = "alloc")]
 impl crate::capability::FromClientHook for Client {
