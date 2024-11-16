@@ -329,6 +329,7 @@ pub trait FromClientHook: crate::introspect::Introspect {
 
 /// An untyped client.
 #[cfg(feature = "alloc")]
+#[derive(Clone)]
 pub struct Client {
     pub hook: Box<dyn ClientHook>,
 }

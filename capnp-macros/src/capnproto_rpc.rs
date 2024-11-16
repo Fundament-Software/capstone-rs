@@ -27,8 +27,12 @@ pub fn process_capnproto_rpc(namespace: TokenStream2, item: syn::ItemImpl) -> To
 fn extract_generics_from_trait(
     trait_: Option<(Option<syn::token::Not>, syn::Path, syn::token::For)>,
 ) -> syn::PathArguments {
-    let path: syn::Path = trait_.unwrap().1;
-    let path_arguments: &syn::PathArguments = &path.segments.last().unwrap().arguments;
+    let path: syn::Path = trait_.expect(concat!("Error on ", file!(), ":", line!())).1;
+    let path_arguments: &syn::PathArguments = &path
+        .segments
+        .last()
+        .expect(concat!("Error on ", file!(), ":", line!()))
+        .arguments;
     if let syn::PathArguments::AngleBracketed(_) = path_arguments {
         path_arguments.clone()
     } else {
@@ -65,7 +69,12 @@ fn process_signature(
     // TODO We're ignoring user's return type, might lead to confusion
     let result_type = format_ident!("{}Results", type_prefix);
     let result: syn::FnArg = syn::parse_quote!(mut results: #namespace::#result_type #generics); // just straight up output type
-    inputs.push(sig.receiver().unwrap().to_owned().into());
+    inputs.push(
+        sig.receiver()
+            .expect("Error: all capnproto functions must have an &self parameter!")
+            .to_owned()
+            .into(),
+    );
     inputs.push(params);
     inputs.push(result);
 
