@@ -355,6 +355,15 @@ where
     )))
 }
 
+pub fn new_client_from_rc<C, S>(rc: Rc<S>) -> C
+where
+    C: capnp::capability::FromServer<S>,
+{
+    capnp::capability::FromClientHook::new(Box::new(local::Client::new(
+        <C as capnp::capability::FromServer<S>>::from_rc(rc),
+    )))
+}
+
 /// Allows a server to recognize its own capabilities when passed back to it, and obtain the
 /// underlying Server objects associated with them. Holds only weak references to Server objects
 /// allowing Server objects to be dropped when dropped by the remote client. Call the `gc` method
@@ -390,6 +399,15 @@ where
     /// Adds a new capability to the set and returns a client backed by it.
     pub fn new_client(&mut self, s: S) -> C {
         let rc = Rc::new(s);
+        let ptr = Rc::<S>::as_ptr(&rc) as usize;
+        let weak = Rc::<S>::downgrade(&rc);
+        self.caps.insert(ptr, weak);
+        let dispatch = <C as capnp::capability::FromServer<S>>::from_rc(rc);
+        capnp::capability::FromClientHook::new(Box::new(local::Client::new(dispatch)))
+    }
+
+    /// Adds a new capability to the set and returns a client backed by it.
+    pub fn new_client_from_rc(&mut self, rc: Rc<S>) -> C {
         let ptr = Rc::<S>::as_ptr(&rc) as usize;
         let weak = Rc::<S>::downgrade(&rc);
         self.caps.insert(ptr, weak);
