@@ -26,7 +26,7 @@
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 #[cfg(feature = "alloc")]
-use alloc::rc::{Rc, Weak};
+use alloc::rc::Rc;
 #[cfg(feature = "alloc")]
 use core::future::Future;
 #[cfg(feature = "alloc")]
@@ -380,13 +380,6 @@ impl<_T> Clone for UntypedDispatch<_T> {
 }
 
 #[cfg(feature = "alloc")]
-impl<_T: Server> StrongDispatchTrait<Weak<_T>> for UntypedDispatch<_T> {
-    fn get_weak(&self) -> Weak<_T> {
-        Rc::<_T>::downgrade(&self.server)
-    }
-}
-
-#[cfg(feature = "alloc")]
 impl<_T: Server> ::core::ops::Deref for UntypedDispatch<_T> {
     type Target = _T;
     fn deref(&self) -> &_T {
@@ -430,6 +423,9 @@ impl<_S: Server + 'static + Clone> crate::capability::FromServer<_S> for Client 
     fn from_server(s: _S) -> UntypedDispatch<_S> {
         UntypedDispatch { server: Rc::new(s) }
     }
+    fn from_rc(s: Rc<_S>) -> UntypedDispatch<_S> {
+        UntypedDispatch { server: s }
+    }
 }
 
 #[cfg(feature = "alloc")]
@@ -459,17 +455,14 @@ pub trait Server {
     fn get_ptr(&self) -> usize;
 }
 
-pub trait StrongDispatchTrait<W> {
-    fn get_weak(&self) -> W;
-}
-
 /// Trait to track the relationship between generated Server traits and Client structs.
 #[cfg(feature = "alloc")]
 pub trait FromServer<S>: FromClientHook {
     // Implemented by the generated ServerDispatch struct.
-    type Dispatch: Server + 'static + StrongDispatchTrait<Weak<S>> + Clone;
+    type Dispatch: Server + 'static + Clone;
 
     fn from_server(s: S) -> Self::Dispatch;
+    fn from_rc(s: Rc<S>) -> Self::Dispatch;
 }
 
 /// Gets the "resolved" version of a capability. One place this is useful is for pre-resolving

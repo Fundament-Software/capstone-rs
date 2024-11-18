@@ -3779,24 +3779,15 @@ fn generate_node(
 
             mod_interior.push(Branch(vec![
                 Line(
-                    fmt!(ctx,"impl <_S: Server{1} + 'static, {0}> {capnp}::capability::StrongDispatchTrait<std::rc::Weak<_S>> for ServerDispatch<_S, {0}> {2} {{",
-                            params.params, bracketed_params, params.where_clause)),
-                indent(vec![
-                    Line("fn get_weak(&self) -> std::rc::Weak<_S> {".to_string()),
-                    indent(Line("std::rc::Rc::<_S>::downgrade(&self.server)".to_string())),
-                    line("}"),
-                ]),
-                line("}"),
-            ]));
-
-            mod_interior.push(Branch(vec![
-                Line(
                     fmt!(ctx,"impl <_S: Server{1} + 'static, {0}> {capnp}::capability::FromServer<_S> for Client{1} {2}  {{",
                             params.params, bracketed_params, params.where_clause_with_static)),
                 indent(vec![
                     Line(format!("type Dispatch = ServerDispatch<_S, {}>;", params.params)),
                     Line(format!("fn from_server(s: _S) -> ServerDispatch<_S, {}> {{", params.params)),
                     indent(Line(format!("ServerDispatch {{ server: std::rc::Rc::new(s), {} }}", params.phantom_data_value))),
+                    line("}"),
+                    Line(format!("fn from_rc(s: std::rc::Rc<_S>) -> ServerDispatch<_S, {}> {{", params.params)),
+                    indent(Line(format!("ServerDispatch {{ server: s, {} }}", params.phantom_data_value))),
                     line("}"),
                 ]),
                 line("}"),
