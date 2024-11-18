@@ -58,7 +58,7 @@
 //!
 //! For a more complete example, see <https://github.com/capnproto/capnproto-rust/tree/master/capnp-rpc/examples/calculator>
 
-use capnp::capability::{Promise, Server, StrongDispatchTrait};
+use capnp::capability::Promise;
 use capnp::private::capability::ClientHook;
 use capnp::Error;
 use futures_util::{FutureExt, TryFutureExt};
@@ -389,9 +389,11 @@ where
 
     /// Adds a new capability to the set and returns a client backed by it.
     pub fn new_client(&mut self, s: S) -> C {
-        let dispatch = <C as capnp::capability::FromServer<S>>::from_server(s);
-        let ptr = dispatch.get_ptr();
-        self.caps.insert(ptr, dispatch.get_weak());
+        let rc = Rc::new(s);
+        let ptr = Rc::<S>::as_ptr(&rc) as usize;
+        let weak = Rc::<S>::downgrade(&rc);
+        self.caps.insert(ptr, weak);
+        let dispatch = <C as capnp::capability::FromServer<S>>::from_rc(rc);
         capnp::capability::FromClientHook::new(Box::new(local::Client::new(dispatch)))
     }
 
