@@ -9,7 +9,7 @@ license.workspace = true
 members = ["."]
 
 [dependencies]
-wasmer = "4.0.0"
+wasmer = "5.0.0"
 
 [dependencies.capstone]
 path = "../../capstone"
