@@ -19,6 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+use std::rc::Rc;
+
 use capnp::primitive_list;
 use capnp::Error;
 
@@ -41,7 +43,7 @@ impl ValueImpl {
 
 impl calculator::value::Server for ValueImpl {
     async fn read(
-        &self,
+        self: Rc<Self>,
         _params: calculator::value::ReadParams,
         mut results: calculator::value::ReadResults,
     ) -> Result<(), capnp::Error> {
@@ -108,7 +110,7 @@ impl FunctionImpl {
 
 impl calculator::function::Server for FunctionImpl {
     async fn call(
-        &self,
+        self: Rc<Self>,
         params: calculator::function::CallParams,
         mut results: calculator::function::CallResults,
     ) -> Result<(), capnp::Error> {
@@ -141,7 +143,7 @@ pub struct OperatorImpl {
 
 impl calculator::function::Server for OperatorImpl {
     async fn call(
-        &self,
+        self: Rc<Self>,
         params: calculator::function::CallParams,
         mut results: calculator::function::CallResults,
     ) -> Result<(), capnp::Error> {
@@ -165,7 +167,7 @@ struct CalculatorImpl;
 
 impl calculator::Server for CalculatorImpl {
     async fn evaluate(
-        &self,
+        self: Rc<Self>,
         params: calculator::EvaluateParams,
         mut results: calculator::EvaluateResults,
     ) -> Result<(), capnp::Error> {
@@ -176,7 +178,7 @@ impl calculator::Server for CalculatorImpl {
         Ok(())
     }
     async fn def_function(
-        &self,
+        self: Rc<Self>,
         params: calculator::DefFunctionParams,
         mut results: calculator::DefFunctionResults,
     ) -> Result<(), capnp::Error> {
@@ -189,7 +191,7 @@ impl calculator::Server for CalculatorImpl {
         Ok(())
     }
     async fn get_operator(
-        &self,
+        self: Rc<Self>,
         params: calculator::GetOperatorParams,
         mut results: calculator::GetOperatorResults,
     ) -> Result<(), capnp::Error> {

@@ -23,13 +23,13 @@ use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 
 use crate::hello_world_capnp::hello_world;
 
-use std::net::ToSocketAddrs;
+use std::{net::ToSocketAddrs, rc::Rc};
 
 struct HelloWorldImpl;
 
 impl hello_world::Server for HelloWorldImpl {
     async fn say_hello(
-        &self,
+        self: Rc<Self>,
         params: hello_world::SayHelloParams,
         mut results: hello_world::SayHelloResults,
     ) -> Result<(), capnp::Error> {

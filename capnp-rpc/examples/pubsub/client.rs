@@ -19,6 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+use std::rc::Rc;
+
 use crate::pubsub_capnp::{publisher, subscriber};
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 
@@ -26,7 +28,7 @@ struct SubscriberImpl;
 
 impl subscriber::Server<::capnp::text::Owned> for SubscriberImpl {
     async fn push_message(
-        &self,
+        self: Rc<Self>,
         params: subscriber::PushMessageParams<::capnp::text::Owned>,
         _results: subscriber::PushMessageResults<::capnp::text::Owned>,
     ) -> Result<(), capnp::Error> {

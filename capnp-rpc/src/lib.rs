@@ -64,6 +64,7 @@ use capnp::Error;
 use futures_util::{FutureExt, TryFutureExt};
 use std::cell::RefCell;
 use std::future::Future;
+use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::{Rc, Weak};
 use std::task::{Context, Poll};
@@ -354,6 +355,15 @@ where
     )))
 }
 
+pub fn new_client_from_rc<C, S>(rc: Rc<S>) -> C
+where
+    C: capnp::capability::FromServer<S>,
+{
+    capnp::capability::FromClientHook::new(Box::new(local::Client::new(
+        <C as capnp::capability::FromServer<S>>::from_rc(rc),
+    )))
+}
+
 /// Allows a server to recognize its own capabilities when passed back to it, and obtain the
 /// underlying Server objects associated with them. Holds only weak references to Server objects
 /// allowing Server objects to be dropped when dropped by the remote client. Call the `gc` method
@@ -362,7 +372,8 @@ pub struct CapabilityServerSet<S, C>
 where
     C: capnp::capability::FromServer<S>,
 {
-    caps: std::collections::HashMap<usize, Weak<C::Dispatch>>,
+    caps: std::collections::HashMap<usize, Weak<S>>,
+    phantom: PhantomData<C>,
 }
 
 impl<S, C> Default for CapabilityServerSet<S, C>
@@ -372,6 +383,7 @@ where
     fn default() -> Self {
         Self {
             caps: std::default::Default::default(),
+            phantom: PhantomData,
         }
     }
 }
@@ -386,21 +398,26 @@ where
 
     /// Adds a new capability to the set and returns a client backed by it.
     pub fn new_client(&mut self, s: S) -> C {
-        let dispatch = <C as capnp::capability::FromServer<S>>::from_server(s);
-        let wrapped = Rc::new(dispatch);
-        self.from_rc(wrapped)
+        let rc = Rc::new(s);
+        let ptr = Rc::<S>::as_ptr(&rc) as usize;
+        let weak = Rc::<S>::downgrade(&rc);
+        self.caps.insert(ptr, weak);
+        let dispatch = <C as capnp::capability::FromServer<S>>::from_rc(rc);
+        capnp::capability::FromClientHook::new(Box::new(local::Client::new(dispatch)))
     }
 
     /// Adds a new capability to the set and returns a client backed by it.
-    pub fn from_rc(&mut self, server: Rc<<C as capnp::capability::FromServer<S>>::Dispatch>) -> C {
-        let ptr = Rc::<<C as capnp::capability::FromServer<S>>::Dispatch>::as_ptr(&server) as usize;
-        self.caps.insert(ptr, Rc::downgrade(&server));
-        capnp::capability::FromClientHook::new(Box::new(local::Client::from_rc(server)))
+    pub fn new_client_from_rc(&mut self, rc: Rc<S>) -> C {
+        let ptr = Rc::<S>::as_ptr(&rc) as usize;
+        let weak = Rc::<S>::downgrade(&rc);
+        self.caps.insert(ptr, weak);
+        let dispatch = <C as capnp::capability::FromServer<S>>::from_rc(rc);
+        capnp::capability::FromClientHook::new(Box::new(local::Client::new(dispatch)))
     }
 
     /// Looks up a capability and returns its underlying server object, if found.
     /// Fully resolves the capability before looking it up.
-    pub async fn get_local_server(&self, client: &C) -> Option<Rc<C::Dispatch>>
+    pub async fn get_local_server(&self, client: &C) -> Option<Rc<S>>
     where
         C: capnp::capability::FromClientHook,
     {
@@ -410,7 +427,7 @@ where
         .await;
         let hook = resolved.into_client_hook();
         let ptr = hook.get_ptr();
-        self.caps.get(&ptr).and_then(|c| c.upgrade())
+        self.caps.get(&ptr)?.upgrade()
     }
 
     /// Looks up a capability and returns its underlying server object, if found.
@@ -418,13 +435,13 @@ where
     /// to call `get_resolved_cap()` before calling this. The advantage of this method
     /// over `get_local_server()` is that this one is synchronous and borrows `self`
     /// over a shorter span (which can be very important if `self` is inside a `RefCell`).
-    pub fn get_local_server_of_resolved(&self, client: &C) -> Option<Rc<C::Dispatch>>
+    pub fn get_local_server_of_resolved(&self, client: &C) -> Option<Rc<S>>
     where
         C: capnp::capability::FromClientHook,
     {
         let hook = client.as_client_hook();
         let ptr = hook.get_ptr();
-        self.caps.get(&ptr).and_then(|c| c.upgrade())
+        self.caps.get(&ptr)?.upgrade()
     }
 
     /// Reclaim memory used for Server objects that no longer exist.

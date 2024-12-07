@@ -19,6 +19,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+use std::rc::Rc;
+
 use crate::calculator_capnp::calculator;
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 
@@ -27,7 +29,7 @@ pub struct PowerFunction;
 
 impl calculator::function::Server for PowerFunction {
     async fn call(
-        &self,
+        self: Rc<Self>,
         params: calculator::function::CallParams,
         mut results: calculator::function::CallResults,
     ) -> Result<(), capnp::Error> {
