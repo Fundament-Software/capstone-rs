@@ -3348,20 +3348,20 @@ fn generate_node(
 
                 let mut extends = Vec::new();
                 find_super_interfaces(interface, &mut extends, ctx)?;
-                for interface in &extends {
-                    let type_id = interface.get_id();
-                    let brand = interface.get_brand()?;
+                for ext in &extends {
+                    let type_id = ext.get_id();
+                    let brand = ext.get_brand()?;
                     let the_mod = ctx.get_qualified_module(type_id);
                     base_dispatch_arms.push(Line(format!(
                         "0x{type_id:x} => Self::dispatch_call_internal(self, method_id + {method_count}, params, results).await,")));
                     base_traits.push(do_branding(ctx, type_id, brand, Leaf::Server, &the_mod)?);
 
-                    let node_reader = &ctx.node_map[&interface.get_id()];
-                    let node::Which::Interface(interface) = node_reader.which()? else {
+                    let node_reader = &ctx.node_map[&ext.get_id()];
+                    let node::Which::Interface(ext) = node_reader.which()? else {
                         return Err(capnp::Error::from_kind(capnp::ErrorKind::TypeMismatch));
                     };
                     let names = &ctx.scope_map[&node_reader.get_id()];
-                    let methods = interface.get_methods()?;
+                    let methods = ext.get_methods()?;
                     for (_, method) in methods.into_iter().enumerate() {
                         let name = method.get_name()?.to_str()?;
                         let mut builder_params_string = String::new();
@@ -3573,10 +3573,23 @@ fn generate_node(
                             &result_scopes.join("::"),
                         )?;
 
+                        //TODO integrate with generic changes
+                        let mut used_params_in_method = HashSet::new();
+                        used_params_of_brand(ctx, type_id, method.get_param_brand()?, &mut used_params_in_method)?;
+                        used_params_of_brand(ctx, type_id, method.get_result_brand()?, &mut used_params_in_method)?;
+                        for par in &params.expanded_list {
+                            used_params_in_method.remove(par);
+                        }
+                        let mut extra_params = Vec::new();
+                        for par in used_params_in_method {
+                            extra_params.push(format!("{par}: ::capnp::traits::Owned"));
+                        }
+
                         client_impl_interior.push(Line(fmt!(
                             ctx,
-                            "pub fn {}_request(&self) -> {capnp}::capability::Request<{},{}> {{",
+                            "pub fn {}_request<'a,{}>(&'a self) -> {capnp}::capability::Request<{},{}> {{",
                             camel_to_snake_case(name),
+                            extra_params.join(","),
                             param_type,
                             result_type
                         )));
@@ -3587,8 +3600,9 @@ fn generate_node(
                         client_impl_interior.push(line("}"));
 
                         client_impl_interior.push(Line(fmt!(ctx,
-                            "pub fn build_{}_request(&self, {}) -> {capnp}::capability::Request<{},{}> {} {{",
+                            "pub fn build_{}_request<'a,{}>(&'a self, {}) -> {capnp}::capability::Request<{},{}> {} {{",
                             camel_to_snake_case(name),
+                            extra_params.join(","),
                             builder_params_string,
                             param_type,
                             result_type,
