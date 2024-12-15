@@ -3575,8 +3575,18 @@ fn generate_node(
 
                         //TODO integrate with generic changes
                         let mut used_params_in_method = HashSet::new();
-                        used_params_of_brand(ctx, type_id, method.get_param_brand()?, &mut used_params_in_method)?;
-                        used_params_of_brand(ctx, type_id, method.get_result_brand()?, &mut used_params_in_method)?;
+                        used_params_of_brand(
+                            ctx,
+                            type_id,
+                            method.get_param_brand()?,
+                            &mut used_params_in_method,
+                        )?;
+                        used_params_of_brand(
+                            ctx,
+                            type_id,
+                            method.get_result_brand()?,
+                            &mut used_params_in_method,
+                        )?;
                         for par in &params.expanded_list {
                             used_params_in_method.remove(par);
                         }
