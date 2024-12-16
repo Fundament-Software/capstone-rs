@@ -97,7 +97,14 @@ fn process_list_pattern(builder: &Ident, list_pattern: ListPattern) -> TokenStre
                     "Argument for capnp_build's list comprehension requires has to have 2 elements"
                 );
             }
-            let (item_builder, pattern_part) = (t.elems.first().unwrap(), t.elems.last().unwrap());
+            let (item_builder, pattern_part) = (
+                t.elems
+                    .first()
+                    .expect(concat!("Error on ", file!(), ":", line!())),
+                t.elems
+                    .last()
+                    .expect(concat!("Error on ", file!(), ":", line!())),
+            );
 
             let index_name = format_ident!("{}_listcomprehension_index", builder);
             quote! {
