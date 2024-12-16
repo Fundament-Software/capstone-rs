@@ -26,6 +26,8 @@
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 #[cfg(feature = "alloc")]
+use alloc::rc::Rc;
+#[cfg(feature = "alloc")]
 use core::future::Future;
 #[cfg(feature = "alloc")]
 use core::marker::{PhantomData, Unpin};
@@ -366,36 +368,41 @@ impl Client {
 #[cfg(feature = "alloc")]
 // This is an untyped dispatch for an untyped server, which forwards calls directly to dispatch_call
 pub struct UntypedDispatch<_T> {
-    pub server: _T,
+    pub server: Rc<_T>,
+}
+
+#[cfg(feature = "alloc")]
+impl<_T> Clone for UntypedDispatch<_T> {
+    fn clone(&self) -> Self {
+        Self {
+            server: self.server.clone(),
+        }
+    }
 }
 
 #[cfg(feature = "alloc")]
 impl<_T: Server> ::core::ops::Deref for UntypedDispatch<_T> {
     type Target = _T;
     fn deref(&self) -> &_T {
-        &self.server
+        self.server.as_ref()
     }
 }
 
 #[cfg(feature = "alloc")]
-impl<_T: Server> ::core::ops::DerefMut for UntypedDispatch<_T> {
-    fn deref_mut(&mut self) -> &mut _T {
-        &mut self.server
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl<_T: Server> crate::capability::Server for UntypedDispatch<_T> {
+impl<_T: Server + Clone> crate::capability::Server for UntypedDispatch<_T> {
     async fn dispatch_call(
-        &self,
+        self,
         interface_id: u64,
         method_id: u16,
         params: crate::capability::Params<any_pointer::Owned>,
         results: crate::capability::Results<any_pointer::Owned>,
     ) -> Result<(), crate::Error> {
-        self.server
+        <_T as Clone>::clone(&self.server)
             .dispatch_call(interface_id, method_id, params, results)
             .await
+    }
+    fn get_ptr(&self) -> usize {
+        Rc::<_T>::as_ptr(&self.server) as usize
     }
 }
 
@@ -412,9 +419,12 @@ impl crate::introspect::Introspect for Client {
 }
 
 #[cfg(feature = "alloc")]
-impl<_S: Server + 'static> crate::capability::FromServer<_S> for Client {
+impl<_S: Server + 'static + Clone> crate::capability::FromServer<_S> for Client {
     type Dispatch = UntypedDispatch<_S>;
     fn from_server(s: _S) -> UntypedDispatch<_S> {
+        UntypedDispatch { server: Rc::new(s) }
+    }
+    fn from_rc(s: Rc<_S>) -> UntypedDispatch<_S> {
         UntypedDispatch { server: s }
     }
 }
@@ -437,21 +447,23 @@ impl crate::capability::FromClientHook for Client {
 #[cfg(feature = "alloc")]
 pub trait Server {
     async fn dispatch_call(
-        &self,
+        self,
         interface_id: u64,
         method_id: u16,
         params: Params<any_pointer::Owned>,
         results: Results<any_pointer::Owned>,
     ) -> Result<(), Error>;
+    fn get_ptr(&self) -> usize;
 }
 
 /// Trait to track the relationship between generated Server traits and Client structs.
 #[cfg(feature = "alloc")]
 pub trait FromServer<S>: FromClientHook {
     // Implemented by the generated ServerDispatch struct.
-    type Dispatch: Server + 'static + core::ops::DerefMut<Target = S>;
+    type Dispatch: Server + 'static + Clone;
 
     fn from_server(s: S) -> Self::Dispatch;
+    fn from_rc(s: Rc<S>) -> Self::Dispatch;
 }
 
 /// Gets the "resolved" version of a capability. One place this is useful is for pre-resolving

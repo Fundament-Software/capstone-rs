@@ -2,6 +2,8 @@ pub mod test_schema_capnp {
     include!(concat!(env!("OUT_DIR"), "/test_schema_capnp.rs"));
 }
 
+use std::rc::Rc;
+
 use capnp_macros::{capnp_build, capnproto_rpc};
 use test_schema_capnp::test_interface;
 
@@ -34,12 +36,12 @@ struct TestInterfaceImpl {
 
 #[capnproto_rpc(test_interface)]
 impl test_interface::Server for TestInterfaceImpl {
-    async fn set_value(&self, value: u64) {
+    async fn set_value(self: Rc<Self>, value: u64) {
         *self.value.borrow_mut() = value;
         Ok(())
     }
 
-    async fn get_value(&self) {
+    async fn get_value(self: Rc<Self>) {
         let mut rresult = results.get();
         capnp_build!(rresult, { value = self.value.borrow().clone() });
         Ok(())
