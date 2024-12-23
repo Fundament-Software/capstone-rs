@@ -804,6 +804,7 @@ struct Map(Key, Value) {
 
 interface GenericBase(T) {
   foo @0 (t :T) -> ();
+  baz @1 [V] (v: V) -> ();
 }
 interface GenericExtend extends(GenericBase(Data)) {
   bar @0 () -> ();

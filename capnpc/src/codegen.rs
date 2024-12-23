@@ -1023,7 +1023,6 @@ fn generate_setter(
     rust_struct_impl_inner: &mut String,
     is_params_struct: bool,
     params_struct_generics: &mut HashSet<String>,
-    params_struct_lifetime: &mut &str,
     interface_implicit_generics: &Vec<String>,
     node_name: &str,
 ) -> ::capnp::Result<FormattedText> {
@@ -1080,7 +1079,7 @@ fn generate_setter(
                     0,
                 )?;
                 if !lifetime.is_empty() {
-                    *params_struct_lifetime = "'a";
+                    params_struct_generics.insert("'a".to_string());
                 }
                 let bracketed_params = if !lifetime.is_empty() || !used_params.is_empty() {
                     format! {"<{lifetime}{}>", used_params.into_iter().collect::<Vec<String>>().join(",")}
@@ -1176,7 +1175,7 @@ fn generate_setter(
                     (Some(tstr), None)
                 }
                 type_::Text(()) => {
-                    *params_struct_lifetime = "'a";
+                    params_struct_generics.insert("'a".to_string());
                     setter_interior.push(Line(format!(
                         "self.builder.reborrow().get_pointer_field({offset}).set_text(value);"
                     )));
@@ -1196,7 +1195,7 @@ fn generate_setter(
                     )
                 }
                 type_::Data(()) => {
-                    *params_struct_lifetime = "'a";
+                    params_struct_generics.insert("'a".to_string());
                     setter_interior.push(Line(format!(
                         "self.builder.reborrow().get_pointer_field({offset}).set_data(value);"
                     )));
@@ -1225,9 +1224,8 @@ fn generate_setter(
                         Line(fmt!(ctx,"{capnp}::traits::FromPointerBuilder::init_pointer(self.builder.get_pointer_field({offset}), size)")));
 
                     if no_discriminant {
-                        //TODO
                         if let Ok(vec_of_list_element_types) =
-                            vec_of_list_element_types(ctx, ot1.reborrow(), params_struct_lifetime)
+                            vec_of_list_element_types(ctx, ot1.reborrow(), params_struct_generics)
                         {
                             rust_struct_inner.push_str(
                                 format!(
@@ -1319,7 +1317,7 @@ fn generate_setter(
                     let maybe_generics =
                         &maybe_generics[the_mod.len() + 9..maybe_generics.len() - 1];
                     if !lifetime.is_empty() {
-                        *params_struct_lifetime = "'a";
+                        params_struct_generics.insert("'a".to_string());
                         lifetime = "'a";
                     }
                     let bracketed_params = if !lifetime.is_empty() || maybe_generics.len() > 1 {
@@ -1393,41 +1391,29 @@ fn generate_setter(
                     )));
                     (Some(typ.type_string(ctx, Leaf::Client)?), None)
                 }
-                type_::AnyPointer(an) => {
-                    match an.which()? {
-                        type_::any_pointer::Which::Unconstrained(_) => {
-                            //TODO
-                            if no_discriminant {
-                                rust_struct_inner.push_str(fmt!(ctx, "{params_struct_prefix}_{styled_name}: Box<dyn {capnp}::private::capability::ClientHook>,").as_str());
-                                rust_struct_impl_inner.push_str(format!("\n  _builder.reborrow().init_{styled_name}().set_as_capability({params_struct_impl_prefix}_{styled_name});").as_str());
+                type_::AnyPointer(_) => {
+                    if typ.is_parameter()? {
+                        let mut implicit = false;
+                        for par in &used_params {
+                            if interface_implicit_generics.contains(&par) {
+                                implicit = true;
+                            }
+                        }
+                        params_struct_generics.insert("'a".to_string());
+                        let reader_type = typ.type_string(ctx, Leaf::Reader("'a"))?;
+                        if no_discriminant {
+                            rust_struct_inner.push_str(
+                                format!("{params_struct_prefix}_{styled_name}: {reader_type},")
+                                    .as_str(),
+                            );
+                            if is_params_struct && !implicit {
+                                rust_struct_impl_inner.push_str(format!("\n      _builder.reborrow().init_{styled_name}().set_as({params_struct_impl_prefix}_{styled_name}).unwrap();").as_str());
+                            //TODO figure out why set_as can fail
+                            } else {
+                                rust_struct_impl_inner.push_str(format!("\n      _builder.set_{styled_name}({params_struct_impl_prefix}_{styled_name}).unwrap();").as_str());
                             }
                         }
 
-                        type_::any_pointer::Which::ImplicitMethodParameter(_) => (),
-                        type_::any_pointer::Which::Parameter(_) => {
-                            let mut implicit = false;
-                            for par in &used_params {
-                                if interface_implicit_generics.contains(&par) {
-                                    implicit = true;
-                                }
-                            }
-                            *params_struct_lifetime = "'a";
-                            let reader_type = typ.type_string(ctx, Leaf::Reader("'a"))?;
-                            if no_discriminant {
-                                rust_struct_inner.push_str(
-                                    format!("{params_struct_prefix}_{styled_name}: {reader_type},")
-                                        .as_str(),
-                                );
-                                if is_params_struct && !implicit {
-                                    rust_struct_impl_inner.push_str(format!("\n      _builder.reborrow().init_{styled_name}().set_as({params_struct_impl_prefix}_{styled_name}).unwrap();").as_str());
-                                //TODO figure out why set_as can fail
-                                } else {
-                                    rust_struct_impl_inner.push_str(format!("\n      _builder.set_{styled_name}({params_struct_impl_prefix}_{styled_name}).unwrap();").as_str());
-                                }
-                            }
-                        }
-                    }
-                    if typ.is_parameter()? {
                         initter_interior.push(Line(fmt!(ctx,"{capnp}::any_pointer::Builder::new(self.builder.get_pointer_field({offset})).init_as()")));
                         setter_interior.push(Line(fmt!(ctx,"{capnp}::traits::SetPointerBuilder::set_pointer_builder(self.builder.reborrow().get_pointer_field({offset}), value, false)")));
                         return_result = true;
@@ -1449,6 +1435,11 @@ fn generate_setter(
                             Some(builder_type),
                         )
                     } else {
+                        //TODO
+                        if no_discriminant {
+                            rust_struct_inner.push_str(fmt!(ctx, "{params_struct_prefix}_{styled_name}: Box<dyn {capnp}::private::capability::ClientHook>,").as_str());
+                            rust_struct_impl_inner.push_str(format!("\n  _builder.reborrow().init_{styled_name}().set_as_capability({params_struct_impl_prefix}_{styled_name});").as_str());
+                        }
                         initter_interior.push(Line(fmt!(ctx,"let mut result = {capnp}::any_pointer::Builder::new(self.builder.get_pointer_field({offset}));")));
                         initter_interior.push(line("result.clear();"));
                         initter_interior.push(line("result"));
@@ -1539,11 +1530,15 @@ fn check_fields_of_struct_for_lifetimes<'a>(
                     else {
                         return Err(capnp::Error::failed("Type mismatch".to_string()));
                     };
+                    if maybe_cyclical_counter > 10 {
+                        continue;
+                    }
+                    maybe_cyclical_counter += 1;
                     check_fields_of_struct_for_lifetimes(
                         ctx,
                         struct_node.get_fields()?,
                         lifetime,
-                        0,
+                        maybe_cyclical_counter,
                     )?;
                 }
             }
@@ -1564,7 +1559,7 @@ fn get_params_struct_path_string(
 fn vec_of_list_element_types(
     ctx: &GeneratorContext,
     list: type_::list::Reader,
-    lifetime: &mut &str,
+    params_struct_generics: &mut HashSet<String>,
 ) -> capnp::Result<String> {
     match list.get_element_type()?.which()? {
         type_::Which::Void(()) => Ok("Vec<()>".to_string()),
@@ -1580,16 +1575,16 @@ fn vec_of_list_element_types(
         type_::Which::Float32(()) => Ok("Vec<f32>".to_string()),
         type_::Which::Float64(()) => Ok("Vec<f64>".to_string()),
         type_::Which::Text(_) => {
-            *lifetime = "'a";
+            params_struct_generics.insert("'a".to_string());
             Ok("Vec<&'a str>".to_string())
         }
         type_::Which::Data(_) => {
-            *lifetime = "'a";
+            params_struct_generics.insert("'a".to_string());
             Ok("Vec<&'a [u8]>".to_string())
         }
         type_::Which::List(l) => Ok(format!(
             "Vec<{}>",
-            vec_of_list_element_types(ctx, l, lifetime)?
+            vec_of_list_element_types(ctx, l, params_struct_generics)?
         )),
         type_::Which::Enum(enum_type) => {
             let enum_mod = ctx.get_qualified_module(enum_type.get_type_id());
@@ -1604,7 +1599,8 @@ fn vec_of_list_element_types(
             let mut temp = "";
             check_fields_of_struct_for_lifetimes(ctx, struct_node.get_fields()?, &mut temp, 0)?;
             if !temp.is_empty() {
-                *lifetime = "'a";
+                params_struct_generics.insert("'a".to_string());
+                temp = "'a";
             }
             let the_mod = &ctx.get_qualified_module(st.get_type_id());
             let maybe_generics = do_branding(
@@ -1616,7 +1612,7 @@ fn vec_of_list_element_types(
             )?;
             let maybe_generics = &maybe_generics[the_mod.len() + 9..maybe_generics.len() - 1];
             let bracketed_params = if !temp.is_empty() || maybe_generics.len() > 1 {
-                format! {"<{lifetime}{}>", maybe_generics}
+                format! {"<{temp}{}>", maybe_generics}
             } else {
                 "".to_string()
             };
@@ -1642,7 +1638,7 @@ fn vec_of_list_element_types(
                     return Ok("Vec<Box<dyn ::capnp::private::capability::ClientHook>>".to_string());
                 }
                 type_::any_pointer::Which::Parameter(p) => {
-                    *lifetime = "'a";
+                    params_struct_generics.insert("'a".to_string());
                     let the_struct = &ctx.node_map[&p.get_scope_id()];
                     let parameters = the_struct.get_parameters()?;
                     let parameter = parameters.get(u32::from(p.get_parameter_index()));
@@ -1971,7 +1967,7 @@ fn generate_union(
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.reborrow().set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::List(l) => {
-                            let mut temp = "";
+                            let mut temp = HashSet::new();
                             if let Ok(vec_of_list_element_types) =
                                 vec_of_list_element_types(ctx, l.reborrow(), &mut temp)
                             {
@@ -2934,7 +2930,6 @@ fn generate_node(
 
             let mut params_struct_string = String::new();
             let mut params_struct_impl_string = String::new();
-            let mut params_struct_lifetime = "";
             let mut union_only_struct = true;
 
             let fields = struct_reader.get_fields()?;
@@ -2979,7 +2974,6 @@ fn generate_node(
                     rust_struct_impl_inner,
                     is_params_struct,
                     params_struct_generics,
-                    &mut params_struct_lifetime,
                     interface_implicit_generics,
                     node_name,
                 )?);
@@ -3013,26 +3007,26 @@ fn generate_node(
                 }
             }
             let mut bracketed = String::new();
-            let mut not_bracketed = String::new();
             let mut bracketed_with_where = String::new();
             let mut implicit_generics = String::new();
-            bracketed = format!("<{params_struct_lifetime}");
-            bracketed_with_where = format!("<{params_struct_lifetime}");
+            bracketed = format!("<");
+            bracketed_with_where = format!("<");
+            if params_struct_generics.remove("'a") {
+                bracketed.push_str("'a,");
+                bracketed_with_where.push_str("'a,");
+            }
             if params.expanded_list.len() > params_struct_generics.len() {
                 implicit_generics.push('<');
             }
             for param in &params.expanded_list {
                 if params_struct_generics.contains(param) {
-                    bracketed.push_str(", ");
                     bracketed.push_str(param.as_str());
-                    bracketed_with_where.push_str(", ");
+                    bracketed.push_str(",");
                     bracketed_with_where.push_str(param.as_str());
-                    bracketed_with_where.push_str(": ::capnp::traits::Owned");
-                    not_bracketed.push_str(param.as_str());
-                    not_bracketed.push_str(", ");
+                    bracketed_with_where.push_str(": ::capnp::traits::Owned,");
                 } else {
                     implicit_generics.push_str(param.as_str());
-                    implicit_generics.push_str(": ::capnp::traits::Owned, ");
+                    implicit_generics.push_str(": ::capnp::traits::Owned,");
                 }
             }
             bracketed.push('>');
@@ -3689,12 +3683,11 @@ fn generate_node(
                 )));
 
                 client_impl_interior.push(indent(Line(fmt!(
-                    ctx, 
+                    ctx,
                     "let mut req: {capnp}::capability::Request<{},{}> = self.client.new_call(_private::TYPE_ID, {ordinal}, ::core::option::Option::None);\n      let mut _builder = req.get();{builder_params_inner_string}\n      req", 
                     param_type,
                     result_type
                 ))));
-                //builder_params_inner_string TODO
                 client_impl_interior.push(line("}"));
 
                 method.get_annotations()?;
@@ -3744,6 +3737,7 @@ fn generate_node(
                         let mut builder_params_string = String::new();
                         let mut builder_params_impl_string = String::new();
                         let param_id = method.get_param_struct_type();
+                        let mut used_params_in_method = HashSet::new();
                         let param_node = &ctx.node_map[&param_id];
                         let schema_capnp::node::Struct(struct_r) = param_node.which()? else {
                             return Err(capnp::Error::from_kind(capnp::ErrorKind::TypeMismatch));
@@ -3757,6 +3751,11 @@ fn generate_node(
                             match field.which()? {
                                 field::Group(group) => {
                                     let the_mod = ctx.get_qualified_module(group.get_type_id());
+                                    used_params_of_group(
+                                        ctx,
+                                        group.get_type_id(),
+                                        &mut used_params_in_method,
+                                    )?;
                                     if no_discriminant {
                                         builder_params_string.push_str(
                                             format!(
@@ -3773,6 +3772,7 @@ fn generate_node(
                                 }
                                 field::Slot(reg_field) => {
                                     let typ = reg_field.get_type()?;
+                                    used_params_of_type(ctx, typ, &mut used_params_in_method)?;
                                     match typ.which()? {
                                         type_::Void(()) => {
                                             if no_discriminant {
@@ -3802,17 +3802,17 @@ fn generate_node(
                                         type_::Text(()) => {
                                             if no_discriminant {
                                                 builder_params_string.push_str(
-                                                    format!("_{styled_name}: String,").as_str(),
+                                                    format!("_{styled_name}: &'a str,").as_str(),
                                                 );
-                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name}.as_str().into());").as_str());
+                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name}.into());").as_str());
                                             }
                                         }
                                         type_::Data(()) => {
                                             if no_discriminant {
                                                 builder_params_string.push_str(
-                                                    format!("_{styled_name}: Vec<u8>,").as_str(),
+                                                    format!("_{styled_name}: &'a [u8],").as_str(),
                                                 );
-                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name}.as_slice());").as_str());
+                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name});").as_str());
                                             }
                                         }
                                         type_::List(ot1) => {
@@ -3821,9 +3821,8 @@ fn generate_node(
                                                     vec_of_list_element_types(
                                                         ctx,
                                                         ot1.reborrow(),
-                                                        &mut "",
+                                                        &mut HashSet::new(),
                                                     )
-                                                //TODO
                                                 {
                                                     builder_params_string.push_str(
                                                         format!(
@@ -3847,9 +3846,7 @@ fn generate_node(
                                         type_::Enum(e) => {
                                             let id = e.get_type_id();
                                             let the_mod = ctx.get_qualified_module(id);
-                                            if no_discriminant
-                                                && get_params(ctx, e.get_type_id())?.is_empty()
-                                            {
+                                            if no_discriminant {
                                                 builder_params_string.push_str(
                                                     format!("_{styled_name}: {the_mod},").as_str(),
                                                 );
@@ -3859,16 +3856,51 @@ fn generate_node(
                                         type_::Struct(st) => {
                                             let type_string =
                                                 get_params_struct_path_string(ctx, st)?;
-                                            if no_discriminant
-                                                && get_params(ctx, st.get_type_id())?.is_empty()
+
+                                            let mut lifetime = "";
+                                            let node::Struct(struct_node) =
+                                                ctx.node_map[&st.get_type_id()].which()?
+                                            else {
+                                                return Err(capnp::Error::failed(
+                                                    "Type mismatch".to_string(),
+                                                ));
+                                            };
+                                            check_fields_of_struct_for_lifetimes(
+                                                ctx,
+                                                struct_node.get_fields()?,
+                                                &mut lifetime,
+                                                0,
+                                            )?;
+                                            let the_mod =
+                                                &ctx.get_qualified_module(st.get_type_id());
+                                            let maybe_generics = do_branding(
+                                                ctx,
+                                                st.get_type_id(),
+                                                st.get_brand()?,
+                                                Leaf::Reader(""),
+                                                the_mod,
+                                            )?;
+                                            let maybe_generics = &maybe_generics
+                                                [the_mod.len() + 9..maybe_generics.len() - 1];
+                                            if !lifetime.is_empty() {
+                                                params_struct_generics.insert("'a".to_string());
+                                                lifetime = "'a";
+                                            }
+                                            let bracketed_params = if !lifetime.is_empty()
+                                                || maybe_generics.len() > 1
                                             {
+                                                format! {"<{lifetime}{}>", maybe_generics}
+                                            } else {
+                                                "".to_string()
+                                            };
+                                            if no_discriminant {
                                                 if type_string
                                                     .rfind(snake_to_camel_case(node_name).as_str())
                                                     .is_some()
                                                 {
                                                     builder_params_string.push_str(
                                                         format!(
-                                                            "_{styled_name}: Option<Box<{}>>,",
+                                                            "_{styled_name}: Option<Box<{}{bracketed_params}>>,",
                                                             type_string
                                                         )
                                                         .as_str(),
@@ -3877,7 +3909,7 @@ fn generate_node(
                                                 } else {
                                                     builder_params_string.push_str(
                                                         format!(
-                                                            "_{styled_name}: Option<{}>,",
+                                                            "_{styled_name}: Option<{}{bracketed_params}>,",
                                                             type_string
                                                         )
                                                         .as_str(),
@@ -3886,10 +3918,8 @@ fn generate_node(
                                                 }
                                             }
                                         }
-                                        type_::Interface(i_t) => {
-                                            if no_discriminant
-                                                && get_params(ctx, i_t.get_type_id())?.is_empty()
-                                            {
+                                        type_::Interface(_) => {
+                                            if no_discriminant {
                                                 builder_params_string.push_str(
                                                     format!(
                                                         "_{styled_name}: {},",
@@ -3900,15 +3930,37 @@ fn generate_node(
                                                 builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name});").as_str());
                                             }
                                         }
-                                        type_::AnyPointer(_) => {
-                                            if typ.is_parameter()? {
-                                                //TODO
-                                            } else {
-                                                //TODO implement for anypointers besides caps
-                                                if no_discriminant {
+                                        type_::AnyPointer(an) => {
+                                            match an.which()? {
+                                                type_::any_pointer::Which::Unconstrained(_) => {
+                                                    //TODO implement for anypointers besides caps
                                                     builder_params_string.push_str(fmt!(ctx, "_{styled_name}: Box<dyn {capnp}::private::capability::ClientHook>,").as_str());
                                                     builder_params_impl_string.push_str(format!("\n  _builder.reborrow().init_{styled_name}().set_as_capability(_{styled_name});").as_str());
-                                                }
+                                                },
+                                                type_::any_pointer::Which::Parameter(p) => {
+                                                    let reader_type =
+                                                    typ.type_string(ctx, Leaf::Reader("'a"))?;
+                                                    builder_params_string.push_str(
+                                                        format!("_{styled_name}: {reader_type},")
+                                                            .as_str(),
+                                                    );
+                                                    let mut implicit = false;
+                                                    let the_struct = &ctx.node_map[&p.get_scope_id()];
+                                                    let parameters = the_struct.get_parameters()?;
+                                                    let parameter = parameters.get(u32::from(p.get_parameter_index()));
+                                                    let parameter_name = parameter.get_name()?.to_str()?;
+                                                    for par in method.get_implicit_parameters()?.iter() {
+                                                        if par.get_name()?.to_str()? == parameter_name {
+                                                            implicit = true;
+                                                        }
+                                                    }
+                                                    if !implicit {
+                                                        builder_params_impl_string.push_str(format!("\n      _builder.reborrow().set_{styled_name}(_{styled_name}).unwrap();").as_str());
+                                                    } else {
+                                                        builder_params_impl_string.push_str(format!("\n      _builder.reborrow().init_{styled_name}().set_as(_{styled_name}).unwrap();").as_str());
+                                                    }
+                                                },
+                                                type_::any_pointer::Which::ImplicitMethodParameter(_) => (),
                                             }
                                         }
                                         _ => {
@@ -3955,8 +4007,6 @@ fn generate_node(
                             &result_scopes.join("::"),
                         )?;
 
-                        //TODO integrate with generic changes
-                        let mut used_params_in_method = HashSet::new();
                         used_params_of_brand(
                             ctx,
                             type_id,
