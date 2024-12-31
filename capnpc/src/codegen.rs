@@ -1958,6 +1958,7 @@ fn generate_union(
     params_struct_string: &mut String,
     params_struct_impl_string: &mut String,
     params_enum_string: &mut String,
+    set_types: &mut String,
     set_inner: &mut String,
     generate_params: bool,
     union_only_struct: bool,
@@ -2302,6 +2303,7 @@ fn generate_union(
         if !union_only_struct {
             params_struct_string
                 .push_str(format!("\n pub uni: {params_union_name}{bracketed},").as_str());
+            set_types.push_str(format!(", uni: {params_union_name}{bracketed}").as_str());
         }
         if !params_impl_interior.is_empty() {
             params_struct_impl_string.push_str(format!("{params_impl_interior}\n }}").as_str());
@@ -3154,6 +3156,7 @@ fn generate_node(
                     &mut params_struct_string,
                     rust_struct_impl_inner,
                     &mut params_enum_string,
+                    &mut set_types,
                     &mut set_inner,
                     true,
                     union_only_struct,
@@ -3177,6 +3180,7 @@ fn generate_node(
                     &mut params_struct_impl_string,
                     &mut params_enum_string,
                     &mut String::new(),
+                    &mut String::new(),
                     false,
                     union_only_struct,
                     &params_union_name,
@@ -3196,29 +3200,20 @@ fn generate_node(
                 reexports.push_str("};");
                 preamble.push(Line(reexports));
                 preamble.push(BlankLine);
-                let mut without_where = String::new();
-                let bracketed = if union_only_struct {
-                    without_where.push_str(format!("<{union_lifetime}").as_str());
-                    for p in union_params.iter() {
-                        without_where.push_str(format!("{p},").as_str());
-                    }
-                    without_where.push('>');
+                let enum_bracketed = if union_only_struct {
+                    set_inner = String::new();
                     bracketed_with_where.clone()
                 } else if !union_params.is_empty() || !union_lifetime.is_empty() {
                     let mut temp = format!("<{union_lifetime}");
-                    without_where.push_str(format!("<{union_lifetime}").as_str());
                     for p in union_params.iter() {
                         temp.push_str(format!("{p}: ::capnp::traits::Owned,").as_str());
-                        without_where.push_str(format!("{p},").as_str());
                     }
                     temp.push('>');
-                    without_where.push('>');
                     temp
                 } else {
                     "".to_string()
                 };
-                params_enum_string = format!("pub enum {params_union_name}{bracketed} {{\n UNINITIALIZED,{params_enum_string}");
-                set_types.push_str(format!(", uni: {params_union_name}{without_where}").as_str());
+                params_enum_string = format!("pub enum {params_union_name}{enum_bracketed} {{\n UNINITIALIZED,{params_enum_string}");
             }
 
             if !params_enum_string.is_empty() {
@@ -3235,11 +3230,15 @@ fn generate_node(
                 )
                 .as_str(),
             );
-            let set = Branch(vec![
-                Line(format!("pub fn set(&mut self{set_types}) {{")),
-                indent(Line(format!(" {set_inner}"))),
-                Line("}".to_string()),
-            ]);
+            let set = if set_inner.is_empty() {
+                BlankLine
+            } else {
+                Branch(vec![
+                    Line(format!("pub fn set(&mut self{set_types}) {{")),
+                    indent(Line(format!(" {set_inner}"))),
+                    Line("}".to_string()),
+                ])
+            };
             if !is_params_struct {
                 params_struct_string.push_str(rust_struct_inner);
                 params_struct_impl_string.push_str(rust_struct_impl_inner);
