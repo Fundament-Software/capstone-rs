@@ -1021,6 +1021,8 @@ fn generate_setter(
     field: &schema_capnp::field::Reader,
     rust_struct_inner: &mut String,
     rust_struct_impl_inner: &mut String,
+    set_types: &mut String,
+    set_inner: &mut String,
     is_params_struct: bool,
     params_struct_generics: &mut HashSet<String>,
     interface_implicit_generics: &Vec<String>,
@@ -1086,6 +1088,15 @@ fn generate_setter(
                 } else {
                     "".to_string()
                 };
+                set_types.push_str(
+                    format!(
+                        ", _{styled_name}: {}::{}{bracketed_params}",
+                        the_mod,
+                        snake_to_camel_case(ctx.get_last_name(group.get_type_id())?)
+                    )
+                    .as_str(),
+                );
+                set_inner.push_str(format!("\n  _{styled_name}.build_capnp_struct(self.reborrow().init_{styled_name}());").as_str());
                 rust_struct_inner.push_str(
                     format!(
                         "{params_struct_prefix}_{styled_name}: {}::{}{bracketed_params},",
@@ -1124,6 +1135,10 @@ fn generate_setter(
                 type_::Void(()) => {
                     setter_param = "_value".to_string();
                     if no_discriminant {
+                        set_types.push_str(format!(", _{styled_name}: ()").as_str());
+                        set_inner.push_str(
+                            format!("\n  self.set_{styled_name}(_{styled_name});").as_str(),
+                        );
                         rust_struct_inner.push_str(
                             format!("{params_struct_prefix}_{styled_name}: (),").as_str(),
                         );
@@ -1145,6 +1160,10 @@ fn generate_setter(
                         }
                     }
                     if no_discriminant {
+                        set_types.push_str(format!(", _{styled_name}: bool").as_str());
+                        set_inner.push_str(
+                            format!("\n  self.set_{styled_name}(_{styled_name});").as_str(),
+                        );
                         rust_struct_inner.push_str(
                             format!("{params_struct_prefix}_{styled_name}: bool,").as_str(),
                         );
@@ -1167,6 +1186,10 @@ fn generate_setter(
                         }
                     };
                     if no_discriminant {
+                        set_types.push_str(format!(", _{styled_name}: {tstr}").as_str());
+                        set_inner.push_str(
+                            format!("\n  self.set_{styled_name}(_{styled_name});").as_str(),
+                        );
                         rust_struct_inner.push_str(
                             format!("{params_struct_prefix}_{styled_name}: {tstr},").as_str(),
                         );
@@ -1184,6 +1207,10 @@ fn generate_setter(
                     )));
                     initter_params.push("size: u32");
                     if no_discriminant {
+                        set_types.push_str(format!(", _{styled_name}: &str").as_str());
+                        set_inner.push_str(
+                            format!("\n  self.set_{styled_name}(_{styled_name}.into());").as_str(),
+                        );
                         rust_struct_inner.push_str(
                             format!("{params_struct_prefix}_{styled_name}: &'a str,").as_str(),
                         );
@@ -1204,6 +1231,10 @@ fn generate_setter(
                     )));
                     initter_params.push("size: u32");
                     if no_discriminant {
+                        set_types.push_str(format!(", _{styled_name}: &[u8]").as_str());
+                        set_inner.push_str(
+                            format!("\n  self.set_{styled_name}(_{styled_name}.into());").as_str(),
+                        );
                         rust_struct_inner.push_str(
                             format!("{params_struct_prefix}_{styled_name}: &'a [u8],").as_str(),
                         );
@@ -1227,16 +1258,29 @@ fn generate_setter(
                         if let Ok(vec_of_list_element_types) =
                             vec_of_list_element_types(ctx, ot1.reborrow(), params_struct_generics)
                         {
+                            set_types.push_str(
+                                format!(", _{styled_name}: {vec_of_list_element_types}").as_str(),
+                            );
+                            set_inner.push_str(
+                                build_impl_for_list_type(
+                                    styled_name,
+                                    "self",
+                                    ot1.reborrow(),
+                                    false,
+                                    true,
+                                )?
+                                .as_str(),
+                            );
                             rust_struct_inner.push_str(
                                 format!(
-                                    "{params_struct_prefix}_{styled_name}: {},",
-                                    vec_of_list_element_types
+                                    "{params_struct_prefix}_{styled_name}: {vec_of_list_element_types},"
                                 )
                                 .as_str(),
                             );
                             rust_struct_impl_inner.push_str(
                                 build_impl_for_list_type(
                                     styled_name,
+                                    "_builder",
                                     ot1.reborrow(),
                                     false,
                                     is_params_struct,
@@ -1269,6 +1313,10 @@ fn generate_setter(
                     let id = e.get_type_id();
                     let the_mod = ctx.get_qualified_module(id);
                     if no_discriminant {
+                        set_types.push_str(format!(", _{styled_name}: {the_mod}").as_str());
+                        set_inner.push_str(
+                            format!("\n  self.set_{styled_name}(_{styled_name});").as_str(),
+                        );
                         rust_struct_inner.push_str(
                             format!("{params_struct_prefix}_{styled_name}: {the_mod},").as_str(),
                         );
@@ -1326,6 +1374,11 @@ fn generate_setter(
                         "".to_string()
                     };
                     if no_discriminant && !field.has_annotations() {
+                        set_types.push_str(
+                            format!(", _{styled_name}: Option<{type_string}{bracketed_params}>")
+                                .as_str(),
+                        );
+                        set_inner.push_str(format!("\n  if let Some(st) = _{styled_name} {{st.build_capnp_struct(self.reborrow().init_{styled_name}());}}").as_str());
                         result.push(Line(fmt!(ctx, "pub fn set_{styled_name}_from_struct(&mut self, st: {type_string}{bracketed_params}) {{\n      st.build_capnp_struct({capnp}::traits::FromPointerBuilder::init_pointer(self.reborrow().builder.get_pointer_field({offset}), 0));\n    }}")));
 
                         if type_string
@@ -1334,8 +1387,7 @@ fn generate_setter(
                         {
                             rust_struct_inner.push_str(
                                 format!(
-                                    "{params_struct_prefix}_{styled_name}: Option<Box<{}{bracketed_params}>>,",
-                                    type_string
+                                    "{params_struct_prefix}_{styled_name}: Option<Box<{type_string}{bracketed_params}>>,"
                                 )
                                 .as_str(),
                             );
@@ -1343,8 +1395,7 @@ fn generate_setter(
                         } else {
                             rust_struct_inner.push_str(
                                 format!(
-                                    "{params_struct_prefix}_{styled_name}: Option<{}{bracketed_params}>,",
-                                    type_string
+                                    "{params_struct_prefix}_{styled_name}: Option<{type_string}{bracketed_params}>,"
                                 )
                                 .as_str(),
                             );
@@ -1377,6 +1428,13 @@ fn generate_setter(
                 }
                 type_::Interface(_) => {
                     if no_discriminant {
+                        set_types.push_str(
+                            format!(", _{styled_name}: {}", typ.type_string(ctx, Leaf::Client)?)
+                                .as_str(),
+                        );
+                        set_inner.push_str(
+                            format!("\n  self.set_{styled_name}(_{styled_name});").as_str(),
+                        );
                         rust_struct_inner.push_str(
                             format!(
                                 "{params_struct_prefix}_{styled_name}: {},",
@@ -1402,6 +1460,11 @@ fn generate_setter(
                         params_struct_generics.insert("'a".to_string());
                         let reader_type = typ.type_string(ctx, Leaf::Reader("'a"))?;
                         if no_discriminant {
+                            set_types.push_str(format!(", _{styled_name}: {reader_type}").as_str());
+                            set_inner.push_str(
+                                format!("\n  self.set_{styled_name}(_{styled_name}).unwrap();")
+                                    .as_str(),
+                            );
                             rust_struct_inner.push_str(
                                 format!("{params_struct_prefix}_{styled_name}: {reader_type},")
                                     .as_str(),
@@ -1656,6 +1719,7 @@ fn vec_of_list_element_types(
 }
 fn build_impl_for_list_type(
     name: &str,
+    builder_variable: &str,
     list: type_::list::Reader,
     union: bool,
     is_params_struct: bool,
@@ -1673,7 +1737,7 @@ fn build_impl_for_list_type(
             format!(
                 "
             \nif !{vec_source}.is_empty() {{
-                let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
+                let mut list_builder = {builder_variable}.reborrow().init_{name}({vec_source}.len() as u32);
                 for (i, item) in {vec_source}.into_iter().enumerate() {{
                     list_builder.reborrow().set(i as u32, item.into());
                 }}
@@ -1684,7 +1748,7 @@ fn build_impl_for_list_type(
             format!(
                 "
             \nif !{vec_source}.is_empty() {{
-                let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
+                let mut list_builder = {builder_variable}.reborrow().init_{name}({vec_source}.len() as u32);
                 for (i, item) in {vec_source}.into_iter().enumerate() {{
                     list_builder.reborrow().set(i as u32, item);
                 }}
@@ -1695,7 +1759,7 @@ fn build_impl_for_list_type(
             format!(
                 "
             \nif !{vec_source}.is_empty() {{
-                let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
+                let mut list_builder = {builder_variable}.reborrow().init_{name}({vec_source}.len() as u32);
                 for (i, item) in {vec_source}.into_iter().enumerate() {{
                     {}
                 }}
@@ -1707,7 +1771,7 @@ fn build_impl_for_list_type(
             format!(
                 "
             \nif !{vec_source}.is_empty() {{
-                let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
+                let mut list_builder = {builder_variable}.reborrow().init_{name}({vec_source}.len() as u32);
                 for (i, item) in {vec_source}.into_iter().enumerate() {{
                     item.build_capnp_struct(list_builder.reborrow().get(i as u32));
                 }}
@@ -1718,7 +1782,7 @@ fn build_impl_for_list_type(
             format!(
                 "
             \nif !{vec_source}.is_empty() {{
-                let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
+                let mut list_builder = {builder_variable}.reborrow().init_{name}({vec_source}.len() as u32);
                 for (i, item) in {vec_source}.into_iter().enumerate() {{
                     list_builder.reborrow().set(i as u32, item.client.hook);
                 }}
@@ -1730,7 +1794,7 @@ fn build_impl_for_list_type(
             format!(
                         "
                     \nif !{vec_source}.is_empty() {{
-                        let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
+                        let mut list_builder = {builder_variable}.reborrow().init_{name}({vec_source}.len() as u32);
                         for (i, item) in {vec_source}.into_iter().enumerate() {{
                             list_builder.reborrow().set(i as u32, item);
                         }}
@@ -1741,7 +1805,7 @@ fn build_impl_for_list_type(
             format!(
                 "
             \nif !{vec_source}.is_empty() {{
-                let mut list_builder = _builder.reborrow().init_{name}({vec_source}.len() as u32);
+                let mut list_builder = {builder_variable}.reborrow().init_{name}({vec_source}.len() as u32);
                 for (i, item) in {vec_source}.into_iter().enumerate() {{
                     list_builder.reborrow().set(i as u32, item);
                 }}
@@ -1894,12 +1958,12 @@ fn generate_union(
     params_struct_string: &mut String,
     params_struct_impl_string: &mut String,
     params_enum_string: &mut String,
+    set_inner: &mut String,
     generate_params: bool,
     union_only_struct: bool,
     params_union_name: &String,
     union_params: &mut HashSet<String>,
     union_lifetime: &mut &str,
-    interface_implicit_generics: &Vec<String>,
 ) -> ::capnp::Result<(
     FormattedText,
     FormattedText,
@@ -1935,6 +1999,9 @@ fn generate_union(
         }
         params_impl_interior
             .push_str(format!("\n {params_union_name}::UNINITIALIZED => (),").as_str());
+        set_inner.push_str(
+            format!("\n match uni {{ \n {params_union_name}::UNINITIALIZED => (),").as_str(),
+        );
     }
 
     for field in fields {
@@ -1959,12 +2026,14 @@ fn generate_union(
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(&'a str),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.reborrow().set_{}(t.into()),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t.into()),", camel.as_str()).as_str());
                         }
                         type_::Which::Data(_) => {
                             *union_lifetime = "'a,";
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(&'a [u8]),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.reborrow().set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::List(l) => {
                             let mut temp = HashSet::new();
@@ -1975,7 +2044,8 @@ fn generate_union(
                                     format!("\n _{enumerant_name}({}),", vec_of_list_element_types)
                                         .as_str(),
                                 );
-                                params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => {{\n{}\n}},", build_impl_for_list_type(camel.as_str(), l.reborrow(), true, false)?).as_str());
+                                params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => {{\n{}\n}},", build_impl_for_list_type(camel.as_str(), "_builder", l.reborrow(), true, false)?).as_str());
+                                set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => {{\n{}\n}}", build_impl_for_list_type(camel.as_str(), "self", l.reborrow(), true, false)?).as_str());
                             }
                             if !temp.is_empty() {
                                 *union_lifetime = "'a,";
@@ -1987,6 +2057,7 @@ fn generate_union(
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}({}),", the_mod).as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.reborrow().set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::Struct(st) => {
                             let path_string = get_params_struct_path_string(ctx, st)?;
@@ -2051,6 +2122,7 @@ fn generate_union(
                                 );
                                 params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => t.build_capnp_struct(_builder.reborrow().init_{}()),", camel.as_str()).as_str());
                             }
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => t.build_capnp_struct(self.reborrow().init_{}()),", camel.as_str()).as_str());
                         }
                         type_::Which::Interface(_) => {
                             params_enum_string.push_str(
@@ -2061,6 +2133,7 @@ fn generate_union(
                                 .as_str(),
                             );
                             params_impl_interior.push_str(format!("\n  {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::AnyPointer(an) => {
                             match an.which()? {
@@ -2076,69 +2149,82 @@ fn generate_union(
                                     params_enum_string.push_str(
                                         format!("\n _{enumerant_name}({reader_type}),").as_str(),
                                     );
-                                    params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{field_name}(t).unwrap(),").as_str());
+                                    params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t).unwrap(),", camel.as_str()).as_str());
                                 }
                             }
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t).unwrap(),", camel.as_str()).as_str());
                         }
                         type_::Which::Void(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(()),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::Bool(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(bool),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::Int8(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(i8),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::Int16(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(i16),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::Int32(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(i32),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::Int64(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(i64),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::Uint8(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(u8),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::Uint16(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(u16),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.reborrow().set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::Uint32(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(u32),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::Uint64(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(u64),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::Float32(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(f32),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                         type_::Which::Float64(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(f64),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
                     }
                 }
@@ -2191,6 +2277,7 @@ fn generate_union(
 
         enum_interior.push(Line(format!("{enumerant_name}({ty1}),")));
     }
+    set_inner.push_str("\n }");
     let enum_name = format!(
         "Which{}",
         if !ty_params.is_empty() {
@@ -2930,6 +3017,8 @@ fn generate_node(
 
             let mut params_struct_string = String::new();
             let mut params_struct_impl_string = String::new();
+            let mut set_types = String::new();
+            let mut set_inner = String::new();
             let mut union_only_struct = true;
 
             let fields = struct_reader.get_fields()?;
@@ -2964,7 +3053,6 @@ fn generate_node(
                 } else {
                     union_fields.push(field);
                 }
-
                 builder_members.push(generate_setter(
                     ctx,
                     discriminant_offset,
@@ -2972,6 +3060,8 @@ fn generate_node(
                     &field,
                     rust_struct_inner,
                     rust_struct_impl_inner,
+                    &mut set_types,
+                    &mut set_inner,
                     is_params_struct,
                     params_struct_generics,
                     interface_implicit_generics,
@@ -3009,8 +3099,8 @@ fn generate_node(
             let mut bracketed = String::new();
             let mut bracketed_with_where = String::new();
             let mut implicit_generics = String::new();
-            bracketed = format!("<");
-            bracketed_with_where = format!("<");
+            bracketed = "<".to_string();
+            bracketed_with_where = "<".to_string();
             if params_struct_generics.remove("'a") {
                 bracketed.push_str("'a,");
                 bracketed_with_where.push_str("'a,");
@@ -3021,7 +3111,7 @@ fn generate_node(
             for param in &params.expanded_list {
                 if params_struct_generics.contains(param) {
                     bracketed.push_str(param.as_str());
-                    bracketed.push_str(",");
+                    bracketed.push(',');
                     bracketed_with_where.push_str(param.as_str());
                     bracketed_with_where.push_str(": ::capnp::traits::Owned,");
                 } else {
@@ -3064,12 +3154,12 @@ fn generate_node(
                     &mut params_struct_string,
                     rust_struct_impl_inner,
                     &mut params_enum_string,
+                    &mut set_inner,
                     true,
                     union_only_struct,
                     &params_union_name,
                     &mut union_params,
                     &mut union_lifetime,
-                    &interface_implicit_generics,
                 )?;
                 which_enums.push(which_enums1);
                 which_enums.push(typedef);
@@ -3086,12 +3176,12 @@ fn generate_node(
                     &mut params_struct_string,
                     &mut params_struct_impl_string,
                     &mut params_enum_string,
+                    &mut String::new(),
                     false,
                     union_only_struct,
                     &params_union_name,
                     &mut HashSet::new(),
                     &mut "",
-                    &Vec::new(),
                 )?;
                 which_enums.push(typedef);
                 builder_members.push(union_getter);
@@ -3106,19 +3196,29 @@ fn generate_node(
                 reexports.push_str("};");
                 preamble.push(Line(reexports));
                 preamble.push(BlankLine);
+                let mut without_where = String::new();
                 let bracketed = if union_only_struct {
+                    without_where.push_str(format!("<{union_lifetime}").as_str());
+                    for p in union_params.iter() {
+                        without_where.push_str(format!("{p},").as_str());
+                    }
+                    without_where.push('>');
                     bracketed_with_where.clone()
                 } else if !union_params.is_empty() || !union_lifetime.is_empty() {
                     let mut temp = format!("<{union_lifetime}");
+                    without_where.push_str(format!("<{union_lifetime}").as_str());
                     for p in union_params.iter() {
                         temp.push_str(format!("{p}: ::capnp::traits::Owned,").as_str());
+                        without_where.push_str(format!("{p},").as_str());
                     }
                     temp.push('>');
+                    without_where.push('>');
                     temp
                 } else {
                     "".to_string()
                 };
                 params_enum_string = format!("pub enum {params_union_name}{bracketed} {{\n UNINITIALIZED,{params_enum_string}");
+                set_types.push_str(format!(", uni: {params_union_name}{without_where}").as_str());
             }
 
             if !params_enum_string.is_empty() {
@@ -3135,7 +3235,11 @@ fn generate_node(
                 )
                 .as_str(),
             );
-
+            let set = Branch(vec![
+                Line(format!("pub fn set(&mut self{set_types}) {{")),
+                indent(Line(format!(" {set_inner}"))),
+                Line("}".to_string()),
+            ]);
             if !is_params_struct {
                 params_struct_string.push_str(rust_struct_inner);
                 params_struct_impl_string.push_str(rust_struct_impl_inner);
@@ -3372,12 +3476,12 @@ fn generate_node(
                         Line(format!("pub fn reborrow_as_reader(&self) -> Reader<'_,{}> {{", params.params)),
                         indent(line("self.builder.as_reader().into()")),
                         line("}"),
-
                         BlankLine,
                         Line(fmt!(ctx,"pub fn total_size(&self) -> {capnp}::Result<{capnp}::MessageSize> {{")),
                         indent(line("self.builder.as_reader().total_size()")),
                         line("}")
                         ]),
+                indent(set),
                 indent(builder_members),
                 line("}"),
                 BlankLine,
@@ -3604,7 +3708,7 @@ fn generate_node(
                         &mut String::new(),
                         &mut HashSet::new(),
                         &Vec::new(),
-                        true,
+                        false,
                     )?);
                     names.push(local_name);
                     (names, params.params.clone())
@@ -3732,7 +3836,7 @@ fn generate_node(
                     };
                     let names = &ctx.scope_map[&node_reader.get_id()];
                     let methods = ext.get_methods()?;
-                    for (_, method) in methods.into_iter().enumerate() {
+                    for method in methods.into_iter() {
                         let name = method.get_name()?.to_str()?;
                         let mut builder_params_string = String::new();
                         let mut builder_params_impl_string = String::new();
@@ -3834,6 +3938,7 @@ fn generate_node(
                                                     builder_params_impl_string.push_str(
                                                         build_impl_for_list_type(
                                                             styled_name.as_str(),
+                                                            "_builder",
                                                             ot1.reborrow(),
                                                             false,
                                                             true,
@@ -4223,7 +4328,7 @@ fn generate_node(
                     params.params, bracketed_params, params.where_clause
                 )),
                 indent(vec![
-                    Line(format!("fn clone(&self) -> Self {{")),
+                    Line("fn clone(&self) -> Self {".to_string()),
                     indent(Line(format!(
                         "ServerDispatch {{ server: self.server.clone(), {} }}",
                         params.phantom_data_value
