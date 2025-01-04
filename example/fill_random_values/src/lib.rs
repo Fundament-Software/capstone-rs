@@ -56,13 +56,13 @@ impl<R: Rng> Filler<R> {
     fn fill_text(&mut self, mut builder: ::capnp::text::Builder) {
         builder.clear();
         for _ in 0..builder.len() {
-            builder.push_ascii(self.rng.gen_range(b'a'..b'z'));
+            builder.push_ascii(self.rng.gen_range(b'a'..=b'z'));
         }
     }
 
     fn fill_data(&mut self, builder: ::capnp::data::Builder) {
-        for idx in 0..builder.len() {
-            builder[idx] = self.rng.gen::<u8>();
+        for v in builder {
+            *v = self.rng.gen::<u8>();
         }
     }
 

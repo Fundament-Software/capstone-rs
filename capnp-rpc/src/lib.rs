@@ -112,6 +112,7 @@ pub mod twoparty;
 
 use capnp::message;
 
+#[allow(clippy::type_complexity)]
 /// A message to be sent by a [`VatNetwork`].
 pub trait OutgoingMessage {
     /// Gets the message body, which the caller may fill in any way it wants.
