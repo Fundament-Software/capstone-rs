@@ -91,7 +91,7 @@ impl publisher::Server<::capnp::text::Owned> for PublisherImpl {
     ) -> Result<(), capnp::Error> {
         println!("subscribe");
         self.subscribers.borrow_mut().subscribers.insert(
-            self.next_id.borrow().clone(),
+            *self.next_id.borrow(),
             SubscriberHandle {
                 client: params.get()?.get_subscriber()?,
                 requests_in_flight: 0,
@@ -101,7 +101,7 @@ impl publisher::Server<::capnp::text::Owned> for PublisherImpl {
         results
             .get()
             .set_subscription(capnp_rpc::new_client(SubscriptionImpl::new(
-                self.next_id.borrow().clone(),
+                *self.next_id.borrow(),
                 self.subscribers.clone(),
             )));
 

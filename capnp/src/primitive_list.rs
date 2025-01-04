@@ -61,9 +61,9 @@ where
 }
 
 // Have to do this manually because derive(Copy) doesn't know about PhantomData
-impl<'a, T: PrimitiveElement + introspect::Introspect> Copy for Reader<'a, T> {}
+impl<T: PrimitiveElement + introspect::Introspect> Copy for Reader<'_, T> {}
 
-impl<'a, T: PrimitiveElement + introspect::Introspect> Clone for Reader<'a, T> {
+impl<T: PrimitiveElement + introspect::Introspect> Clone for Reader<'_, T> {
     fn clone(&self) -> Self {
         *self
     }
@@ -96,13 +96,13 @@ impl<'a, T: PrimitiveElement> FromPointerReader<'a> for Reader<'a, T> {
     }
 }
 
-impl<'a, T: PrimitiveElement> IndexMove<u32, T> for Reader<'a, T> {
+impl<T: PrimitiveElement> IndexMove<u32, T> for Reader<'_, T> {
     fn index_move(&self, index: u32) -> T {
         self.get(index)
     }
 }
 
-impl<'a, T: PrimitiveElement> Reader<'a, T> {
+impl<T: PrimitiveElement> Reader<'_, T> {
     /// Gets the `T` at position `index`. Panics if `index` is greater than or
     /// equal to `len()`.
     pub fn get(&self, index: u32) -> T {
@@ -256,7 +256,7 @@ impl<'a, T: PrimitiveElement> FromPointerBuilder<'a> for Builder<'a, T> {
     }
 }
 
-impl<'a, T: PrimitiveElement> Builder<'a, T> {
+impl<T: PrimitiveElement> Builder<'_, T> {
     /// Gets the `T` at position `index`. Panics if `index` is greater than or
     /// equal to `len()`.
     pub fn get(&self, index: u32) -> T {

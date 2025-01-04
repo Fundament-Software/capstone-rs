@@ -159,7 +159,7 @@ pub trait AsOutputSegments {
     fn as_output_segments(&self) -> OutputSegments;
 }
 
-impl<'a, M> AsOutputSegments for &'a M
+impl<M> AsOutputSegments for &M
 where
     M: AsOutputSegments,
 {

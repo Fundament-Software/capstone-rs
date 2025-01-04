@@ -62,7 +62,7 @@ impl<'a> core::cmp::PartialEq<Reader<'a>> for &'a str {
 }
 
 #[cfg(feature = "alloc")]
-impl<'a> core::cmp::PartialEq<alloc::string::String> for Reader<'a> {
+impl core::cmp::PartialEq<alloc::string::String> for Reader<'_> {
     #[inline]
     fn eq(&self, other: &alloc::string::String) -> bool {
         self.as_bytes() == other.as_bytes()
@@ -91,7 +91,7 @@ impl<'a> core::cmp::PartialOrd<Reader<'a>> for &'a str {
     }
 }
 
-impl<'a> core::fmt::Debug for Reader<'a> {
+impl core::fmt::Debug for Reader<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self.to_str() {
             Ok(s) => write!(f, "{:?}", s),
@@ -178,7 +178,7 @@ pub struct Builder<'a> {
     pos: usize,
 }
 
-impl<'a> core::cmp::PartialEq for Builder<'a> {
+impl core::cmp::PartialEq for Builder<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.bytes == other.bytes
     }
@@ -284,7 +284,7 @@ impl<'a> Builder<'a> {
     }
 }
 
-impl<'a> core::fmt::Debug for Builder<'a> {
+impl core::fmt::Debug for Builder<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self.reborrow_as_reader().to_str() {
             Ok(s) => write!(f, "{:?}", s),

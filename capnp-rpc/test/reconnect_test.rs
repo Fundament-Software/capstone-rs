@@ -136,7 +136,7 @@ fn test(
 // Lets us poll a future without consuming it
 pub struct PollOnce<'a, F: Future + Unpin>(&'a mut F);
 
-impl<'a, F: Future + Unpin> Future for PollOnce<'a, F> {
+impl<F: Future + Unpin> Future for PollOnce<'_, F> {
     type Output = core::task::Poll<F::Output>;
     fn poll(
         mut self: std::pin::Pin<&mut Self>,
@@ -169,18 +169,18 @@ where
         })?;
         let client = wrap_client(c);
 
-        assert_eq!(test(&pool, &client, 123, true).unwrap(), "123 true 0");
+        assert_eq!(test(pool, &client, 123, true).unwrap(), "123 true 0");
 
         current_server
             .borrow()
             .set_error(capnp::Error::disconnected("test1 disconnect".into()));
         assert_err!(
-            test(&pool, &client, 456, true).unwrap_err(),
+            test(pool, &client, 456, true).unwrap_err(),
             Error::disconnected("test1 disconnect".into())
         );
 
-        assert_eq!(test(&pool, &client, 789, false).unwrap(), "789 false 1");
-        assert_eq!(test(&pool, &client, 21, true).unwrap(), "21 true 1");
+        assert_eq!(test(pool, &client, 789, false).unwrap(), "789 false 1");
+        assert_eq!(test(pool, &client, 21, true).unwrap(), "21 true 1");
 
         {
             // We cause two disconnect promises to be thrown concurrently. This should only cause the
@@ -211,21 +211,21 @@ where
                 .unwrap();
             assert_err!(
                 tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(run_until(&pool, promise1))
+                    tokio::runtime::Handle::current().block_on(run_until(pool, promise1))
                 })
                 .expect_err("disconnect error"),
                 capnp::Error::disconnected("test2 disconnect".into())
             );
             assert_err!(
                 tokio::task::block_in_place(|| {
-                    tokio::runtime::Handle::current().block_on(run_until(&pool, promise2))
+                    tokio::runtime::Handle::current().block_on(run_until(pool, promise2))
                 })
                 .expect_err("disconnect error"),
                 capnp::Error::disconnected("test2 disconnect".into())
             );
         }
 
-        assert_eq!(test(&pool, &client, 43, false).unwrap(), "43 false 2");
+        assert_eq!(test(pool, &client, 43, false).unwrap(), "43 false 2");
 
         // Start a couple calls that will block at the server end, plus an unsent request.
         let fulfiller = current_server.borrow().block();
@@ -270,7 +270,7 @@ where
     // Everything we initiated should still finish.
     assert_err!(
         tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(run_until(&pool, promise4))
+            tokio::runtime::Handle::current().block_on(run_until(pool, promise4))
         })
         .expect_err("disconnect error"),
         capnp::Error::disconnected("test3 disconnect".into())
@@ -280,7 +280,7 @@ where
     // as correct here: it may throw the disconnect exception, or it may automatically redirect to
     // the newly-reconnected destination.
     match tokio::task::block_in_place(|| {
-        tokio::runtime::Handle::current().block_on(run_until(&pool, req3.send().promise))
+        tokio::runtime::Handle::current().block_on(run_until(pool, req3.send().promise))
     }) {
         Ok(resp) => {
             assert_eq!(resp, "5656 true 3");
@@ -295,14 +295,14 @@ where
     fulfiller.send(Ok(())).unwrap();
     assert_eq!(
         tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(run_until(&pool, promise1))
+            tokio::runtime::Handle::current().block_on(run_until(pool, promise1))
         })
         .unwrap(),
         "1212 true 2"
     );
     assert_eq!(
         tokio::task::block_in_place(|| {
-            tokio::runtime::Handle::current().block_on(run_until(&pool, promise2))
+            tokio::runtime::Handle::current().block_on(run_until(pool, promise2))
         })
         .unwrap(),
         "3434 false 2"

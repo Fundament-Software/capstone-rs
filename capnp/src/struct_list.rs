@@ -71,7 +71,7 @@ where
         *self
     }
 }
-impl<'a, T> Copy for Reader<'a, T> where T: crate::traits::OwnedStruct {}
+impl<T> Copy for Reader<'_, T> where T: crate::traits::OwnedStruct {}
 
 impl<'a, T> Reader<'a, T>
 where
@@ -90,7 +90,7 @@ where
     }
 }
 
-impl<'a, T> Reader<'a, T>
+impl<T> Reader<'_, T>
 where
     T: crate::traits::OwnedStruct,
 {
@@ -201,7 +201,7 @@ where
     }
 }
 
-impl<'a, T> Builder<'a, T>
+impl<T> Builder<'_, T>
 where
     T: crate::traits::OwnedStruct,
 {
@@ -299,7 +299,7 @@ impl<'a, T: crate::traits::OwnedStruct> From<Builder<'a, T>> for crate::dynamic_
     }
 }
 
-impl<'a, T: crate::traits::OwnedStruct> core::fmt::Debug for Reader<'a, T> {
+impl<T: crate::traits::OwnedStruct> core::fmt::Debug for Reader<'_, T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::fmt::Debug::fmt(
             &::core::convert::Into::<crate::dynamic_value::Reader<'_>>::into(*self),

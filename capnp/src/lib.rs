@@ -717,7 +717,7 @@ impl<'a> core::ops::Deref for OutputSegments<'a> {
     }
 }
 
-impl<'s> message::ReaderSegments for OutputSegments<'s> {
+impl message::ReaderSegments for OutputSegments<'_> {
     fn get_segment(&self, id: u32) -> Option<&[u8]> {
         match self {
             OutputSegments::SingleSegment(s) => s.get(id as usize).copied(),
@@ -747,7 +747,7 @@ impl<T: crate::introspect::Introspect> IntoResult for T {
     }
 }
 
-impl<'a> IntoResult for crate::any_pointer::Reader<'a> {
+impl IntoResult for crate::any_pointer::Reader<'_> {
     type InnerType = Self;
     fn into_result(self) -> Result<Self::InnerType> {
         Ok::<Self::InnerType, Error>(self)

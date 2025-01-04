@@ -130,7 +130,7 @@ impl CodeGenerationCommand {
             }
 
             let root_name = path_to_stem_string(&filepath)?.replace('-', "_");
-            filepath.set_file_name(&format!("{root_name}_capnp.rs"));
+            filepath.set_file_name(format!("{root_name}_capnp.rs"));
 
             let lines = Branch(vec![
                 Line(
@@ -1453,7 +1453,7 @@ fn generate_setter(
                     if typ.is_parameter()? {
                         let mut implicit = false;
                         for par in &used_params {
-                            if interface_implicit_generics.contains(&par) {
+                            if interface_implicit_generics.contains(par) {
                                 implicit = true;
                             }
                         }
@@ -1538,9 +1538,9 @@ fn generate_setter(
     }
     Ok(Branch(result))
 }
-fn check_fields_of_struct_for_lifetimes<'a>(
+fn check_fields_of_struct_for_lifetimes(
     ctx: &GeneratorContext,
-    fields: capnp::struct_list::Reader<'a, schema_capnp::field::Owned>,
+    fields: capnp::struct_list::Reader<'_, schema_capnp::field::Owned>,
     lifetime: &mut &str,
     mut maybe_cyclical_counter: usize,
 ) -> ::capnp::Result<()> {
@@ -1651,7 +1651,7 @@ fn vec_of_list_element_types(
         )),
         type_::Which::Enum(enum_type) => {
             let enum_mod = ctx.get_qualified_module(enum_type.get_type_id());
-            return Ok(format!("Vec<{enum_mod}>"));
+            Ok(format!("Vec<{enum_mod}>"))
         }
         type_::Which::Struct(st) => {
             let capnp::schema_capnp::node::Struct(struct_node) =
@@ -1679,10 +1679,10 @@ fn vec_of_list_element_types(
             } else {
                 "".to_string()
             };
-            return Ok(format!(
+            Ok(format!(
                 "Vec<{}{bracketed_params}>",
                 get_params_struct_path_string(ctx, st)?
-            ));
+            ))
         }
         type_::Which::Interface(i_t) => {
             let the_mod = ctx.get_qualified_module(i_t.get_type_id());
@@ -1692,13 +1692,13 @@ fn vec_of_list_element_types(
             } else {
                 format!("<{}>", p.join(","))
             };
-            return Ok(format!("Vec<{the_mod}::Client{bracketed}>"));
+            Ok(format!("Vec<{the_mod}::Client{bracketed}>"))
         }
         type_::Which::AnyPointer(an) => {
             match an.which()? {
                 type_::any_pointer::Which::Unconstrained(_) => {
                     //TODO
-                    return Ok("Vec<Box<dyn ::capnp::private::capability::ClientHook>>".to_string());
+                    Ok("Vec<Box<dyn ::capnp::private::capability::ClientHook>>".to_string())
                 }
                 type_::any_pointer::Which::Parameter(p) => {
                     params_struct_generics.insert("'a".to_string());
@@ -1706,9 +1706,9 @@ fn vec_of_list_element_types(
                     let parameters = the_struct.get_parameters()?;
                     let parameter = parameters.get(u32::from(p.get_parameter_index()));
                     let parameter_name = parameter.get_name()?.to_str()?;
-                    return Ok(format!(
+                    Ok(format!(
                         "Vec<<{parameter_name} as ::capnp::traits::Owned>::Reader<'a>>"
-                    ));
+                    ))
                 }
                 type_::any_pointer::Which::ImplicitMethodParameter(_) => Err(Error::failed(
                     "Can't be an implicit method parameter".to_string(),
