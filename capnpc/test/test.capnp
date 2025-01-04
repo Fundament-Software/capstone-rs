@@ -802,8 +802,13 @@ struct Map(Key, Value) {
   }
 }
 
-interface GenericBase(T) {}
-interface GenericExtend extends(GenericBase(Data)) {}
+interface GenericBase(T) {
+  foo @0 (t :T) -> ();
+  baz @1 [V] (v: V) -> ();
+}
+interface GenericExtend extends(GenericBase(Data)) {
+  bar @0 () -> ();
+}
 interface GenericExtend2 extends (GenericBase(GenericBase(Data))) {}
 
 struct TestNameAnnotation $Rust.name("RenamedStruct") {
