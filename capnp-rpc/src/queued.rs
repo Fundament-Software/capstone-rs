@@ -162,6 +162,7 @@ impl PipelineHook for Pipeline {
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub struct ClientInner {
     // Once the promise resolves, this will become non-null and point to the underlying object.
     redirect: Option<Box<dyn ClientHook>>,

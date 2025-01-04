@@ -1025,7 +1025,7 @@ fn generate_setter(
     set_inner: &mut String,
     is_params_struct: bool,
     params_struct_generics: &mut HashSet<String>,
-    interface_implicit_generics: &Vec<String>,
+    interface_implicit_generics: &[String],
     node_name: &str,
 ) -> ::capnp::Result<FormattedText> {
     use capnp::schema_capnp::*;
@@ -1949,6 +1949,7 @@ fn used_params_of_brand(
 }
 
 // return (the 'Which' enum, the 'which()' accessor, typedef, default_decls)
+#[allow(clippy::too_many_arguments)]
 fn generate_union(
     ctx: &GeneratorContext,
     discriminant_offset: u32,
@@ -2930,7 +2931,7 @@ fn generate_node(
     rust_struct_inner: &mut String,
     rust_struct_impl_inner: &mut String,
     params_struct_generics: &mut HashSet<String>,
-    interface_implicit_generics: &Vec<String>,
+    interface_implicit_generics: &[String],
     is_params_struct: bool,
 ) -> ::capnp::Result<FormattedText> {
     use capnp::schema_capnp::*;
@@ -2973,6 +2974,8 @@ fn generate_node(
                 output.push(Line(format!("pub mod {node_name} {{")));
             }
             output.push(line("#![allow(clippy::extra_unused_type_parameters)]"));
+            output.push(line("#![allow(clippy::needless_lifetimes)]"));
+
             output.push(BlankLine);
             let bracketed_params = if params.params.is_empty() {
                 "".to_string()
@@ -3098,11 +3101,9 @@ fn generate_node(
                     nested_output.push(text);
                 }
             }
-            let mut bracketed = String::new();
-            let mut bracketed_with_where = String::new();
             let mut implicit_generics = String::new();
-            bracketed = "<".to_string();
-            bracketed_with_where = "<".to_string();
+            let mut bracketed = "<".to_string();
+            let mut bracketed_with_where = "<".to_string();
             if params_struct_generics.remove("'a") {
                 bracketed.push_str("'a,");
                 bracketed_with_where.push_str("'a,");
@@ -3135,10 +3136,10 @@ fn generate_node(
                 snake_to_camel_case(node_name)
             );
             let mut params_enum_string = String::new();
-            let mut params_union_name = String::new();
             let mut union_params = HashSet::new();
             let mut union_lifetime = "";
             if discriminant_count > 0 {
+                let mut params_union_name;
                 if union_only_struct {
                     params_union_name = snake_to_camel_case(node_name);
                     params_struct_string = "".to_string();
@@ -3234,6 +3235,7 @@ fn generate_node(
                 BlankLine
             } else {
                 Branch(vec![
+                    Line("#[allow(clippy::too_many_arguments)]".to_string()),
                     Line(format!("pub fn set(&mut self{set_types}) {{")),
                     indent(Line(format!(" {set_inner}"))),
                     Line("}".to_string()),
@@ -3455,7 +3457,7 @@ fn generate_node(
 
                 from_pointer_builder_impl,
                 Line(fmt!(ctx,
-                    "impl <'a,{0}> {capnp}::traits::SetPointerBuilder for Reader<'a,{0}> {1} {{",
+                    "impl <{0}> {capnp}::traits::SetPointerBuilder for Reader<'_,{0}> {1} {{",
                     params.params, params.where_clause)),
                 indent(Line(fmt!(ctx,"fn set_pointer_builder(mut pointer: {capnp}::private::layout::PointerBuilder<'_>, value: Self, canonicalize: bool) -> {capnp}::Result<()> {{ pointer.set_struct(&value.reader, canonicalize) }}"))),
                 line("}"),
@@ -3558,7 +3560,7 @@ fn generate_node(
             ]));
 
             output.push(Branch(vec![
-                Line(fmt!(ctx,"impl <'a> ::core::convert::From<{last_name}> for {capnp}::dynamic_value::Reader<'a> {{")),
+                Line(fmt!(ctx,"impl ::core::convert::From<{last_name}> for {capnp}::dynamic_value::Reader<'_> {{")),
                 indent(Line(fmt!(ctx,
                     "fn from(e: {last_name}) -> Self {{ {capnp}::dynamic_value::Enum::new(e.into(), {capnp}::introspect::RawEnumSchema {{ encoded_node: &{0}::ENCODED_NODE, annotation_types: {0}::get_annotation_types }}.into()).into() }}", name_as_mod ))),
                 Line("}".into())
@@ -3653,6 +3655,7 @@ fn generate_node(
             mod_interior.push(line("#![allow(unused_variables)]"));
             mod_interior.push(line("#![allow(clippy::extra_unused_type_parameters)]"));
             mod_interior.push(line("#![allow(clippy::wrong_self_convention)]"));
+            mod_interior.push(line("#![allow(clippy::needless_lifetimes)]"));
             mod_interior.push(BlankLine);
             let methods = interface.get_methods()?;
             let mut method_count = 0;

@@ -1782,6 +1782,7 @@ where
         message_root.init_call()
     }
 
+    #[allow(clippy::type_complexity)]
     fn send_internal(
         connection_state: &Rc<ConnectionState<VatId>>,
         mut message: Box<dyn crate::OutgoingMessage>,
@@ -1966,6 +1967,7 @@ where
     Broken(Error),
 }
 
+#[allow(clippy::type_complexity)]
 struct PipelineState<VatId>
 where
     VatId: 'static,
