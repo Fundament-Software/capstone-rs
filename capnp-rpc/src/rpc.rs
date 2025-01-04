@@ -59,6 +59,12 @@ pub struct ImportTable<T> {
     slots: HashMap<u32, T>,
 }
 
+impl<T> Default for ImportTable<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> ImportTable<T> {
     pub fn new() -> Self {
         Self {

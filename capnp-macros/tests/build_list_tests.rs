@@ -69,7 +69,7 @@ mod capnp_build {
                 list_reader.get(1).get_text_field().unwrap().to_str(),
                 Ok("text")
             );
-            assert_eq!(list_reader.get(2).get_bool_field(), false);
+            assert!(!list_reader.get(2).get_bool_field());
             Promise::ok(())
         }
         let mut message = capnp::message::Builder::new_default();

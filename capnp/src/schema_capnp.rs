@@ -33,14 +33,14 @@ pub mod node {
     pub struct Reader<'a> {
         reader: crate::private::layout::StructReader<'a>,
     }
-    impl<'a> ::core::marker::Copy for Reader<'a> {}
-    impl<'a> ::core::clone::Clone for Reader<'a> {
+    impl ::core::marker::Copy for Reader<'_> {}
+    impl ::core::clone::Clone for Reader<'_> {
         fn clone(&self) -> Self {
             *self
         }
     }
 
-    impl<'a> crate::traits::HasTypeId for Reader<'a> {
+    impl crate::traits::HasTypeId for Reader<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -63,7 +63,7 @@ pub mod node {
         }
     }
 
-    impl<'a> ::core::fmt::Debug for Reader<'a> {
+    impl ::core::fmt::Debug for Reader<'_> {
         fn fmt(
             &self,
             f: &mut ::core::fmt::Formatter<'_>,
@@ -193,14 +193,14 @@ pub mod node {
     pub struct Builder<'a> {
         builder: crate::private::layout::StructBuilder<'a>,
     }
-    impl<'a> crate::traits::HasStructSize for Builder<'a> {
+    impl crate::traits::HasStructSize for Builder<'_> {
         const STRUCT_SIZE: crate::private::layout::StructSize =
             crate::private::layout::StructSize {
                 data: 5,
                 pointers: 6,
             };
     }
-    impl<'a> crate::traits::HasTypeId for Builder<'a> {
+    impl crate::traits::HasTypeId for Builder<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -248,7 +248,7 @@ pub mod node {
         }
     }
 
-    impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+    impl crate::traits::SetPointerBuilder for Reader<'_> {
         fn set_pointer_builder(
             mut pointer: crate::private::layout::PointerBuilder<'_>,
             value: Self,
@@ -818,14 +818,14 @@ pub mod node {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -848,7 +848,7 @@ pub mod node {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -906,14 +906,14 @@ pub mod node {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 0,
                     pointers: 1,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -964,7 +964,7 @@ pub mod node {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -1111,14 +1111,14 @@ pub mod node {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -1141,7 +1141,7 @@ pub mod node {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -1203,14 +1203,14 @@ pub mod node {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 1,
                     pointers: 1,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -1261,7 +1261,7 @@ pub mod node {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -1432,14 +1432,14 @@ pub mod node {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -1462,7 +1462,7 @@ pub mod node {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -1542,14 +1542,14 @@ pub mod node {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 1,
                     pointers: 2,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -1600,7 +1600,7 @@ pub mod node {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -1843,14 +1843,14 @@ pub mod node {
             pub struct Reader<'a> {
                 reader: crate::private::layout::StructReader<'a>,
             }
-            impl<'a> ::core::marker::Copy for Reader<'a> {}
-            impl<'a> ::core::clone::Clone for Reader<'a> {
+            impl ::core::marker::Copy for Reader<'_> {}
+            impl ::core::clone::Clone for Reader<'_> {
                 fn clone(&self) -> Self {
                     *self
                 }
             }
 
-            impl<'a> crate::traits::HasTypeId for Reader<'a> {
+            impl crate::traits::HasTypeId for Reader<'_> {
                 const TYPE_ID: u64 = _private::TYPE_ID;
             }
             impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -1875,7 +1875,7 @@ pub mod node {
                 }
             }
 
-            impl<'a> ::core::fmt::Debug for Reader<'a> {
+            impl ::core::fmt::Debug for Reader<'_> {
                 fn fmt(
                     &self,
                     f: &mut ::core::fmt::Formatter<'_>,
@@ -1933,14 +1933,14 @@ pub mod node {
             pub struct Builder<'a> {
                 builder: crate::private::layout::StructBuilder<'a>,
             }
-            impl<'a> crate::traits::HasStructSize for Builder<'a> {
+            impl crate::traits::HasStructSize for Builder<'_> {
                 const STRUCT_SIZE: crate::private::layout::StructSize =
                     crate::private::layout::StructSize {
                         data: 0,
                         pointers: 1,
                     };
             }
-            impl<'a> crate::traits::HasTypeId for Builder<'a> {
+            impl crate::traits::HasTypeId for Builder<'_> {
                 const TYPE_ID: u64 = _private::TYPE_ID;
             }
             impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -1996,7 +1996,7 @@ pub mod node {
                 }
             }
 
-            impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+            impl crate::traits::SetPointerBuilder for Reader<'_> {
                 fn set_pointer_builder(
                     mut pointer: crate::private::layout::PointerBuilder<'_>,
                     value: Self,
@@ -2146,14 +2146,14 @@ pub mod node {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -2176,7 +2176,7 @@ pub mod node {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -2264,14 +2264,14 @@ pub mod node {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 5,
                     pointers: 6,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -2322,7 +2322,7 @@ pub mod node {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -2643,14 +2643,14 @@ pub mod node {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -2673,7 +2673,7 @@ pub mod node {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -2734,14 +2734,14 @@ pub mod node {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 5,
                     pointers: 6,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -2792,7 +2792,7 @@ pub mod node {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -2959,14 +2959,14 @@ pub mod node {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -2989,7 +2989,7 @@ pub mod node {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -3064,14 +3064,14 @@ pub mod node {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 5,
                     pointers: 6,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -3122,7 +3122,7 @@ pub mod node {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -3346,14 +3346,14 @@ pub mod node {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -3376,7 +3376,7 @@ pub mod node {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -3445,14 +3445,14 @@ pub mod node {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 5,
                     pointers: 6,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -3503,7 +3503,7 @@ pub mod node {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -3710,14 +3710,14 @@ pub mod node {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -3740,7 +3740,7 @@ pub mod node {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -3846,14 +3846,14 @@ pub mod node {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 5,
                     pointers: 6,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -3904,7 +3904,7 @@ pub mod node {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -4370,14 +4370,14 @@ pub mod field {
     pub struct Reader<'a> {
         reader: crate::private::layout::StructReader<'a>,
     }
-    impl<'a> ::core::marker::Copy for Reader<'a> {}
-    impl<'a> ::core::clone::Clone for Reader<'a> {
+    impl ::core::marker::Copy for Reader<'_> {}
+    impl ::core::clone::Clone for Reader<'_> {
         fn clone(&self) -> Self {
             *self
         }
     }
 
-    impl<'a> crate::traits::HasTypeId for Reader<'a> {
+    impl crate::traits::HasTypeId for Reader<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -4400,7 +4400,7 @@ pub mod field {
         }
     }
 
-    impl<'a> ::core::fmt::Debug for Reader<'a> {
+    impl ::core::fmt::Debug for Reader<'_> {
         fn fmt(
             &self,
             f: &mut ::core::fmt::Formatter<'_>,
@@ -4492,14 +4492,14 @@ pub mod field {
     pub struct Builder<'a> {
         builder: crate::private::layout::StructBuilder<'a>,
     }
-    impl<'a> crate::traits::HasStructSize for Builder<'a> {
+    impl crate::traits::HasStructSize for Builder<'_> {
         const STRUCT_SIZE: crate::private::layout::StructSize =
             crate::private::layout::StructSize {
                 data: 3,
                 pointers: 4,
             };
     }
-    impl<'a> crate::traits::HasTypeId for Builder<'a> {
+    impl crate::traits::HasTypeId for Builder<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -4547,7 +4547,7 @@ pub mod field {
         }
     }
 
-    impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+    impl crate::traits::SetPointerBuilder for Reader<'_> {
         fn set_pointer_builder(
             mut pointer: crate::private::layout::PointerBuilder<'_>,
             value: Self,
@@ -4877,14 +4877,14 @@ pub mod field {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -4907,7 +4907,7 @@ pub mod field {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -4986,14 +4986,14 @@ pub mod field {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 3,
                     pointers: 4,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -5044,7 +5044,7 @@ pub mod field {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -5304,14 +5304,14 @@ pub mod field {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -5334,7 +5334,7 @@ pub mod field {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -5368,7 +5368,7 @@ pub mod field {
             }
         }
 
-        impl<'a> Reader<'a> {
+        impl Reader<'_> {
             pub fn reborrow(&self) -> Reader<'_> {
                 Self { ..*self }
             }
@@ -5385,14 +5385,14 @@ pub mod field {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 3,
                     pointers: 4,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -5443,7 +5443,7 @@ pub mod field {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -5580,14 +5580,14 @@ pub mod field {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -5610,7 +5610,7 @@ pub mod field {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -5644,7 +5644,7 @@ pub mod field {
             }
         }
 
-        impl<'a> Reader<'a> {
+        impl Reader<'_> {
             pub fn reborrow(&self) -> Reader<'_> {
                 Self { ..*self }
             }
@@ -5665,14 +5665,14 @@ pub mod field {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 3,
                     pointers: 4,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -5723,7 +5723,7 @@ pub mod field {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -5894,14 +5894,14 @@ pub mod enumerant {
     pub struct Reader<'a> {
         reader: crate::private::layout::StructReader<'a>,
     }
-    impl<'a> ::core::marker::Copy for Reader<'a> {}
-    impl<'a> ::core::clone::Clone for Reader<'a> {
+    impl ::core::marker::Copy for Reader<'_> {}
+    impl ::core::clone::Clone for Reader<'_> {
         fn clone(&self) -> Self {
             *self
         }
     }
 
-    impl<'a> crate::traits::HasTypeId for Reader<'a> {
+    impl crate::traits::HasTypeId for Reader<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -5924,7 +5924,7 @@ pub mod enumerant {
         }
     }
 
-    impl<'a> ::core::fmt::Debug for Reader<'a> {
+    impl ::core::fmt::Debug for Reader<'_> {
         fn fmt(
             &self,
             f: &mut ::core::fmt::Formatter<'_>,
@@ -6000,14 +6000,14 @@ pub mod enumerant {
     pub struct Builder<'a> {
         builder: crate::private::layout::StructBuilder<'a>,
     }
-    impl<'a> crate::traits::HasStructSize for Builder<'a> {
+    impl crate::traits::HasStructSize for Builder<'_> {
         const STRUCT_SIZE: crate::private::layout::StructSize =
             crate::private::layout::StructSize {
                 data: 1,
                 pointers: 2,
             };
     }
-    impl<'a> crate::traits::HasTypeId for Builder<'a> {
+    impl crate::traits::HasTypeId for Builder<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -6055,7 +6055,7 @@ pub mod enumerant {
         }
     }
 
-    impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+    impl crate::traits::SetPointerBuilder for Reader<'_> {
         fn set_pointer_builder(
             mut pointer: crate::private::layout::PointerBuilder<'_>,
             value: Self,
@@ -6279,14 +6279,14 @@ pub mod superclass {
     pub struct Reader<'a> {
         reader: crate::private::layout::StructReader<'a>,
     }
-    impl<'a> ::core::marker::Copy for Reader<'a> {}
-    impl<'a> ::core::clone::Clone for Reader<'a> {
+    impl ::core::marker::Copy for Reader<'_> {}
+    impl ::core::clone::Clone for Reader<'_> {
         fn clone(&self) -> Self {
             *self
         }
     }
 
-    impl<'a> crate::traits::HasTypeId for Reader<'a> {
+    impl crate::traits::HasTypeId for Reader<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -6309,7 +6309,7 @@ pub mod superclass {
         }
     }
 
-    impl<'a> ::core::fmt::Debug for Reader<'a> {
+    impl ::core::fmt::Debug for Reader<'_> {
         fn fmt(
             &self,
             f: &mut ::core::fmt::Formatter<'_>,
@@ -6371,14 +6371,14 @@ pub mod superclass {
     pub struct Builder<'a> {
         builder: crate::private::layout::StructBuilder<'a>,
     }
-    impl<'a> crate::traits::HasStructSize for Builder<'a> {
+    impl crate::traits::HasStructSize for Builder<'_> {
         const STRUCT_SIZE: crate::private::layout::StructSize =
             crate::private::layout::StructSize {
                 data: 1,
                 pointers: 1,
             };
     }
-    impl<'a> crate::traits::HasTypeId for Builder<'a> {
+    impl crate::traits::HasTypeId for Builder<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -6426,7 +6426,7 @@ pub mod superclass {
         }
     }
 
-    impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+    impl crate::traits::SetPointerBuilder for Reader<'_> {
         fn set_pointer_builder(
             mut pointer: crate::private::layout::PointerBuilder<'_>,
             value: Self,
@@ -6610,14 +6610,14 @@ pub mod method {
     pub struct Reader<'a> {
         reader: crate::private::layout::StructReader<'a>,
     }
-    impl<'a> ::core::marker::Copy for Reader<'a> {}
-    impl<'a> ::core::clone::Clone for Reader<'a> {
+    impl ::core::marker::Copy for Reader<'_> {}
+    impl ::core::clone::Clone for Reader<'_> {
         fn clone(&self) -> Self {
             *self
         }
     }
 
-    impl<'a> crate::traits::HasTypeId for Reader<'a> {
+    impl crate::traits::HasTypeId for Reader<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -6640,7 +6640,7 @@ pub mod method {
         }
     }
 
-    impl<'a> ::core::fmt::Debug for Reader<'a> {
+    impl ::core::fmt::Debug for Reader<'_> {
         fn fmt(
             &self,
             f: &mut ::core::fmt::Formatter<'_>,
@@ -6761,14 +6761,14 @@ pub mod method {
     pub struct Builder<'a> {
         builder: crate::private::layout::StructBuilder<'a>,
     }
-    impl<'a> crate::traits::HasStructSize for Builder<'a> {
+    impl crate::traits::HasStructSize for Builder<'_> {
         const STRUCT_SIZE: crate::private::layout::StructSize =
             crate::private::layout::StructSize {
                 data: 3,
                 pointers: 5,
             };
     }
-    impl<'a> crate::traits::HasTypeId for Builder<'a> {
+    impl crate::traits::HasTypeId for Builder<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -6816,7 +6816,7 @@ pub mod method {
         }
     }
 
-    impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+    impl crate::traits::SetPointerBuilder for Reader<'_> {
         fn set_pointer_builder(
             mut pointer: crate::private::layout::PointerBuilder<'_>,
             value: Self,
@@ -7244,14 +7244,14 @@ pub mod type_ {
     pub struct Reader<'a> {
         reader: crate::private::layout::StructReader<'a>,
     }
-    impl<'a> ::core::marker::Copy for Reader<'a> {}
-    impl<'a> ::core::clone::Clone for Reader<'a> {
+    impl ::core::marker::Copy for Reader<'_> {}
+    impl ::core::clone::Clone for Reader<'_> {
         fn clone(&self) -> Self {
             *self
         }
     }
 
-    impl<'a> crate::traits::HasTypeId for Reader<'a> {
+    impl crate::traits::HasTypeId for Reader<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -7274,7 +7274,7 @@ pub mod type_ {
         }
     }
 
-    impl<'a> ::core::fmt::Debug for Reader<'a> {
+    impl ::core::fmt::Debug for Reader<'_> {
         fn fmt(
             &self,
             f: &mut ::core::fmt::Formatter<'_>,
@@ -7346,14 +7346,14 @@ pub mod type_ {
     pub struct Builder<'a> {
         builder: crate::private::layout::StructBuilder<'a>,
     }
-    impl<'a> crate::traits::HasStructSize for Builder<'a> {
+    impl crate::traits::HasStructSize for Builder<'_> {
         const STRUCT_SIZE: crate::private::layout::StructSize =
             crate::private::layout::StructSize {
                 data: 3,
                 pointers: 1,
             };
     }
-    impl<'a> crate::traits::HasTypeId for Builder<'a> {
+    impl crate::traits::HasTypeId for Builder<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -7401,7 +7401,7 @@ pub mod type_ {
         }
     }
 
-    impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+    impl crate::traits::SetPointerBuilder for Reader<'_> {
         fn set_pointer_builder(
             mut pointer: crate::private::layout::PointerBuilder<'_>,
             value: Self,
@@ -7937,14 +7937,14 @@ pub mod type_ {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -7967,7 +7967,7 @@ pub mod type_ {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -8025,14 +8025,14 @@ pub mod type_ {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 3,
                     pointers: 1,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -8083,7 +8083,7 @@ pub mod type_ {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -8245,14 +8245,14 @@ pub mod type_ {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -8275,7 +8275,7 @@ pub mod type_ {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -8337,14 +8337,14 @@ pub mod type_ {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 3,
                     pointers: 1,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -8395,7 +8395,7 @@ pub mod type_ {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -8578,14 +8578,14 @@ pub mod type_ {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -8608,7 +8608,7 @@ pub mod type_ {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -8670,14 +8670,14 @@ pub mod type_ {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 3,
                     pointers: 1,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -8728,7 +8728,7 @@ pub mod type_ {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -8912,14 +8912,14 @@ pub mod type_ {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -8942,7 +8942,7 @@ pub mod type_ {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -9004,14 +9004,14 @@ pub mod type_ {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 3,
                     pointers: 1,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -9062,7 +9062,7 @@ pub mod type_ {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -9248,14 +9248,14 @@ pub mod type_ {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -9278,7 +9278,7 @@ pub mod type_ {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -9334,14 +9334,14 @@ pub mod type_ {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 3,
                     pointers: 1,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -9392,7 +9392,7 @@ pub mod type_ {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -9587,14 +9587,14 @@ pub mod type_ {
             pub struct Reader<'a> {
                 reader: crate::private::layout::StructReader<'a>,
             }
-            impl<'a> ::core::marker::Copy for Reader<'a> {}
-            impl<'a> ::core::clone::Clone for Reader<'a> {
+            impl ::core::marker::Copy for Reader<'_> {}
+            impl ::core::clone::Clone for Reader<'_> {
                 fn clone(&self) -> Self {
                     *self
                 }
             }
 
-            impl<'a> crate::traits::HasTypeId for Reader<'a> {
+            impl crate::traits::HasTypeId for Reader<'_> {
                 const TYPE_ID: u64 = _private::TYPE_ID;
             }
             impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -9619,7 +9619,7 @@ pub mod type_ {
                 }
             }
 
-            impl<'a> ::core::fmt::Debug for Reader<'a> {
+            impl ::core::fmt::Debug for Reader<'_> {
                 fn fmt(
                     &self,
                     f: &mut ::core::fmt::Formatter<'_>,
@@ -9653,7 +9653,7 @@ pub mod type_ {
                 }
             }
 
-            impl<'a> Reader<'a> {
+            impl Reader<'_> {
                 pub fn reborrow(&self) -> Reader<'_> {
                     Self { ..*self }
                 }
@@ -9676,14 +9676,14 @@ pub mod type_ {
             pub struct Builder<'a> {
                 builder: crate::private::layout::StructBuilder<'a>,
             }
-            impl<'a> crate::traits::HasStructSize for Builder<'a> {
+            impl crate::traits::HasStructSize for Builder<'_> {
                 const STRUCT_SIZE: crate::private::layout::StructSize =
                     crate::private::layout::StructSize {
                         data: 3,
                         pointers: 1,
                     };
             }
-            impl<'a> crate::traits::HasTypeId for Builder<'a> {
+            impl crate::traits::HasTypeId for Builder<'_> {
                 const TYPE_ID: u64 = _private::TYPE_ID;
             }
             impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -9739,7 +9739,7 @@ pub mod type_ {
                 }
             }
 
-            impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+            impl crate::traits::SetPointerBuilder for Reader<'_> {
                 fn set_pointer_builder(
                     mut pointer: crate::private::layout::PointerBuilder<'_>,
                     value: Self,
@@ -9953,14 +9953,14 @@ pub mod type_ {
             pub struct Reader<'a> {
                 reader: crate::private::layout::StructReader<'a>,
             }
-            impl<'a> ::core::marker::Copy for Reader<'a> {}
-            impl<'a> ::core::clone::Clone for Reader<'a> {
+            impl ::core::marker::Copy for Reader<'_> {}
+            impl ::core::clone::Clone for Reader<'_> {
                 fn clone(&self) -> Self {
                     *self
                 }
             }
 
-            impl<'a> crate::traits::HasTypeId for Reader<'a> {
+            impl crate::traits::HasTypeId for Reader<'_> {
                 const TYPE_ID: u64 = _private::TYPE_ID;
             }
             impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -9985,7 +9985,7 @@ pub mod type_ {
                 }
             }
 
-            impl<'a> ::core::fmt::Debug for Reader<'a> {
+            impl ::core::fmt::Debug for Reader<'_> {
                 fn fmt(
                     &self,
                     f: &mut ::core::fmt::Formatter<'_>,
@@ -10019,7 +10019,7 @@ pub mod type_ {
                 }
             }
 
-            impl<'a> Reader<'a> {
+            impl Reader<'_> {
                 pub fn reborrow(&self) -> Reader<'_> {
                     Self { ..*self }
                 }
@@ -10040,14 +10040,14 @@ pub mod type_ {
             pub struct Builder<'a> {
                 builder: crate::private::layout::StructBuilder<'a>,
             }
-            impl<'a> crate::traits::HasStructSize for Builder<'a> {
+            impl crate::traits::HasStructSize for Builder<'_> {
                 const STRUCT_SIZE: crate::private::layout::StructSize =
                     crate::private::layout::StructSize {
                         data: 3,
                         pointers: 1,
                     };
             }
-            impl<'a> crate::traits::HasTypeId for Builder<'a> {
+            impl crate::traits::HasTypeId for Builder<'_> {
                 const TYPE_ID: u64 = _private::TYPE_ID;
             }
             impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -10103,7 +10103,7 @@ pub mod type_ {
                 }
             }
 
-            impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+            impl crate::traits::SetPointerBuilder for Reader<'_> {
                 fn set_pointer_builder(
                     mut pointer: crate::private::layout::PointerBuilder<'_>,
                     value: Self,
@@ -10266,14 +10266,14 @@ pub mod type_ {
             pub struct Reader<'a> {
                 reader: crate::private::layout::StructReader<'a>,
             }
-            impl<'a> ::core::marker::Copy for Reader<'a> {}
-            impl<'a> ::core::clone::Clone for Reader<'a> {
+            impl ::core::marker::Copy for Reader<'_> {}
+            impl ::core::clone::Clone for Reader<'_> {
                 fn clone(&self) -> Self {
                     *self
                 }
             }
 
-            impl<'a> crate::traits::HasTypeId for Reader<'a> {
+            impl crate::traits::HasTypeId for Reader<'_> {
                 const TYPE_ID: u64 = _private::TYPE_ID;
             }
             impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -10298,7 +10298,7 @@ pub mod type_ {
                 }
             }
 
-            impl<'a> ::core::fmt::Debug for Reader<'a> {
+            impl ::core::fmt::Debug for Reader<'_> {
                 fn fmt(
                     &self,
                     f: &mut ::core::fmt::Formatter<'_>,
@@ -10332,7 +10332,7 @@ pub mod type_ {
                 }
             }
 
-            impl<'a> Reader<'a> {
+            impl Reader<'_> {
                 pub fn reborrow(&self) -> Reader<'_> {
                     Self { ..*self }
                 }
@@ -10349,14 +10349,14 @@ pub mod type_ {
             pub struct Builder<'a> {
                 builder: crate::private::layout::StructBuilder<'a>,
             }
-            impl<'a> crate::traits::HasStructSize for Builder<'a> {
+            impl crate::traits::HasStructSize for Builder<'_> {
                 const STRUCT_SIZE: crate::private::layout::StructSize =
                     crate::private::layout::StructSize {
                         data: 3,
                         pointers: 1,
                     };
             }
-            impl<'a> crate::traits::HasTypeId for Builder<'a> {
+            impl crate::traits::HasTypeId for Builder<'_> {
                 const TYPE_ID: u64 = _private::TYPE_ID;
             }
             impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -10412,7 +10412,7 @@ pub mod type_ {
                 }
             }
 
-            impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+            impl crate::traits::SetPointerBuilder for Reader<'_> {
                 fn set_pointer_builder(
                     mut pointer: crate::private::layout::PointerBuilder<'_>,
                     value: Self,
@@ -10553,14 +10553,14 @@ pub mod brand {
     pub struct Reader<'a> {
         reader: crate::private::layout::StructReader<'a>,
     }
-    impl<'a> ::core::marker::Copy for Reader<'a> {}
-    impl<'a> ::core::clone::Clone for Reader<'a> {
+    impl ::core::marker::Copy for Reader<'_> {}
+    impl ::core::clone::Clone for Reader<'_> {
         fn clone(&self) -> Self {
             *self
         }
     }
 
-    impl<'a> crate::traits::HasTypeId for Reader<'a> {
+    impl crate::traits::HasTypeId for Reader<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -10583,7 +10583,7 @@ pub mod brand {
         }
     }
 
-    impl<'a> ::core::fmt::Debug for Reader<'a> {
+    impl ::core::fmt::Debug for Reader<'_> {
         fn fmt(
             &self,
             f: &mut ::core::fmt::Formatter<'_>,
@@ -10644,14 +10644,14 @@ pub mod brand {
     pub struct Builder<'a> {
         builder: crate::private::layout::StructBuilder<'a>,
     }
-    impl<'a> crate::traits::HasStructSize for Builder<'a> {
+    impl crate::traits::HasStructSize for Builder<'_> {
         const STRUCT_SIZE: crate::private::layout::StructSize =
             crate::private::layout::StructSize {
                 data: 0,
                 pointers: 1,
             };
     }
-    impl<'a> crate::traits::HasTypeId for Builder<'a> {
+    impl crate::traits::HasTypeId for Builder<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -10699,7 +10699,7 @@ pub mod brand {
         }
     }
 
-    impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+    impl crate::traits::SetPointerBuilder for Reader<'_> {
         fn set_pointer_builder(
             mut pointer: crate::private::layout::PointerBuilder<'_>,
             value: Self,
@@ -10869,14 +10869,14 @@ pub mod brand {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -10899,7 +10899,7 @@ pub mod brand {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -10970,14 +10970,14 @@ pub mod brand {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 2,
                     pointers: 1,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -11028,7 +11028,7 @@ pub mod brand {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -11264,14 +11264,14 @@ pub mod brand {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -11294,7 +11294,7 @@ pub mod brand {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -11361,14 +11361,14 @@ pub mod brand {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 1,
                     pointers: 1,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -11419,7 +11419,7 @@ pub mod brand {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -11619,14 +11619,14 @@ pub mod value {
     pub struct Reader<'a> {
         reader: crate::private::layout::StructReader<'a>,
     }
-    impl<'a> ::core::marker::Copy for Reader<'a> {}
-    impl<'a> ::core::clone::Clone for Reader<'a> {
+    impl ::core::marker::Copy for Reader<'_> {}
+    impl ::core::clone::Clone for Reader<'_> {
         fn clone(&self) -> Self {
             *self
         }
     }
 
-    impl<'a> crate::traits::HasTypeId for Reader<'a> {
+    impl crate::traits::HasTypeId for Reader<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -11649,7 +11649,7 @@ pub mod value {
         }
     }
 
-    impl<'a> ::core::fmt::Debug for Reader<'a> {
+    impl ::core::fmt::Debug for Reader<'_> {
         fn fmt(
             &self,
             f: &mut ::core::fmt::Formatter<'_>,
@@ -11772,14 +11772,14 @@ pub mod value {
     pub struct Builder<'a> {
         builder: crate::private::layout::StructBuilder<'a>,
     }
-    impl<'a> crate::traits::HasStructSize for Builder<'a> {
+    impl crate::traits::HasStructSize for Builder<'_> {
         const STRUCT_SIZE: crate::private::layout::StructSize =
             crate::private::layout::StructSize {
                 data: 2,
                 pointers: 1,
             };
     }
-    impl<'a> crate::traits::HasTypeId for Builder<'a> {
+    impl crate::traits::HasTypeId for Builder<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -11827,7 +11827,7 @@ pub mod value {
         }
     }
 
-    impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+    impl crate::traits::SetPointerBuilder for Reader<'_> {
         fn set_pointer_builder(
             mut pointer: crate::private::layout::PointerBuilder<'_>,
             value: Self,
@@ -12466,14 +12466,14 @@ pub mod annotation {
     pub struct Reader<'a> {
         reader: crate::private::layout::StructReader<'a>,
     }
-    impl<'a> ::core::marker::Copy for Reader<'a> {}
-    impl<'a> ::core::clone::Clone for Reader<'a> {
+    impl ::core::marker::Copy for Reader<'_> {}
+    impl ::core::clone::Clone for Reader<'_> {
         fn clone(&self) -> Self {
             *self
         }
     }
 
-    impl<'a> crate::traits::HasTypeId for Reader<'a> {
+    impl crate::traits::HasTypeId for Reader<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -12496,7 +12496,7 @@ pub mod annotation {
         }
     }
 
-    impl<'a> ::core::fmt::Debug for Reader<'a> {
+    impl ::core::fmt::Debug for Reader<'_> {
         fn fmt(
             &self,
             f: &mut ::core::fmt::Formatter<'_>,
@@ -12569,14 +12569,14 @@ pub mod annotation {
     pub struct Builder<'a> {
         builder: crate::private::layout::StructBuilder<'a>,
     }
-    impl<'a> crate::traits::HasStructSize for Builder<'a> {
+    impl crate::traits::HasStructSize for Builder<'_> {
         const STRUCT_SIZE: crate::private::layout::StructSize =
             crate::private::layout::StructSize {
                 data: 1,
                 pointers: 2,
             };
     }
-    impl<'a> crate::traits::HasTypeId for Builder<'a> {
+    impl crate::traits::HasTypeId for Builder<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -12624,7 +12624,7 @@ pub mod annotation {
         }
     }
 
-    impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+    impl crate::traits::SetPointerBuilder for Reader<'_> {
         fn set_pointer_builder(
             mut pointer: crate::private::layout::PointerBuilder<'_>,
             value: Self,
@@ -12849,7 +12849,7 @@ impl crate::introspect::Introspect for ElementSize {
         .into()
     }
 }
-impl<'a> ::core::convert::From<ElementSize> for crate::dynamic_value::Reader<'a> {
+impl ::core::convert::From<ElementSize> for crate::dynamic_value::Reader<'_> {
     fn from(e: ElementSize) -> Self {
         crate::dynamic_value::Enum::new(
             e.into(),
@@ -12980,14 +12980,14 @@ pub mod capnp_version {
     pub struct Reader<'a> {
         reader: crate::private::layout::StructReader<'a>,
     }
-    impl<'a> ::core::marker::Copy for Reader<'a> {}
-    impl<'a> ::core::clone::Clone for Reader<'a> {
+    impl ::core::marker::Copy for Reader<'_> {}
+    impl ::core::clone::Clone for Reader<'_> {
         fn clone(&self) -> Self {
             *self
         }
     }
 
-    impl<'a> crate::traits::HasTypeId for Reader<'a> {
+    impl crate::traits::HasTypeId for Reader<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -13010,7 +13010,7 @@ pub mod capnp_version {
         }
     }
 
-    impl<'a> ::core::fmt::Debug for Reader<'a> {
+    impl ::core::fmt::Debug for Reader<'_> {
         fn fmt(
             &self,
             f: &mut ::core::fmt::Formatter<'_>,
@@ -13044,7 +13044,7 @@ pub mod capnp_version {
         }
     }
 
-    impl<'a> Reader<'a> {
+    impl Reader<'_> {
         pub fn reborrow(&self) -> Reader<'_> {
             Self { ..*self }
         }
@@ -13069,14 +13069,14 @@ pub mod capnp_version {
     pub struct Builder<'a> {
         builder: crate::private::layout::StructBuilder<'a>,
     }
-    impl<'a> crate::traits::HasStructSize for Builder<'a> {
+    impl crate::traits::HasStructSize for Builder<'_> {
         const STRUCT_SIZE: crate::private::layout::StructSize =
             crate::private::layout::StructSize {
                 data: 1,
                 pointers: 0,
             };
     }
-    impl<'a> crate::traits::HasTypeId for Builder<'a> {
+    impl crate::traits::HasTypeId for Builder<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -13124,7 +13124,7 @@ pub mod capnp_version {
         }
     }
 
-    impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+    impl crate::traits::SetPointerBuilder for Reader<'_> {
         fn set_pointer_builder(
             mut pointer: crate::private::layout::PointerBuilder<'_>,
             value: Self,
@@ -13308,14 +13308,14 @@ pub mod code_generator_request {
     pub struct Reader<'a> {
         reader: crate::private::layout::StructReader<'a>,
     }
-    impl<'a> ::core::marker::Copy for Reader<'a> {}
-    impl<'a> ::core::clone::Clone for Reader<'a> {
+    impl ::core::marker::Copy for Reader<'_> {}
+    impl ::core::clone::Clone for Reader<'_> {
         fn clone(&self) -> Self {
             *self
         }
     }
 
-    impl<'a> crate::traits::HasTypeId for Reader<'a> {
+    impl crate::traits::HasTypeId for Reader<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -13338,7 +13338,7 @@ pub mod code_generator_request {
         }
     }
 
-    impl<'a> ::core::fmt::Debug for Reader<'a> {
+    impl ::core::fmt::Debug for Reader<'_> {
         fn fmt(
             &self,
             f: &mut ::core::fmt::Formatter<'_>,
@@ -13445,14 +13445,14 @@ pub mod code_generator_request {
     pub struct Builder<'a> {
         builder: crate::private::layout::StructBuilder<'a>,
     }
-    impl<'a> crate::traits::HasStructSize for Builder<'a> {
+    impl crate::traits::HasStructSize for Builder<'_> {
         const STRUCT_SIZE: crate::private::layout::StructSize =
             crate::private::layout::StructSize {
                 data: 0,
                 pointers: 4,
             };
     }
-    impl<'a> crate::traits::HasTypeId for Builder<'a> {
+    impl crate::traits::HasTypeId for Builder<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
     impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -13500,7 +13500,7 @@ pub mod code_generator_request {
         }
     }
 
-    impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+    impl crate::traits::SetPointerBuilder for Reader<'_> {
         fn set_pointer_builder(
             mut pointer: crate::private::layout::PointerBuilder<'_>,
             value: Self,
@@ -13835,14 +13835,14 @@ pub mod code_generator_request {
         pub struct Reader<'a> {
             reader: crate::private::layout::StructReader<'a>,
         }
-        impl<'a> ::core::marker::Copy for Reader<'a> {}
-        impl<'a> ::core::clone::Clone for Reader<'a> {
+        impl ::core::marker::Copy for Reader<'_> {}
+        impl ::core::clone::Clone for Reader<'_> {
             fn clone(&self) -> Self {
                 *self
             }
         }
 
-        impl<'a> crate::traits::HasTypeId for Reader<'a> {
+        impl crate::traits::HasTypeId for Reader<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -13865,7 +13865,7 @@ pub mod code_generator_request {
             }
         }
 
-        impl<'a> ::core::fmt::Debug for Reader<'a> {
+        impl ::core::fmt::Debug for Reader<'_> {
             fn fmt(
                 &self,
                 f: &mut ::core::fmt::Formatter<'_>,
@@ -13945,14 +13945,14 @@ pub mod code_generator_request {
         pub struct Builder<'a> {
             builder: crate::private::layout::StructBuilder<'a>,
         }
-        impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        impl crate::traits::HasStructSize for Builder<'_> {
             const STRUCT_SIZE: crate::private::layout::StructSize =
                 crate::private::layout::StructSize {
                     data: 1,
                     pointers: 2,
                 };
         }
-        impl<'a> crate::traits::HasTypeId for Builder<'a> {
+        impl crate::traits::HasTypeId for Builder<'_> {
             const TYPE_ID: u64 = _private::TYPE_ID;
         }
         impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -14003,7 +14003,7 @@ pub mod code_generator_request {
             }
         }
 
-        impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+        impl crate::traits::SetPointerBuilder for Reader<'_> {
             fn set_pointer_builder(
                 mut pointer: crate::private::layout::PointerBuilder<'_>,
                 value: Self,
@@ -14248,14 +14248,14 @@ pub mod code_generator_request {
             pub struct Reader<'a> {
                 reader: crate::private::layout::StructReader<'a>,
             }
-            impl<'a> ::core::marker::Copy for Reader<'a> {}
-            impl<'a> ::core::clone::Clone for Reader<'a> {
+            impl ::core::marker::Copy for Reader<'_> {}
+            impl ::core::clone::Clone for Reader<'_> {
                 fn clone(&self) -> Self {
                     *self
                 }
             }
 
-            impl<'a> crate::traits::HasTypeId for Reader<'a> {
+            impl crate::traits::HasTypeId for Reader<'_> {
                 const TYPE_ID: u64 = _private::TYPE_ID;
             }
             impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
@@ -14280,7 +14280,7 @@ pub mod code_generator_request {
                 }
             }
 
-            impl<'a> ::core::fmt::Debug for Reader<'a> {
+            impl ::core::fmt::Debug for Reader<'_> {
                 fn fmt(
                     &self,
                     f: &mut ::core::fmt::Formatter<'_>,
@@ -14342,14 +14342,14 @@ pub mod code_generator_request {
             pub struct Builder<'a> {
                 builder: crate::private::layout::StructBuilder<'a>,
             }
-            impl<'a> crate::traits::HasStructSize for Builder<'a> {
+            impl crate::traits::HasStructSize for Builder<'_> {
                 const STRUCT_SIZE: crate::private::layout::StructSize =
                     crate::private::layout::StructSize {
                         data: 1,
                         pointers: 1,
                     };
             }
-            impl<'a> crate::traits::HasTypeId for Builder<'a> {
+            impl crate::traits::HasTypeId for Builder<'_> {
                 const TYPE_ID: u64 = _private::TYPE_ID;
             }
             impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
@@ -14405,7 +14405,7 @@ pub mod code_generator_request {
                 }
             }
 
-            impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+            impl crate::traits::SetPointerBuilder for Reader<'_> {
                 fn set_pointer_builder(
                     mut pointer: crate::private::layout::PointerBuilder<'_>,
                     value: Self,

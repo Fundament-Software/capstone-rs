@@ -126,7 +126,7 @@ impl<R: Rng> Filler<R> {
             TypeVariant::Float32 => builder.set(field, self.rng.gen::<f32>().into()),
             TypeVariant::Float64 => builder.set(field, self.rng.gen::<f64>().into()),
             TypeVariant::Text => {
-                if let Some(_) = annotations.find(fill_capnp::phone_number::ID) {
+                if annotations.find(fill_capnp::phone_number::ID).is_some() {
                     builder.set(
                         field,
                         format!(
@@ -138,12 +138,14 @@ impl<R: Rng> Filler<R> {
                     )
                 } else {
                     let len = self.rng.gen_range(0..20);
-                    Ok(self.fill_text(builder.initn(field, len)?.downcast()))
+                    self.fill_text(builder.initn(field, len)?.downcast());
+                    Ok(())
                 }
             }
             TypeVariant::Data => {
                 let len = self.rng.gen_range(0..20);
-                Ok(self.fill_data(builder.initn(field, len)?.downcast()))
+                self.fill_data(builder.initn(field, len)?.downcast());
+                Ok(())
             }
             TypeVariant::Enum(e) => builder.set(field, self.random_enum_value(e.into())?.into()),
             TypeVariant::Struct(_) => {
@@ -198,11 +200,13 @@ impl<R: Rng> Filler<R> {
             TypeVariant::Enum(e) => builder.set(index, self.random_enum_value(e.into())?.into()),
             TypeVariant::Text => {
                 let len = self.rng.gen_range(0..20);
-                Ok(self.fill_text(builder.init(index, len)?.downcast()))
+                self.fill_text(builder.init(index, len)?.downcast());
+                Ok(())
             }
             TypeVariant::Data => {
                 let len = self.rng.gen_range(0..20);
-                Ok(self.fill_data(builder.init(index, len)?.downcast()))
+                self.fill_data(builder.init(index, len)?.downcast());
+                Ok(())
             }
             TypeVariant::Struct(_) => {
                 self.fill_struct(recursion_depth + 1, builder.get(index)?.downcast())
