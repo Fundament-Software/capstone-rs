@@ -92,8 +92,8 @@ impl<'a, T: TryFrom<u16, Error = NotInSchema>> FromPointerReader<'a> for Reader<
     }
 }
 
-impl<T: TryFrom<u16, Error = NotInSchema>>
-    IndexMove<u32, ::core::result::Result<T, NotInSchema>> for Reader<'_, T>
+impl<T: TryFrom<u16, Error = NotInSchema>> IndexMove<u32, ::core::result::Result<T, NotInSchema>>
+    for Reader<'_, T>
 {
     fn index_move(&self, index: u32) -> ::core::result::Result<T, NotInSchema> {
         self.get(index)
@@ -244,8 +244,8 @@ impl<'a, T: TryFrom<u16, Error = NotInSchema> + crate::introspect::Introspect> F
     }
 }
 
-impl<T: Copy + TryFrom<u16, Error = NotInSchema> + crate::introspect::Introspect>
-    core::fmt::Debug for Reader<'_, T>
+impl<T: Copy + TryFrom<u16, Error = NotInSchema> + crate::introspect::Introspect> core::fmt::Debug
+    for Reader<'_, T>
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::fmt::Debug::fmt(
