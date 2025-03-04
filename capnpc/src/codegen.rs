@@ -1442,7 +1442,7 @@ fn generate_setter(
                             )
                             .as_str(),
                         );
-                        rust_struct_impl_inner.push_str(format!("\n  _builder.set_{styled_name}({params_struct_impl_prefix}_{styled_name});").as_str());
+                        rust_struct_impl_inner.push_str(format!("\n  _builder.set_{styled_name}(::capnp::capability::FromClientHook::new({params_struct_impl_prefix}_{styled_name}.client.hook));").as_str());
                     }
                     setter_interior.push(Line(format!(
                         "self.builder.reborrow().get_pointer_field({offset}).set_capability(value.client.hook);"
@@ -1555,7 +1555,54 @@ fn check_fields_of_struct_for_lifetimes<'a>(
                     *lifetime = "'a, ";
                     return Ok(());
                 }
-                type_::Which::List(_) => (),
+                type_::Which::List(mut l) => {
+                    loop {
+                        match l.get_element_type()?.which()? {
+                            type_::Which::Text(_) => {
+                                *lifetime = "'a, ";
+                                return Ok(());
+                            },
+                            type_::Which::Data(_) => {
+                                *lifetime = "'a, ";
+                                return Ok(());
+                            },
+                            type_::Which::Struct(inner) => {
+                                let capnp::schema_capnp::node::Struct(struct_node) =
+                                    ctx.node_map[&inner.get_type_id()].which()?
+                                else {
+                                    return Err(capnp::Error::failed("Type mismatch".to_string()));
+                                };
+                                if !get_params(ctx, inner.get_type_id())?.is_empty() {
+                                    *lifetime = "'a, ";
+                                    return Ok(());
+                                }
+                                if maybe_cyclical_counter > 10 {
+                                    break;
+                                }
+                                maybe_cyclical_counter += 1;
+                                check_fields_of_struct_for_lifetimes(
+                                    ctx,
+                                    struct_node.get_fields()?,
+                                    lifetime,
+                                    maybe_cyclical_counter,
+                                )?;
+                            }
+                            type_::Which::AnyPointer(_) => {
+                                if slot.get_type()?.is_parameter()? {
+                                    *lifetime = "'a, ";
+                                    return Ok(());
+                                }
+                            }
+                            type_::Which::List(inner) => {
+                                l = inner;
+                                continue;
+                            }
+                            _ => {
+                                break;
+                            }
+                        }
+                    }
+                },
                 type_::Which::Struct(inner) => {
                     let capnp::schema_capnp::node::Struct(struct_node) =
                         ctx.node_map[&inner.get_type_id()].which()?
@@ -3707,7 +3754,7 @@ fn generate_node(
                         &mut String::new(),
                         &mut HashSet::new(),
                         &Vec::new(),
-                        false,
+                        true,
                     )?);
                     names.push(local_name);
                     (names, params.params.clone())
