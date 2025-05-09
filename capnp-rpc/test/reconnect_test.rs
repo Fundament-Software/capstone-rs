@@ -2,15 +2,15 @@ use std::cell::RefCell;
 use std::future::Future;
 use std::rc::Rc;
 
-use capnp::capability::{Promise, Response};
 use capnp::Error;
+use capnp::capability::{Promise, Response};
 use capnp_rpc::{
-    auto_reconnect, lazy_auto_reconnect, new_client, new_promise_client, rpc_twoparty_capnp,
-    twoparty, RpcSystem,
+    RpcSystem, auto_reconnect, lazy_auto_reconnect, new_client, new_promise_client,
+    rpc_twoparty_capnp, twoparty,
 };
-use futures_util::future::Shared;
 use futures_util::FutureExt;
 use futures_util::TryFutureExt;
+use futures_util::future::Shared;
 use tokio::sync::oneshot;
 use tokio::task::LocalSet;
 

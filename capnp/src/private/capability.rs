@@ -23,9 +23,9 @@
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
+use crate::MessageSize;
 use crate::any_pointer;
 use crate::capability::{Params, Promise, RemotePromise, Request, Results};
-use crate::MessageSize;
 
 pub trait ResponseHook {
     fn get(&self) -> crate::Result<any_pointer::Reader<'_>>;

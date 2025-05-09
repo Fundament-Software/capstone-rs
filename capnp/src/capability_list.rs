@@ -24,11 +24,11 @@
 use alloc::boxed::Box;
 use core::marker::PhantomData;
 
+use crate::Result;
 use crate::capability::FromClientHook;
 use crate::private::capability::ClientHook;
 use crate::private::layout::{ListBuilder, ListReader, Pointer, PointerBuilder, PointerReader};
 use crate::traits::{FromPointerBuilder, FromPointerReader, IndexMove, ListIter};
-use crate::Result;
 
 #[derive(Copy, Clone)]
 pub struct Owned<T>

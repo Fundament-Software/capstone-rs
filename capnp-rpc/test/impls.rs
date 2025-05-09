@@ -24,8 +24,8 @@ use crate::test_capnp::{
     test_interface, test_more_stuff, test_pipeline,
 };
 
-use capnp::capability::Promise;
 use capnp::Error;
+use capnp::capability::Promise;
 
 use futures_util::{FutureExt, TryFutureExt};
 

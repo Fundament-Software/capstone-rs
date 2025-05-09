@@ -1,7 +1,7 @@
 use convert_case::Casing;
 use proc_macro2::TokenStream as TokenStream2;
-use quote::{format_ident, ToTokens};
-use syn::{punctuated::Punctuated, Block, Signature};
+use quote::{ToTokens, format_ident};
+use syn::{Block, Signature, punctuated::Punctuated};
 
 pub fn process_capnproto_rpc(namespace: TokenStream2, item: syn::ItemImpl) -> TokenStream2 {
     let syn::ItemImpl { items, trait_, .. } = item;
