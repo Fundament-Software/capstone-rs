@@ -1,5 +1,6 @@
 //! Convenience wrappers of the datatypes defined in schema.capnp.
 
+use crate::Result;
 use crate::dynamic_value;
 use crate::introspect::{
     self, RawBrandedStructSchema, RawCapabilitySchema, RawEnumSchema, TypeVariant,
@@ -8,7 +9,6 @@ use crate::private::layout;
 use crate::schema_capnp::{annotation, enumerant, field, node};
 use crate::struct_list;
 use crate::traits::{IndexMove, ListIter, ShortListIter};
-use crate::Result;
 
 use crate::message::Reader;
 #[cfg(feature = "alloc")]
@@ -16,7 +16,7 @@ use crate::serialize::OwnedSegments;
 #[cfg(feature = "std")]
 use std::collections::hash_map::HashMap;
 #[cfg(feature = "std")]
-use std::sync::{atomic, Arc, LazyLock, Weak};
+use std::sync::{Arc, LazyLock, Weak, atomic};
 
 #[cfg(all(feature = "std", feature = "alloc"))]
 // Builds introspection information at runtime to allow building a StructSchema
@@ -92,19 +92,19 @@ fn get_type_variant(token: &DynamicSchemaToken, id: u64) -> Result<TypeVariant> 
     )))?)
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 fn dynamic_field_marker(_: u16) -> crate::introspect::Type {
     panic!("dynamic_field_marker should never be called!");
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 pub fn dynamic_struct_marker(_: u16) -> crate::introspect::Type {
     panic!("dynamic_struct_marker should never be called!");
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(never)]
 fn dynamic_annotation_marker(_: Option<u16>, _: u32) -> crate::introspect::Type {
     panic!("dynamic_annotation_marker should never be called!");
@@ -621,7 +621,7 @@ impl Field {
     }
 
     pub fn get_type(&self) -> introspect::Type {
-        #[allow(clippy::fn_address_comparisons)]
+        #[allow(unpredictable_function_pointer_comparisons)]
         if self.parent.raw.field_types == dynamic_field_marker {
             #[cfg(all(feature = "std", feature = "alloc"))]
             for (index, field) in self.parent.get_fields().unwrap().iter().enumerate() {
@@ -918,7 +918,7 @@ impl AnnotationList {
 
     pub fn get(self, index: u32) -> Annotation {
         let proto = self.annotations.get(index);
-        #[allow(clippy::fn_address_comparisons)]
+        #[allow(unpredictable_function_pointer_comparisons)]
         let ty = if self.get_annotation_type != dynamic_annotation_marker {
             (self.get_annotation_type)(self.child_index, index)
         } else {
@@ -1010,7 +1010,7 @@ impl CapabilitySchema {
     }
 
     pub fn get_params_struct_schema(&self, id: u16) -> RawBrandedStructSchema {
-        #[allow(clippy::fn_address_comparisons)]
+        #[allow(unpredictable_function_pointer_comparisons)]
         if self._raw.params_types != dynamic_struct_marker {
             match (self._raw.params_types)(id).which() {
                 TypeVariant::Struct(res_struct) => res_struct,
@@ -1021,7 +1021,7 @@ impl CapabilitySchema {
         }
     }
     pub fn get_results_struct_schema(&self, id: u16) -> RawBrandedStructSchema {
-        #[allow(clippy::fn_address_comparisons)]
+        #[allow(unpredictable_function_pointer_comparisons)]
         if self._raw.params_types != dynamic_struct_marker {
             match (self._raw.result_types)(id).which() {
                 TypeVariant::Struct(res_struct) => res_struct,

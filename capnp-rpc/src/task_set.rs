@@ -18,8 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use futures_util::stream::FuturesUnordered;
 use futures_util::FutureExt;
+use futures_util::stream::FuturesUnordered;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
@@ -135,9 +135,9 @@ where
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let mut enqueued_stream_complete = false;
         if let Self {
-            enqueued: Some(ref mut enqueued),
-            ref mut in_progress,
-            ref reaper,
+            enqueued: Some(enqueued),
+            in_progress,
+            reaper,
             ..
         } = self.as_mut().get_mut()
         {

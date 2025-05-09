@@ -1,8 +1,8 @@
 //! Dynamically typed values.
 
+use crate::Result;
 use crate::introspect::{self, TypeVariant};
 use crate::schema_capnp::value;
-use crate::Result;
 use crate::{dynamic_list, dynamic_struct};
 
 /// A dynamically-typed read-only value.
@@ -182,9 +182,9 @@ impl<'a> Builder<'a> {
             Builder::Enum(e) => Builder::Enum(*e),
             Builder::Text(t) => Builder::Text(t.reborrow()),
             Builder::Data(d) => Builder::Data(d),
-            Builder::Struct(ref mut s) => Builder::Struct(s.reborrow()),
-            Builder::List(ref mut l) => Builder::List(l.reborrow()),
-            Builder::AnyPointer(ref mut a) => Builder::AnyPointer(a.reborrow()),
+            Builder::Struct(s) => Builder::Struct(s.reborrow()),
+            Builder::List(l) => Builder::List(l.reborrow()),
+            Builder::AnyPointer(a) => Builder::AnyPointer(a.reborrow()),
             Builder::Capability(c) => Builder::Capability(*c),
         }
     }

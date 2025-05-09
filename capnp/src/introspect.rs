@@ -239,6 +239,7 @@ pub struct RawBrandedStructSchema {
 }
 
 impl core::cmp::PartialEq for RawBrandedStructSchema {
+    #[allow(unpredictable_function_pointer_comparisons)]
     fn eq(&self, other: &Self) -> bool {
         core::ptr::eq(self.generic, other.generic) && self.field_types == other.field_types
         // don't need to compare annotation_types.

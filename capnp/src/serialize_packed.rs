@@ -458,10 +458,10 @@ mod tests {
     use proptest::prelude::*;
 
     use super::read_message;
+    use crate::ErrorKind;
     use crate::message::ReaderOptions;
     use crate::serialize::test::write_message_segments;
     use crate::serialize_packed::{PackedRead, PackedWrite};
-    use crate::ErrorKind;
 
     #[test]
     pub fn premature_eof() {

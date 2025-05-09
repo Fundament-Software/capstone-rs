@@ -72,6 +72,8 @@
 use alloc::vec::Vec;
 use core::convert::From;
 
+use crate::OutputSegments;
+use crate::Result;
 use crate::any_pointer;
 use crate::private::arena::{BuilderArena, BuilderArenaImpl};
 use crate::private::arena::{ReaderArena, ReaderArenaImpl};
@@ -79,8 +81,6 @@ use crate::private::layout;
 use crate::private::units::BYTES_PER_WORD;
 use crate::traits::{FromPointerBuilder, SetPointerBuilder};
 use crate::traits::{FromPointerReader, Owned};
-use crate::OutputSegments;
-use crate::Result;
 
 /// Options controlling how data is read.
 #[derive(Clone, Copy, Debug)]
@@ -879,21 +879,21 @@ unsafe impl Allocator for ScratchSpaceHeapAllocator<'_> {
     }
 
     unsafe fn deallocate_segment(&mut self, ptr: *mut u8, word_size: u32, words_used: u32) {
-        let seg_ptr = self.scratch_space.as_mut_ptr();
-        if ptr == seg_ptr {
-            // Rezero the slice to allow reuse of the allocator. We only need to write
-            // words that we know might contain nonzero values.
-            unsafe {
+        unsafe {
+            let seg_ptr = self.scratch_space.as_mut_ptr();
+            if ptr == seg_ptr {
+                // Rezero the slice to allow reuse of the allocator. We only need to write
+                // words that we know might contain nonzero values.
                 core::ptr::write_bytes(
                     seg_ptr, // miri isn't happy if we use ptr instead
                     0u8,
                     (words_used as usize) * BYTES_PER_WORD,
                 );
+                self.scratch_space_allocated = false;
+            } else {
+                self.allocator
+                    .deallocate_segment(ptr, word_size, words_used);
             }
-            self.scratch_space_allocated = false;
-        } else {
-            self.allocator
-                .deallocate_segment(ptr, word_size, words_used);
         }
     }
 }
@@ -991,6 +991,6 @@ where
     }
 
     unsafe fn deallocate_segment(&mut self, ptr: *mut u8, word_size: u32, words_used: u32) {
-        (*self).deallocate_segment(ptr, word_size, words_used)
+        unsafe { (*self).deallocate_segment(ptr, word_size, words_used) }
     }
 }

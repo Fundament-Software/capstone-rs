@@ -4,8 +4,8 @@ use crate::introspect::TypeVariant;
 use crate::private::layout;
 use crate::schema::{Field, StructSchema};
 use crate::schema_capnp::{field, node, value};
-use crate::{dynamic_list, dynamic_value};
 use crate::{Error, ErrorKind, Result};
+use crate::{dynamic_list, dynamic_value};
 
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
@@ -493,7 +493,7 @@ impl<'a> Builder<'a> {
                 match ty.which() {
                     TypeVariant::Capability(_) | TypeVariant::AnyPointer => {
                         let mut builder = self.builder.reborrow().get_pointer_field(offset);
-                        builder.set_other_pointer(value.into());
+                        unsafe { builder.set_other_pointer(value.into()) };
                         Ok(())
                     }
                     _ => Err(Error::from_kind(ErrorKind::TypeMismatch)),

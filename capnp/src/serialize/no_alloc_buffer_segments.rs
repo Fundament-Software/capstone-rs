@@ -354,7 +354,7 @@ mod tests {
 
     use super::calculate_data_offset;
     #[cfg(feature = "alloc")]
-    use crate::{message::ReaderOptions, serialize, word, Word};
+    use crate::{Word, message::ReaderOptions, serialize, word};
 
     #[cfg(feature = "alloc")]
     use crate::OutputSegments;

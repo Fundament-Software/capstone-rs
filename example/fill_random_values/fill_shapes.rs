@@ -88,7 +88,10 @@ impl SvgBuilder {
         );
         let clipr = format!("clip-{}", self.counter);
         self.counter += 1;
-        result += &format!("<defs><clipPath id=\"{clipr}\"><rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\"/></clipPath></defs>\n", vx, vy, view.width, view.height);
+        result += &format!(
+            "<defs><clipPath id=\"{clipr}\"><rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\"/></clipPath></defs>\n",
+            vx, vy, view.width, view.height
+        );
         result += &format!("<g clip-path=\"url(#{clipr})\">\n");
         for line in canvas.get_lines()? {
             if line.has_start() {
@@ -98,8 +101,9 @@ impl SvgBuilder {
                 let (x2, y2) = view.denormalize(end.get_x(), end.get_y());
                 let c = color_to_svg(line.get_color()?);
                 let sw = line.get_thickness() * view.diag_len() / 100.0;
-                result +=
-                    &format!("<line x1=\"{x1}\" y1=\"{y1}\" x2=\"{x2}\" y2=\"{y2}\" stroke=\"{c}\" stroke-width=\"{sw}\" stroke-linecap=\"round\" clip-path=\"url(#{clipr})\"/>\n");
+                result += &format!(
+                    "<line x1=\"{x1}\" y1=\"{y1}\" x2=\"{x2}\" y2=\"{y2}\" stroke=\"{c}\" stroke-width=\"{sw}\" stroke-linecap=\"round\" clip-path=\"url(#{clipr})\"/>\n"
+                );
             }
         }
 
@@ -109,7 +113,9 @@ impl SvgBuilder {
                 let (cx, cy) = view.denormalize(center.get_x(), center.get_y());
                 let r = circ.get_radius() * view.diag_len();
                 let c = color_to_svg(circ.get_fill_color()?);
-                result += &format!("<circle cx=\"{cx}\" cy=\"{cy}\" r=\"{r}\" fill=\"{c}\" clip-path=\"url(#{clipr})\"/>\n");
+                result += &format!(
+                    "<circle cx=\"{cx}\" cy=\"{cy}\" r=\"{r}\" fill=\"{c}\" clip-path=\"url(#{clipr})\"/>\n"
+                );
             }
         }
 
@@ -144,7 +150,7 @@ pub fn main() {
     let mut message = ::capnp::message::Builder::new_default();
     let mut canvas = message.init_root::<shapes_capnp::canvas::Builder>();
 
-    let mut filler = Filler::new(::rand::thread_rng(), 10);
+    let mut filler = Filler::new(::rand::rng(), 10);
     let dynamic: dynamic_value::Builder = canvas.reborrow().into();
     filler.fill(dynamic.downcast()).unwrap();
 

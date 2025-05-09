@@ -22,12 +22,12 @@
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
+use capnp::Error;
 use capnp::any_pointer;
 use capnp::capability::Promise;
 use capnp::private::capability::{
     ClientHook, ParamsHook, PipelineHook, PipelineOp, RequestHook, ResponseHook, ResultsHook,
 };
-use capnp::Error;
 
 use futures_util::{FutureExt, TryFutureExt};
 use std::future::Future;
@@ -925,7 +925,7 @@ impl<VatId> ConnectionState<VatId> {
                         call::send_results_to::ThirdParty(_) => {
                             return Err(Error::failed(
                                 "Unsupported `Call.sendResultsTo`.".to_string(),
-                            ))
+                            ));
                         }
                     };
                     let payload = call.get_params()?;
@@ -2609,11 +2609,13 @@ impl<VatId> Drop for ImportClient<VatId> {
     fn drop(&mut self) {
         let connection_state = self.connection_state.clone();
 
-        assert!(connection_state
-            .client_downcast_map
-            .borrow_mut()
-            .remove(&((self) as *const _ as usize))
-            .is_some());
+        assert!(
+            connection_state
+                .client_downcast_map
+                .borrow_mut()
+                .remove(&((self) as *const _ as usize))
+                .is_some()
+        );
 
         // Remove self from the import table, if the table is still pointing at us.
         let mut remove = false;
@@ -2711,12 +2713,13 @@ impl<VatId> From<Rc<RefCell<PipelineClient<VatId>>>> for Client<VatId> {
 
 impl<VatId> Drop for PipelineClient<VatId> {
     fn drop(&mut self) {
-        assert!(self
-            .connection_state
-            .client_downcast_map
-            .borrow_mut()
-            .remove(&((self) as *const _ as usize))
-            .is_some());
+        assert!(
+            self.connection_state
+                .client_downcast_map
+                .borrow_mut()
+                .remove(&((self) as *const _ as usize))
+                .is_some()
+        );
     }
 }
 
@@ -2851,12 +2854,13 @@ impl<VatId> Drop for PromiseClient<VatId> {
             }
         }
 
-        assert!(self
-            .connection_state
-            .client_downcast_map
-            .borrow_mut()
-            .remove(&self_ptr)
-            .is_some());
+        assert!(
+            self.connection_state
+                .client_downcast_map
+                .borrow_mut()
+                .remove(&self_ptr)
+                .is_some()
+        );
     }
 }
 

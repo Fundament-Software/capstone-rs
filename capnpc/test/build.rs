@@ -38,8 +38,8 @@ fn main() {
         .run()
         .expect("compiling schema");
 
-    // Have to do this test last
-    std::env::remove_var("OUT_DIR");
+    // Have to do this test last. This is obviously unsafe.
+    unsafe { std::env::remove_var("OUT_DIR") };
     let error = capnpc::CompilerCommand::new().run().unwrap_err().extra;
     assert!(error.starts_with("Could not access `OUT_DIR` environment variable"));
 }

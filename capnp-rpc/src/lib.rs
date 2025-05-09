@@ -58,9 +58,9 @@
 //!
 //! For a more complete example, see <https://github.com/capnproto/capnproto-rust/tree/master/capnp-rpc/examples/calculator>
 
+use capnp::Error;
 use capnp::capability::Promise;
 use capnp::private::capability::ClientHook;
-use capnp::Error;
 use futures_util::{FutureExt, TryFutureExt};
 use std::cell::RefCell;
 use std::future::Future;
@@ -73,7 +73,7 @@ use tokio::sync::oneshot;
 pub use crate::rpc::Disconnector;
 use crate::task_set::TaskSet;
 
-pub use crate::reconnect::{auto_reconnect, lazy_auto_reconnect, SetTarget};
+pub use crate::reconnect::{SetTarget, auto_reconnect, lazy_auto_reconnect};
 
 /// Code generated from
 /// [rpc.capnp](https://github.com/capnproto/capnproto/blob/master/c%2B%2B/src/capnp/rpc.capnp).

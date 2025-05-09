@@ -22,7 +22,7 @@
 use std::rc::Rc;
 
 use crate::pubsub_capnp::{publisher, subscriber};
-use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
+use capnp_rpc::{RpcSystem, rpc_twoparty_capnp, twoparty};
 
 struct SubscriberImpl;
 

@@ -21,10 +21,10 @@
 
 use std::rc::Rc;
 
-use capnp::primitive_list;
 use capnp::Error;
+use capnp::primitive_list;
 
-use capnp_rpc::{pry, rpc_twoparty_capnp, twoparty, RpcSystem};
+use capnp_rpc::{RpcSystem, pry, rpc_twoparty_capnp, twoparty};
 
 use crate::calculator_capnp::calculator;
 use capnp::capability::Promise;

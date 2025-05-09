@@ -1,10 +1,9 @@
 use crate::parse::CapnpAnonStruct;
 use syn::{
-    bracketed,
+    Ident, Token, bracketed,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     token::{Brace, Bracket},
-    Ident, Token,
 };
 
 pub type CapnpBuildStruct = CapnpAnonStruct<CapnpBuildFieldPattern>;
