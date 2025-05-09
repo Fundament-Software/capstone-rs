@@ -2,17 +2,19 @@
 name = "wasm-hello-world"
 version = "0.1.0"
 edition = "2018"
-license.workspace = true
+license = "MIT"
 
 # Avoid getting picked up by parent workspaces.
 [workspace]
 members = ["."]
 
 [dependencies]
-wasmer = "4.0.0"
+wasmer = { version = "5.0.0", default-features = false, features = [
+  "cranelift",
+] }
 
 [dependencies.capstone]
-path = "../../capstone"
+path = "../../capnp"
 
 [build-dependencies.capstone-gen]
-path = "../../capstone-gen"
+path = "../../capnpc"
