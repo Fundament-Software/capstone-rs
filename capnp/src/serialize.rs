@@ -36,9 +36,9 @@ pub use no_alloc_buffer_segments::{
     NoAllocBufferSegments, NoAllocSegmentTableInfo, NoAllocSliceSegments,
 };
 
+use crate::Result;
 use crate::message;
 use crate::private::units::BYTES_PER_WORD;
-use crate::Result;
 use crate::{Error, ErrorKind};
 
 pub const SEGMENTS_COUNT_LIMIT: usize = 512;
@@ -731,9 +731,11 @@ pub mod test {
     #[test]
     fn try_read_empty() {
         let mut buf: &[u8] = &[];
-        assert!(try_read_message(&mut buf, message::ReaderOptions::new())
-            .unwrap()
-            .is_none());
+        assert!(
+            try_read_message(&mut buf, message::ReaderOptions::new())
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]

@@ -22,7 +22,7 @@
 //! [standard stream framing](https://capnproto.org/encoding.html#serialization-over-a-stream).
 
 use capnp::serialize::{OwnedSegments, SegmentLengthsBuilder};
-use capnp::{message, Error, OutputSegments, Result};
+use capnp::{Error, OutputSegments, Result, message};
 
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
@@ -268,9 +268,9 @@ pub mod test {
     use tokio::io::{AsyncRead, AsyncWrite};
 
     use capnp::message::ReaderSegments;
-    use capnp::{message, OutputSegments};
+    use capnp::{OutputSegments, message};
 
-    use super::{read_segment_table, try_read_message, write_message, AsOutputSegments};
+    use super::{AsOutputSegments, read_segment_table, try_read_message, write_message};
 
     #[tokio::test]
     async fn test_read_segment_table() {
@@ -390,45 +390,49 @@ pub mod test {
 
         buf.extend([0, 2, 0, 0]); // 513 segments
         buf.extend([0; 513 * 4]);
-        assert!(exec
-            .run_until(read_segment_table(
+        assert!(
+            exec.run_until(read_segment_table(
                 Cursor::new(&buf[..]),
                 message::ReaderOptions::new()
             ))
             .await
-            .is_err());
+            .is_err()
+        );
         buf.clear();
 
         buf.extend([0, 0, 0, 0]); // 1 segments
-        assert!(exec
-            .run_until(read_segment_table(
+        assert!(
+            exec.run_until(read_segment_table(
                 Cursor::new(&buf[..]),
                 message::ReaderOptions::new()
             ))
             .await
-            .is_err());
+            .is_err()
+        );
 
         buf.clear();
 
         buf.extend([0, 0, 0, 0]); // 1 segments
         buf.extend([0; 3]);
-        assert!(exec
-            .run_until(read_segment_table(
+        assert!(
+            exec.run_until(read_segment_table(
                 Cursor::new(&buf[..]),
                 message::ReaderOptions::new()
             ))
             .await
-            .is_err());
+            .is_err()
+        );
         buf.clear();
 
         buf.extend([255, 255, 255, 255]); // 0 segments
-        assert!(exec
-            .run_until(read_segment_table(
+        assert!(
+            exec.run_until(read_segment_table(
                 Cursor::new(&buf[..]),
                 message::ReaderOptions::new()
             ))
             .await
-            .is_err());
+            .is_err()
+        );
         buf.clear();
     }
 

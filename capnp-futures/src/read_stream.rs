@@ -24,7 +24,7 @@ use std::task::{Context, Poll};
 use tokio::io::AsyncRead;
 use tokio_stream::Stream;
 
-use capnp::{message, Error};
+use capnp::{Error, message};
 
 async fn read_next_message<R>(
     mut reader: R,

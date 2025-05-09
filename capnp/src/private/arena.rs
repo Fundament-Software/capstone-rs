@@ -22,12 +22,12 @@ use core::slice;
 #[cfg(feature = "alloc")]
 use smallvec::SmallVec;
 
+use crate::OutputSegments;
 use crate::message;
 use crate::message::Allocator;
 use crate::message::ReaderSegments;
 use crate::private::read_limiter::ReadLimiter;
 use crate::private::units::*;
-use crate::OutputSegments;
 use crate::{Error, ErrorKind, Result};
 
 pub type SegmentId = u32;
