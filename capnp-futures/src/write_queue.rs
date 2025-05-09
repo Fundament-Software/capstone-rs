@@ -100,7 +100,7 @@ where
 {
     /// Enqueues a message to be written. The returned future resolves once the write
     /// has completed.
-    pub fn send(&mut self, message: M) -> impl Future<Output = Result<M, Error>> + Unpin {
+    pub fn send(&mut self, message: M) -> impl Future<Output = Result<M, Error>> + Unpin + use<M> {
         let (complete, oneshot) = oneshot::channel();
 
         let _ = self.sender.send(Item::Message(message, complete));
@@ -125,7 +125,7 @@ where
     pub fn terminate(
         &mut self,
         result: Result<(), Error>,
-    ) -> impl Future<Output = Result<(), Error>> + Unpin {
+    ) -> impl Future<Output = Result<(), Error>> + Unpin + use<M> {
         let (complete, receiver) = oneshot::channel();
 
         let _ = self.sender.send(Item::Done(result, complete));
