@@ -1,9 +1,8 @@
 use syn::{
-    braced,
+    Token, braced,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
     token::Brace,
-    Token,
 };
 
 // {field1, field2, ...}

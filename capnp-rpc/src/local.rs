@@ -18,12 +18,12 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+use capnp::Error;
 use capnp::capability::{self, Promise};
 use capnp::private::capability::{
     ClientHook, ParamsHook, PipelineHook, PipelineOp, RequestHook, ResponseHook, ResultsHook,
 };
 use capnp::traits::{Imbue, ImbueMut};
-use capnp::Error;
 use capnp::{any_pointer, message};
 
 use futures_util::TryFutureExt;

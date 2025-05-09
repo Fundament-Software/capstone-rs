@@ -27,7 +27,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use capnp::serialize::OwnedSegments;
-use capnp::{message, Result};
+use capnp::{Result, message};
 use tokio::io::{AsyncRead, AsyncWrite};
 
 use crate::serialize::AsOutputSegments;
@@ -548,7 +548,7 @@ where
 #[cfg(test)]
 pub mod test {
     use crate::serialize::test::{BlockingRead, BlockingWrite};
-    use crate::serialize_packed::{try_read_message, PackedRead, PackedWrite};
+    use crate::serialize_packed::{PackedRead, PackedWrite, try_read_message};
     use capnp::message::ReaderSegments;
     use proptest::prelude::*;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};

@@ -22,9 +22,9 @@
 #![cfg(test)]
 #![allow(clippy::bool_assert_comparison)]
 
-use capnp::capability::{FromClientHook, Promise};
 use capnp::Error;
-use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
+use capnp::capability::{FromClientHook, Promise};
+use capnp_rpc::{RpcSystem, rpc_twoparty_capnp, twoparty};
 
 use futures_util::{FutureExt, TryFutureExt};
 use std::future::Future;
@@ -1033,22 +1033,30 @@ fn capability_server_set() {
     );
 
     // Getting the local server using the wrong set doesn't work.
-    assert!(tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(set1.get_local_server(&client2))
-        .is_none());
-    assert!(tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(set2.get_local_server(&client1))
-        .is_none());
-    assert!(tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(set1.get_local_server(&client_standalone))
-        .is_none());
-    assert!(tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(set2.get_local_server(&client_standalone))
-        .is_none());
+    assert!(
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(set1.get_local_server(&client2))
+            .is_none()
+    );
+    assert!(
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(set2.get_local_server(&client1))
+            .is_none()
+    );
+    assert!(
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(set1.get_local_server(&client_standalone))
+            .is_none()
+    );
+    assert!(
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(set2.get_local_server(&client_standalone))
+            .is_none()
+    );
 
     // Also works if the client is a promise.
     let (fulfiller, promise) = oneshot::channel();
@@ -1072,16 +1080,20 @@ fn capability_server_set() {
     );
 
     // Wrong set; returns None.
-    assert!(tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(set2.get_local_server(&client_promise2))
-        .is_none());
+    assert!(
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(set2.get_local_server(&client_promise2))
+            .is_none()
+    );
 
     drop(error_fulfiller);
-    assert!(tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(set1.get_local_server(&error_promise))
-        .is_none());
+    assert!(
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(set1.get_local_server(&error_promise))
+            .is_none()
+    );
 }
 
 #[tokio::test]

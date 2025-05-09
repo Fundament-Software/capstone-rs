@@ -90,7 +90,9 @@ fn process_list_pattern(builder: &Ident, list_pattern: ListPattern) -> TokenStre
 
             // Extract (item_builder, pattern) as an argument
             let syn::Pat::Tuple(t) = *pat else {
-                panic!("Argument for capnp_build's list comprehension requires a tuple (item_builder, contents)");
+                panic!(
+                    "Argument for capnp_build's list comprehension requires a tuple (item_builder, contents)"
+                );
             };
             if t.elems.len() != 2 {
                 panic!(

@@ -1,8 +1,8 @@
 use crate::parse::*;
 use syn::{
+    Ident, Token,
     parse::{Parse, ParseStream},
     token::Brace,
-    Ident, Token,
 };
 
 pub type CapnpLetStruct = CapnpAnonStruct<CapnpLetFieldPattern>;
