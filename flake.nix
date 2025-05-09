@@ -55,8 +55,6 @@
         RUSTFLAGS = "-C linker=clang -C link-arg=-fuse-ld=${pkgs.mold}/bin/mold";
       };
 
-      default = { };
-
       checks =
         let
           craneLib =
