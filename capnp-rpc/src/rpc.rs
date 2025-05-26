@@ -3131,6 +3131,10 @@ impl<VatId> ClientHook for Client<VatId> {
     fn when_resolved(&self) -> Promise<(), Error> {
         default_when_resolved_impl(self)
     }
+
+    fn is_local_client(&self) -> bool {
+        false
+    }
 }
 
 pub(crate) fn default_when_resolved_impl<C>(client: &C) -> Promise<(), Error>
