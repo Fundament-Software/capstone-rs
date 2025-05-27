@@ -84,6 +84,8 @@ pub trait ClientHook {
 
     /// Repeatedly calls whenMoreResolved() until it returns nullptr.
     fn when_resolved(&self) -> Promise<(), crate::Error>;
+
+    fn is_local_client(&self) -> bool;
 }
 
 impl Clone for Box<dyn ClientHook> {

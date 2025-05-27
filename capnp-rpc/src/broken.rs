@@ -155,6 +155,10 @@ impl ClientHook for Client {
     fn when_resolved(&self) -> Promise<(), Error> {
         crate::rpc::default_when_resolved_impl(self)
     }
+
+    fn is_local_client(&self) -> bool {
+        false
+    }
 }
 
 pub fn new_cap(exception: Error) -> Box<dyn ClientHook> {

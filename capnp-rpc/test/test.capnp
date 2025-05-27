@@ -175,6 +175,8 @@ interface TestMoreStuff extends(TestCallOrder) {
 
   callEachCapability @13 (caps :List(TestInterface)) -> ();
   # Calls TestInterface::foo(123, true) on each cap.
+
+  getRemoteCap @14 () -> (remote :TestCallOrder);
 }
 
 interface TestCapabilityServerSet {
