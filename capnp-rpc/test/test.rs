@@ -339,6 +339,38 @@ async fn basic_rpc_calls() {
 }
 
 #[tokio::test]
+async fn test_is_local() {
+    rpc_top_level(|client| async move {
+        let local: test_capnp::test_call_order::Client =
+            capnp_rpc::new_client(impls::TestCallOrder::new());
+        assert!(local.as_client_hook().is_local_client());
+
+        let response = client.test_more_stuff_request().send().promise.await?;
+        let client = response.get()?.get_cap()?;
+
+        let echo = client
+            .build_echo_request(local)
+            .send()
+            .promise
+            .await?
+            .get()?
+            .get_cap()?;
+        assert!(echo.as_client_hook().is_local_client());
+
+        let remote = client
+            .build_get_remote_cap_request()
+            .send()
+            .promise
+            .await?
+            .get()?
+            .get_remote()?;
+        assert!(!remote.as_client_hook().is_local_client());
+        Ok(())
+    })
+    .await;
+}
+
+#[tokio::test]
 async fn basic_pipelining() {
     rpc_top_level(|client| async move {
         let response = client.test_pipeline_request().send().promise.await?;

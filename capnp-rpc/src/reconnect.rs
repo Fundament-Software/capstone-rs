@@ -168,6 +168,10 @@ where
     fn when_resolved(&self) -> Promise<(), capnp::Error> {
         Promise::ok(())
     }
+
+    fn is_local_client(&self) -> bool {
+        false
+    }
 }
 
 struct Request<F, C> {
