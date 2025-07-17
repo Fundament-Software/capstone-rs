@@ -101,6 +101,8 @@ where
     /// Enqueues a message to be written. The returned future resolves once the write
     /// has completed.
     pub fn send(&mut self, message: M) -> impl Future<Output = Result<M, Error>> + Unpin + use<M> {
+        self.in_flight
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         let (complete, oneshot) = oneshot::channel();
 
         let _ = self.sender.send(Item::Message(message, complete));

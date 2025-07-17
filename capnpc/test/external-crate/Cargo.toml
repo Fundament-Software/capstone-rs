@@ -12,4 +12,3 @@ capstone.workspace = true
 [build-dependencies]
 capstone-gen.workspace = true
 tempfile.workspace = true
-eyre.workspace = true

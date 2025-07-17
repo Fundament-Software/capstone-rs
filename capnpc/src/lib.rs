@@ -101,6 +101,7 @@ pub struct CompilerCommand {
     raw_code_generator_request_path: Option<PathBuf>,
     crate_provides_map: HashMap<u64, String>,
     collect_file: Option<PathBuf>,
+    capnp_root: Option<String>,
 }
 
 impl CompilerCommand {
@@ -254,6 +255,12 @@ impl CompilerCommand {
         self
     }
 
+    /// If set, uses this string instead of `::capnp` in the generated code.
+    pub fn capnp_root(&mut self, capnp_root: impl Into<String>) -> &mut Self {
+        self.capnp_root = Some(capnp_root.into());
+        self
+    }
+
     /// If set, the generator will also write a file containing the raw code generator request to the
     /// specified path.
     pub fn raw_code_generator_request_path<P>(&mut self, path: P) -> &mut Self
@@ -306,6 +313,10 @@ impl CompilerCommand {
             .output_directory(output_path.clone())
             .default_parent_module(self.default_parent_module.clone())
             .crates_provide_map(self.crate_provides_map.clone());
+        if let Some(capnp_root) = self.capnp_root.as_ref() {
+            code_generation_command.capnp_root(capnp_root);
+        }
+
         if let Some(raw_code_generator_request_path) = &self.raw_code_generator_request_path {
             code_generation_command
                 .raw_code_generator_request_path(raw_code_generator_request_path.clone());

@@ -1462,7 +1462,7 @@ fn generate_setter(
                             )
                             .as_str(),
                         );
-                        rust_struct_impl_inner.push_str(format!("\n  _builder.set_{styled_name}(::capnp::capability::FromClientHook::new({params_struct_impl_prefix}_{styled_name}.client.hook));").as_str());
+                        rust_struct_impl_inner.push_str(fmt!(ctx, "\n  _builder.set_{styled_name}({capnp}::capability::FromClientHook::new({params_struct_impl_prefix}_{styled_name}.client.hook));").as_str());
                     }
                     setter_interior.push(Line(format!(
                         "self.builder.reborrow().get_pointer_field({offset}).set_capability(value.client.hook);"
@@ -1763,7 +1763,10 @@ fn vec_of_list_element_types(
             match an.which()? {
                 type_::any_pointer::Which::Unconstrained(_) => {
                     //TODO
-                    Ok("Vec<Box<dyn ::capnp::private::capability::ClientHook>>".to_string())
+                    Ok(fmt!(
+                        ctx,
+                        "Vec<Box<dyn {capnp}::private::capability::ClientHook>>"
+                    ))
                 }
                 type_::any_pointer::Which::Parameter(p) => {
                     params_struct_generics.insert("'a".to_string());
@@ -1771,8 +1774,9 @@ fn vec_of_list_element_types(
                     let parameters = the_struct.get_parameters()?;
                     let parameter = parameters.get(u32::from(p.get_parameter_index()));
                     let parameter_name = parameter.get_name()?.to_str()?;
-                    Ok(format!(
-                        "Vec<<{parameter_name} as ::capnp::traits::Owned>::Reader<'a>>"
+                    Ok(fmt!(
+                        ctx,
+                        "Vec<<{parameter_name} as {capnp}::traits::Owned>::Reader<'a>>"
                     ))
                 }
                 type_::any_pointer::Which::ImplicitMethodParameter(_) => Err(Error::failed(
@@ -3197,10 +3201,10 @@ fn generate_node(
                     bracketed.push_str(param.as_str());
                     bracketed.push(',');
                     bracketed_with_where.push_str(param.as_str());
-                    bracketed_with_where.push_str(": ::capnp::traits::Owned,");
+                    bracketed_with_where.push_str(fmt!(ctx, ": {capnp}::traits::Owned,").as_str());
                 } else {
                     implicit_generics.push_str(param.as_str());
-                    implicit_generics.push_str(": ::capnp::traits::Owned,");
+                    implicit_generics.push_str(fmt!(ctx, ": {capnp}::traits::Owned,").as_str());
                 }
             }
             bracketed.push('>');
@@ -3288,7 +3292,7 @@ fn generate_node(
                 } else if !union_params.is_empty() || !union_lifetime.is_empty() {
                     let mut temp = format!("<{union_lifetime}");
                     for p in union_params.iter() {
-                        temp.push_str(format!("{p}: ::capnp::traits::Owned,").as_str());
+                        temp.push_str(fmt!(ctx, "{p}: {capnp}::traits::Owned,").as_str());
                     }
                     temp.push('>');
                     temp
@@ -3856,7 +3860,7 @@ fn generate_node(
                 )));
                 server_interior.push(
                     Line(fmt!(ctx,
-                        "async fn {}(self: std::rc::Rc<Self>, _: {}Params<{}>, _: {}Results<{}>) -> Result<(), {capnp}::Error> {{ Result::<(), capnp::Error>::Err({capnp}::Error::unimplemented(\"method {}::Server::{} not implemented\".to_string())) }}",
+                        "async fn {}(self: std::rc::Rc<Self>, _: {}Params<{}>, _: {}Results<{}>) -> Result<(), {capnp}::Error> {{ Result::<(), {capnp}::Error>::Err({capnp}::Error::unimplemented(\"method {}::Server::{} not implemented\".to_string())) }}",
                         module_name(name),
                         capitalize_first_letter(name), params_ty_params,
                         capitalize_first_letter(name), results_ty_params,
@@ -3884,7 +3888,7 @@ fn generate_node(
                 for generic in params_generics {
                     builder_params.push(',');
                     builder_params.push_str(generic.as_str());
-                    builder_params.push_str(": ::capnp::traits::Owned");
+                    builder_params.push_str(fmt!(ctx, ": {capnp}::traits::Owned").as_str());
                 }
                 client_impl_interior.push(Line(fmt!(
                     ctx,
@@ -4239,7 +4243,7 @@ fn generate_node(
                         }
                         let mut extra_params = Vec::new();
                         for par in used_params_in_method {
-                            extra_params.push(format!("{par}: ::capnp::traits::Owned"));
+                            extra_params.push(fmt!(ctx, "{par}: {capnp}::traits::Owned"));
                         }
 
                         client_impl_interior.push(Line(fmt!(
@@ -4325,7 +4329,7 @@ fn generate_node(
                     indent(Line("encoded_node: &_private::ENCODED_NODE,".to_string())),
                     indent(Line("params_types: _private::get_param_type,".to_string())),
                     indent(Line("result_types: _private::get_result_type }).into()}}".to_string())),
-                    line("impl ::capnp::traits::Owned for Owned { type Reader<'a> = Client; type Builder<'a> = Client; }"),
+                    line(fmt!(ctx,"impl {capnp}::traits::Owned for Owned {{ type Reader<'a> = Client; type Builder<'a> = Client; }}")),
                     Line(fmt!(ctx,"impl {capnp}::traits::Pipelined for Owned {{ type Pipeline = Client; }}"))])
             } else {
                 Branch(vec![
