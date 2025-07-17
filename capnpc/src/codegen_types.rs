@@ -230,8 +230,8 @@ impl RustTypeInfo for type_::Reader<'_> {
                             module.bare_name()
                         ))
                     }
-                    type_::Text(()) => Ok(format!("::capnp::text_list::{module}")),
-                    type_::Data(()) => Ok(format!("::capnp::data_list::{module}")),
+                    type_::Text(()) => Ok(fmt!(ctx, "{capnp}::text_list::{module}")),
+                    type_::Data(()) => Ok(fmt!(ctx, "{capnp}::data_list::{module}")),
                     type_::Interface(_) => {
                         let inner = element_type.type_string(ctx, Leaf::Client)?;
                         Ok(fmt!(

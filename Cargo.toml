@@ -37,7 +37,7 @@ documentation = "https://docs.rs/capstone/"
 readme = "README.md"
 
 [workspace.dependencies]
-tokio = { version = "1.37", features = [
+tokio = { version = "1.40", features = [
     "net",
     "rt",
     "rt-multi-thread",
@@ -57,7 +57,6 @@ futures-util = "0.3"
 syn = { version = "2.0", features = ["full"] }
 proc-macro2 = "1.0"
 quote = "1.0"
-eyre = "0.6"
 tempfile = "3.*"
 convert_case = "0.8"
 

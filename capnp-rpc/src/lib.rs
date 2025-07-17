@@ -72,6 +72,7 @@ use tokio::sync::oneshot;
 
 pub use crate::rpc::Disconnector;
 use crate::task_set::TaskSet;
+pub use tokio;
 
 pub use crate::reconnect::{SetTarget, auto_reconnect, lazy_auto_reconnect};
 
