@@ -747,14 +747,14 @@ pub mod node {
         11 => <crate::schema_capnp::node::annotation::Owned as crate::introspect::Introspect>::introspect(),
         12 => <crate::struct_list::Owned<crate::schema_capnp::node::parameter::Owned> as crate::introspect::Introspect>::introspect(),
         13 => <bool as crate::introspect::Introspect>::introspect(),
-        _ => panic!("invalid field index {}", index),
+        _ => panic!("invalid field index {index}"),
       }
         }
         pub fn get_annotation_types(
             child_index: Option<u16>,
             index: u32,
         ) -> crate::introspect::Type {
-            panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+            panic!("invalid annotation indices ({child_index:?}, {index}) ")
         }
         pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
             crate::introspect::RawStructSchema {
@@ -1061,14 +1061,14 @@ pub mod node {
             pub fn get_field_types(index: u16) -> crate::introspect::Type {
                 match index {
                     0 => <crate::text::Owned as crate::introspect::Introspect>::introspect(),
-                    _ => panic!("invalid field index {}", index),
+                    _ => panic!("invalid field index {index}"),
                 }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -1382,14 +1382,14 @@ pub mod node {
                 match index {
                     0 => <crate::text::Owned as crate::introspect::Introspect>::introspect(),
                     1 => <u64 as crate::introspect::Introspect>::introspect(),
-                    _ => panic!("invalid field index {}", index),
+                    _ => panic!("invalid field index {index}"),
                 }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -1792,14 +1792,14 @@ pub mod node {
                     2 => <crate::struct_list::Owned<
                         crate::schema_capnp::node::source_info::member::Owned,
                     > as crate::introspect::Introspect>::introspect(),
-                    _ => panic!("invalid field index {}", index),
+                    _ => panic!("invalid field index {index}"),
                 }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -2095,14 +2095,14 @@ pub mod node {
                 pub fn get_field_types(index: u16) -> crate::introspect::Type {
                     match index {
                         0 => <crate::text::Owned as crate::introspect::Introspect>::introspect(),
-                        _ => panic!("invalid field index {}", index),
+                        _ => panic!("invalid field index {index}"),
                     }
                 }
                 pub fn get_annotation_types(
                     child_index: Option<u16>,
                     index: u32,
                 ) -> crate::introspect::Type {
-                    panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                    panic!("invalid annotation indices ({child_index:?}, {index}) ")
                 }
                 pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                     crate::introspect::RawStructSchema {
@@ -2593,14 +2593,14 @@ pub mod node {
           4 => <u16 as crate::introspect::Introspect>::introspect(),
           5 => <u32 as crate::introspect::Introspect>::introspect(),
           6 => <crate::struct_list::Owned<crate::schema_capnp::field::Owned> as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -2909,14 +2909,14 @@ pub mod node {
             pub fn get_field_types(index: u16) -> crate::introspect::Type {
                 match index {
           0 => <crate::struct_list::Owned<crate::schema_capnp::enumerant::Owned> as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -3296,14 +3296,14 @@ pub mod node {
                 match index {
           0 => <crate::struct_list::Owned<crate::schema_capnp::method::Owned> as crate::introspect::Introspect>::introspect(),
           1 => <crate::struct_list::Owned<crate::schema_capnp::superclass::Owned> as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -3660,14 +3660,14 @@ pub mod node {
                 match index {
           0 => <crate::schema_capnp::type_::Owned as crate::introspect::Introspect>::introspect(),
           1 => <crate::schema_capnp::value::Owned as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -4317,14 +4317,14 @@ pub mod node {
           10 => <bool as crate::introspect::Introspect>::introspect(),
           11 => <bool as crate::introspect::Introspect>::introspect(),
           12 => <bool as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -4815,14 +4815,14 @@ pub mod field {
         4 => <crate::schema_capnp::field::slot::Owned as crate::introspect::Introspect>::introspect(),
         5 => <crate::schema_capnp::field::group::Owned as crate::introspect::Introspect>::introspect(),
         6 => <crate::schema_capnp::field::ordinal::Owned as crate::introspect::Introspect>::introspect(),
-        _ => panic!("invalid field index {}", index),
+        _ => panic!("invalid field index {index}"),
       }
         }
         pub fn get_annotation_types(
             child_index: Option<u16>,
             index: u32,
         ) -> crate::introspect::Type {
-            panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+            panic!("invalid annotation indices ({child_index:?}, {index}) ")
         }
         pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
             crate::introspect::RawStructSchema {
@@ -5254,14 +5254,14 @@ pub mod field {
           1 => <crate::schema_capnp::type_::Owned as crate::introspect::Introspect>::introspect(),
           2 => <crate::schema_capnp::value::Owned as crate::introspect::Introspect>::introspect(),
           3 => <bool as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -5528,14 +5528,14 @@ pub mod field {
             pub fn get_field_types(index: u16) -> crate::introspect::Type {
                 match index {
                     0 => <u64 as crate::introspect::Introspect>::introspect(),
-                    _ => panic!("invalid field index {}", index),
+                    _ => panic!("invalid field index {index}"),
                 }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -5837,14 +5837,14 @@ pub mod field {
                 match index {
                     0 => <() as crate::introspect::Introspect>::introspect(),
                     1 => <u16 as crate::introspect::Introspect>::introspect(),
-                    _ => panic!("invalid field index {}", index),
+                    _ => panic!("invalid field index {index}"),
                 }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -6229,14 +6229,14 @@ pub mod enumerant {
         0 => <crate::text::Owned as crate::introspect::Introspect>::introspect(),
         1 => <u16 as crate::introspect::Introspect>::introspect(),
         2 => <crate::struct_list::Owned<crate::schema_capnp::annotation::Owned> as crate::introspect::Introspect>::introspect(),
-        _ => panic!("invalid field index {}", index),
+        _ => panic!("invalid field index {index}"),
       }
         }
         pub fn get_annotation_types(
             child_index: Option<u16>,
             index: u32,
         ) -> crate::introspect::Type {
-            panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+            panic!("invalid annotation indices ({child_index:?}, {index}) ")
         }
         pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
             crate::introspect::RawStructSchema {
@@ -6560,14 +6560,14 @@ pub mod superclass {
                     <crate::schema_capnp::brand::Owned as crate::introspect::Introspect>::introspect(
                     )
                 }
-                _ => panic!("invalid field index {}", index),
+                _ => panic!("invalid field index {index}"),
             }
         }
         pub fn get_annotation_types(
             child_index: Option<u16>,
             index: u32,
         ) -> crate::introspect::Type {
-            panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+            panic!("invalid annotation indices ({child_index:?}, {index}) ")
         }
         pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
             crate::introspect::RawStructSchema {
@@ -7189,14 +7189,14 @@ pub mod method {
         5 => <crate::schema_capnp::brand::Owned as crate::introspect::Introspect>::introspect(),
         6 => <crate::schema_capnp::brand::Owned as crate::introspect::Introspect>::introspect(),
         7 => <crate::struct_list::Owned<crate::schema_capnp::node::parameter::Owned> as crate::introspect::Introspect>::introspect(),
-        _ => panic!("invalid field index {}", index),
+        _ => panic!("invalid field index {index}"),
       }
         }
         pub fn get_annotation_types(
             child_index: Option<u16>,
             index: u32,
         ) -> crate::introspect::Type {
-            panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+            panic!("invalid annotation indices ({child_index:?}, {index}) ")
         }
         pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
             crate::introspect::RawStructSchema {
@@ -7851,14 +7851,14 @@ pub mod type_ {
         16 => <crate::schema_capnp::type_::struct_::Owned as crate::introspect::Introspect>::introspect(),
         17 => <crate::schema_capnp::type_::interface::Owned as crate::introspect::Introspect>::introspect(),
         18 => <crate::schema_capnp::type_::any_pointer::Owned as crate::introspect::Introspect>::introspect(),
-        _ => panic!("invalid field index {}", index),
+        _ => panic!("invalid field index {index}"),
       }
         }
         pub fn get_annotation_types(
             child_index: Option<u16>,
             index: u32,
         ) -> crate::introspect::Type {
-            panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+            panic!("invalid annotation indices ({child_index:?}, {index}) ")
         }
         pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
             crate::introspect::RawStructSchema {
@@ -8195,14 +8195,14 @@ pub mod type_ {
             pub fn get_field_types(index: u16) -> crate::introspect::Type {
                 match index {
           0 => <crate::schema_capnp::type_::Owned as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -8528,14 +8528,14 @@ pub mod type_ {
                 match index {
           0 => <u64 as crate::introspect::Introspect>::introspect(),
           1 => <crate::schema_capnp::brand::Owned as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -8862,14 +8862,14 @@ pub mod type_ {
                 match index {
           0 => <u64 as crate::introspect::Introspect>::introspect(),
           1 => <crate::schema_capnp::brand::Owned as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -9196,14 +9196,14 @@ pub mod type_ {
                 match index {
           0 => <u64 as crate::introspect::Introspect>::introspect(),
           1 => <crate::schema_capnp::brand::Owned as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -9519,14 +9519,14 @@ pub mod type_ {
           0 => <crate::schema_capnp::type_::any_pointer::unconstrained::Owned as crate::introspect::Introspect>::introspect(),
           1 => <crate::schema_capnp::type_::any_pointer::parameter::Owned as crate::introspect::Introspect>::introspect(),
           2 => <crate::schema_capnp::type_::any_pointer::implicit_method_parameter::Owned as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -9893,14 +9893,14 @@ pub mod type_ {
                         1 => <() as crate::introspect::Introspect>::introspect(),
                         2 => <() as crate::introspect::Introspect>::introspect(),
                         3 => <() as crate::introspect::Introspect>::introspect(),
-                        _ => panic!("invalid field index {}", index),
+                        _ => panic!("invalid field index {index}"),
                     }
                 }
                 pub fn get_annotation_types(
                     child_index: Option<u16>,
                     index: u32,
                 ) -> crate::introspect::Type {
-                    panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                    panic!("invalid annotation indices ({child_index:?}, {index}) ")
                 }
                 pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                     crate::introspect::RawStructSchema {
@@ -10214,14 +10214,14 @@ pub mod type_ {
                     match index {
                         0 => <u64 as crate::introspect::Introspect>::introspect(),
                         1 => <u16 as crate::introspect::Introspect>::introspect(),
-                        _ => panic!("invalid field index {}", index),
+                        _ => panic!("invalid field index {index}"),
                     }
                 }
                 pub fn get_annotation_types(
                     child_index: Option<u16>,
                     index: u32,
                 ) -> crate::introspect::Type {
-                    panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                    panic!("invalid annotation indices ({child_index:?}, {index}) ")
                 }
                 pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                     crate::introspect::RawStructSchema {
@@ -10501,14 +10501,14 @@ pub mod type_ {
                 pub fn get_field_types(index: u16) -> crate::introspect::Type {
                     match index {
                         0 => <u16 as crate::introspect::Introspect>::introspect(),
-                        _ => panic!("invalid field index {}", index),
+                        _ => panic!("invalid field index {index}"),
                     }
                 }
                 pub fn get_annotation_types(
                     child_index: Option<u16>,
                     index: u32,
                 ) -> crate::introspect::Type {
-                    panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                    panic!("invalid annotation indices ({child_index:?}, {index}) ")
                 }
                 pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                     crate::introspect::RawStructSchema {
@@ -10818,14 +10818,14 @@ pub mod brand {
         pub fn get_field_types(index: u16) -> crate::introspect::Type {
             match index {
         0 => <crate::struct_list::Owned<crate::schema_capnp::brand::scope::Owned> as crate::introspect::Introspect>::introspect(),
-        _ => panic!("invalid field index {}", index),
+        _ => panic!("invalid field index {index}"),
       }
         }
         pub fn get_annotation_types(
             child_index: Option<u16>,
             index: u32,
         ) -> crate::introspect::Type {
-            panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+            panic!("invalid annotation indices ({child_index:?}, {index}) ")
         }
         pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
             crate::introspect::RawStructSchema {
@@ -11198,14 +11198,14 @@ pub mod brand {
           0 => <u64 as crate::introspect::Introspect>::introspect(),
           1 => <crate::struct_list::Owned<crate::schema_capnp::brand::binding::Owned> as crate::introspect::Introspect>::introspect(),
           2 => <() as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -11557,14 +11557,14 @@ pub mod brand {
                 match index {
           0 => <() as crate::introspect::Introspect>::introspect(),
           1 => <crate::schema_capnp::type_::Owned as crate::introspect::Introspect>::introspect(),
-          _ => panic!("invalid field index {}", index),
+          _ => panic!("invalid field index {index}"),
         }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -12379,14 +12379,14 @@ pub mod value {
                 16 => <crate::any_pointer::Owned as crate::introspect::Introspect>::introspect(),
                 17 => <() as crate::introspect::Introspect>::introspect(),
                 18 => <crate::any_pointer::Owned as crate::introspect::Introspect>::introspect(),
-                _ => panic!("invalid field index {}", index),
+                _ => panic!("invalid field index {index}"),
             }
         }
         pub fn get_annotation_types(
             child_index: Option<u16>,
             index: u32,
         ) -> crate::introspect::Type {
-            panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+            panic!("invalid annotation indices ({child_index:?}, {index}) ")
         }
         pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
             crate::introspect::RawStructSchema {
@@ -12806,14 +12806,14 @@ pub mod annotation {
                     <crate::schema_capnp::brand::Owned as crate::introspect::Introspect>::introspect(
                     )
                 }
-                _ => panic!("invalid field index {}", index),
+                _ => panic!("invalid field index {index}"),
             }
         }
         pub fn get_annotation_types(
             child_index: Option<u16>,
             index: u32,
         ) -> crate::introspect::Type {
-            panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+            panic!("invalid annotation indices ({child_index:?}, {index}) ")
         }
         pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
             crate::introspect::RawStructSchema {
@@ -12947,7 +12947,7 @@ mod element_size {
         crate::word(109, 112, 111, 115, 105, 116, 101, 0),
     ];
     pub fn get_annotation_types(child_index: Option<u16>, index: u32) -> crate::introspect::Type {
-        panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+        panic!("invalid annotation indices ({child_index:?}, {index}) ")
     }
 }
 
@@ -13258,14 +13258,14 @@ pub mod capnp_version {
                 0 => <u16 as crate::introspect::Introspect>::introspect(),
                 1 => <u8 as crate::introspect::Introspect>::introspect(),
                 2 => <u8 as crate::introspect::Introspect>::introspect(),
-                _ => panic!("invalid field index {}", index),
+                _ => panic!("invalid field index {index}"),
             }
         }
         pub fn get_annotation_types(
             child_index: Option<u16>,
             index: u32,
         ) -> crate::introspect::Type {
-            panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+            panic!("invalid annotation indices ({child_index:?}, {index}) ")
         }
         pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
             crate::introspect::RawStructSchema {
@@ -13786,14 +13786,14 @@ pub mod code_generator_request {
         1 => <crate::struct_list::Owned<crate::schema_capnp::code_generator_request::requested_file::Owned> as crate::introspect::Introspect>::introspect(),
         2 => <crate::schema_capnp::capnp_version::Owned as crate::introspect::Introspect>::introspect(),
         3 => <crate::struct_list::Owned<crate::schema_capnp::node::source_info::Owned> as crate::introspect::Introspect>::introspect(),
-        _ => panic!("invalid field index {}", index),
+        _ => panic!("invalid field index {index}"),
       }
         }
         pub fn get_annotation_types(
             child_index: Option<u16>,
             index: u32,
         ) -> crate::introspect::Type {
-            panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+            panic!("invalid annotation indices ({child_index:?}, {index}) ")
         }
         pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
             crate::introspect::RawStructSchema {
@@ -14197,14 +14197,14 @@ pub mod code_generator_request {
                     2 => <crate::struct_list::Owned<
                         crate::schema_capnp::code_generator_request::requested_file::import::Owned,
                     > as crate::introspect::Introspect>::introspect(),
-                    _ => panic!("invalid field index {}", index),
+                    _ => panic!("invalid field index {index}"),
                 }
             }
             pub fn get_annotation_types(
                 child_index: Option<u16>,
                 index: u32,
             ) -> crate::introspect::Type {
-                panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                panic!("invalid annotation indices ({child_index:?}, {index}) ")
             }
             pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                 crate::introspect::RawStructSchema {
@@ -14529,14 +14529,14 @@ pub mod code_generator_request {
                     match index {
                         0 => <u64 as crate::introspect::Introspect>::introspect(),
                         1 => <crate::text::Owned as crate::introspect::Introspect>::introspect(),
-                        _ => panic!("invalid field index {}", index),
+                        _ => panic!("invalid field index {index}"),
                     }
                 }
                 pub fn get_annotation_types(
                     child_index: Option<u16>,
                     index: u32,
                 ) -> crate::introspect::Type {
-                    panic!("invalid annotation indices ({:?}, {}) ", child_index, index)
+                    panic!("invalid annotation indices ({child_index:?}, {index}) ")
                 }
                 pub static RAW_SCHEMA: crate::introspect::RawStructSchema =
                     crate::introspect::RawStructSchema {

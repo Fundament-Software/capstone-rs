@@ -56,7 +56,7 @@ impl core::fmt::Debug for dyn ReaderArena + '_ {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let mut id = 0;
         while let Ok((p, len)) = self.get_segment(id) {
-            f.write_fmt(format_args!("Segment {}: {:?} ({} bytes)", id, p, len))?;
+            f.write_fmt(format_args!("Segment {id}: {p:?} ({len} bytes)"))?;
             id += 1
         }
         f.write_fmt(format_args!("Nesting Limit: {}", self.nesting_limit()))
