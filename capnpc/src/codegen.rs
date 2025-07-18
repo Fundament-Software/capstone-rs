@@ -2605,11 +2605,9 @@ fn generate_get_field_types(
         }
     }
     let body = if branches.is_empty() {
-        Line("panic!(\"invalid field index {}\", index)".into())
+        Line("panic!(\"invalid field index {index}\")".into())
     } else {
-        branches.push(Line(
-            "_ => panic!(\"invalid field index {}\", index),".into(),
-        ));
+        branches.push(Line("_ => panic!(\"invalid field index {index}\"),".into()));
         Branch(vec![
             Line("match index {".into()),
             indent(branches),
@@ -2703,11 +2701,9 @@ fn generate_get_params_results(
         )));
     }
     let params_body = if params_branches.is_empty() {
-        Line("panic!(\"invalid field index {}\", index)".into())
+        Line("panic!(\"invalid field index {index}\")".into())
     } else {
-        params_branches.push(Line(
-            "_ => panic!(\"invalid field index {}\", index),".into(),
-        ));
+        params_branches.push(Line("_ => panic!(\"invalid field index {index}\"),".into()));
         Branch(vec![
             Line("match index {".into()),
             indent(params_branches),
@@ -2715,11 +2711,9 @@ fn generate_get_params_results(
         ])
     };
     let results_body = if results_branches.is_empty() {
-        Line("panic!(\"invalid field index {}\", index)".into())
+        Line("panic!(\"invalid field index {index}\")".into())
     } else {
-        results_branches.push(Line(
-            "_ => panic!(\"invalid field index {}\", index),".into(),
-        ));
+        results_branches.push(Line("_ => panic!(\"invalid field index {index}\"),".into()));
         Branch(vec![
             Line("match index {".into()),
             indent(results_branches),
@@ -2835,10 +2829,10 @@ fn generate_get_annotation_types(
     }
 
     let body = if branches.is_empty() {
-        Line("panic!(\"invalid annotation indices ({:?}, {}) \", child_index, index);".into())
+        Line("panic!(\"invalid annotation indices ({child_index:?}, {index}) \");".into())
     } else {
         branches.push(Line(
-            "_ => panic!(\"invalid annotation indices ({:?}, {}) \", child_index, index),".into(),
+            "_ => panic!(\"invalid annotation indices ({child_index:?}, {index}) \"),".into(),
         ));
         indent(vec![
             Line("match (child_index, index) {".into()),
