@@ -100,7 +100,7 @@ impl CodeGenerationCommand {
     /// # Arguments
     ///
     /// - `map` - A map from capnp file id to the crate name that provides the
-    ///     corresponding generated code.
+    ///   corresponding generated code.
     ///
     /// See [`crate::CompilerCommand::crate_provides`] for more details.
     pub fn crates_provide_map(&mut self, map: HashMap<u64, String>) -> &mut Self {
@@ -776,7 +776,7 @@ pub fn getter_text(
             let should_get_option = is_option_field(*field)?;
 
             let typ = if should_get_option {
-                format!("Option<{}>", inner_type)
+                format!("Option<{inner_type}>",)
             } else {
                 inner_type
             };
@@ -1389,7 +1389,7 @@ fn generate_setter(
                         lifetime = "'a";
                     }
                     let bracketed_params = if !lifetime.is_empty() || maybe_generics.len() > 1 {
-                        format! {"<{lifetime}{}>", maybe_generics}
+                        format! {"<{lifetime}{maybe_generics}>", }
                     } else {
                         "".to_string()
                     };
@@ -1740,7 +1740,7 @@ fn vec_of_list_element_types(
             )?;
             let maybe_generics = &maybe_generics[the_mod.len() + 9..maybe_generics.len() - 1];
             let bracketed_params = if !temp.is_empty() || maybe_generics.len() > 1 {
-                format! {"<{temp}{}>", maybe_generics}
+                format! {"<{temp}{maybe_generics}>", }
             } else {
                 "".to_string()
             };
@@ -2112,7 +2112,7 @@ fn generate_union(
                                 vec_of_list_element_types(ctx, l.reborrow(), &mut temp)
                             {
                                 params_enum_string.push_str(
-                                    format!("\n _{enumerant_name}({}),", vec_of_list_element_types)
+                                    format!("\n _{enumerant_name}({vec_of_list_element_types}),",)
                                         .as_str(),
                                 );
                                 params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => {{\n{}\n}},", build_impl_for_list_type(camel.as_str(), "_builder", l.reborrow(), true, false)?).as_str());
@@ -2126,7 +2126,7 @@ fn generate_union(
                             let id = e.get_type_id();
                             let the_mod = ctx.get_qualified_module(id);
                             params_enum_string
-                                .push_str(format!("\n _{enumerant_name}({}),", the_mod).as_str());
+                                .push_str(format!("\n _{enumerant_name}({the_mod}),",).as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.reborrow().set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                         }
@@ -2170,15 +2170,14 @@ fn generate_union(
                             let maybe_generics =
                                 &maybe_generics[the_mod.len() + 9..maybe_generics.len() - 1];
                             let bracketed_params = if !temp.is_empty() || maybe_generics.len() > 1 {
-                                format! {"<{temp}{}>", maybe_generics}
+                                format! {"<{temp}{maybe_generics}>", }
                             } else {
                                 "".to_string()
                             };
                             if possibly_cyclical {
                                 params_enum_string.push_str(
                                     format!(
-                                        "\n _{enumerant_name}(Box<{}{bracketed_params}>),",
-                                        path_string
+                                        "\n _{enumerant_name}(Box<{path_string}{bracketed_params}>),",
                                     )
                                     .as_str(),
                                 );
@@ -2186,8 +2185,7 @@ fn generate_union(
                             } else {
                                 params_enum_string.push_str(
                                     format!(
-                                        "\n _{enumerant_name}({}{bracketed_params}),",
-                                        path_string
+                                        "\n _{enumerant_name}({path_string}{bracketed_params}),",
                                     )
                                     .as_str(),
                                 );
@@ -2774,7 +2772,7 @@ fn annotation_branch(
         let brand = annotation.get_brand()?;
         let the_mod = ctx.get_qualified_module(id);
         let func = do_branding(ctx, id, brand, Leaf::GetType, &the_mod)?;
-        Ok(Line(format!("({child_index:?}, {index}) => {}(),", func)))
+        Ok(Line(format!("({child_index:?}, {index}) => {func}(),",)))
     } else {
         // Avoid referring to the annotation in the generated code, so that users can import
         // annotation schemas like `c++.capnp` or `rust.capnp` without needing to generate code
@@ -3712,7 +3710,7 @@ fn generate_node(
             ]));
 
             output.push(Branch(vec![
-                Line(format!("mod {} {{", name_as_mod)),
+                Line(format!("mod {name_as_mod} {{",)),
                 Branch(vec![
                     crate::pointer_constants::node_word_array_declaration(
                         ctx,
@@ -4038,8 +4036,7 @@ fn generate_node(
                                                 {
                                                     builder_params_string.push_str(
                                                         format!(
-                                                            "_{styled_name}: {},",
-                                                            vec_of_list_element_types
+                                                            "_{styled_name}: {vec_of_list_element_types},",
                                                         )
                                                         .as_str(),
                                                     );
@@ -4102,7 +4099,7 @@ fn generate_node(
                                             let bracketed_params = if !lifetime.is_empty()
                                                 || maybe_generics.len() > 1
                                             {
-                                                format! {"<{lifetime}{}>", maybe_generics}
+                                                format! {"<{lifetime}{maybe_generics}>"}
                                             } else {
                                                 "".to_string()
                                             };
@@ -4113,8 +4110,7 @@ fn generate_node(
                                                 {
                                                     builder_params_string.push_str(
                                                         format!(
-                                                            "_{styled_name}: Option<Box<{}{bracketed_params}>>,",
-                                                            type_string
+                                                            "_{styled_name}: Option<Box<{type_string}{bracketed_params}>>,",
                                                         )
                                                         .as_str(),
                                                     );
@@ -4122,8 +4118,7 @@ fn generate_node(
                                                 } else {
                                                     builder_params_string.push_str(
                                                         format!(
-                                                            "_{styled_name}: Option<{}{bracketed_params}>,",
-                                                            type_string
+                                                            "_{styled_name}: Option<{type_string}{bracketed_params}>,",
                                                         )
                                                         .as_str(),
                                                     );
@@ -4649,7 +4644,7 @@ fn generate_node(
             let params = node_reader.parameters_texts(ctx);
             let last_name = ctx.get_last_name(node_id)?;
             let mut interior = vec![];
-            interior.push(Line(format!("pub const ID: u64 = 0x{:x};", node_id)));
+            interior.push(Line(format!("pub const ID: u64 = 0x{node_id:x};")));
 
             let ty = annotation_reader.get_type()?;
             if !is_generic {
@@ -4659,7 +4654,7 @@ fn generate_node(
                 interior.push(Line(fmt!(ctx,"pub fn get_type<{0}>() -> {capnp}::introspect::Type {1} {{ <{2} as {capnp}::introspect::Introspect>::introspect() }}", params.params, params.where_clause, ty.type_string(ctx, Leaf::Owned)?)));
             }
             output.push(Branch(vec![
-                Line(format!("pub mod {} {{", last_name)),
+                Line(format!("pub mod {last_name} {{")),
                 indent(interior),
                 Line("}".into()),
             ]));

@@ -87,8 +87,7 @@ fn get_type_variant(token: &DynamicSchemaToken, id: u64) -> Result<TypeVariant> 
     ))?;
 
     Ok(*hash.as_ref().get(&id).ok_or(crate::Error::failed(format!(
-        "Could not find type id {}",
-        id
+        "Could not find type id {id}",
     )))?)
 }
 
@@ -363,8 +362,7 @@ impl DynamicSchema {
     ) -> Result<&TypeVariant> {
         let mut parent = if let Some(f) = file {
             *self.files.get(f).ok_or(crate::Error::failed(format!(
-                "{} is not a file in this DynamicSchema",
-                f
+                "{f} is not a file in this DynamicSchema",
             )))?
         } else if self.files.len() > 1 {
             return Err(crate::Error::failed(
@@ -418,7 +416,6 @@ impl std::ops::Drop for DynamicSchema {
             // because leaving a ref to freed space live is not allowed
             // and miri test will probably screm
             // so maybe we should just leak it forever how bad could it be
-            use core::mem;
             unsafe {
                 assert!(
                     (*val as *const &T).cast::<()>() as usize != 0,
@@ -433,13 +430,13 @@ impl std::ops::Drop for DynamicSchema {
                     (*val as *const &T),
                 );
                 assert!(
-                    *val as *const _ != mem::align_of::<&T>() as *const _,
+                    !std::ptr::eq(*val, std::ptr::dangling()),
                     "free_as_box: already freed ptr to {} has val {:#?}",
                     std::any::type_name::<T>(),
                     (*val as *const &T),
                 );
                 drop(Box::from_raw((**val) as *const T as *mut T));
-                *val = &*(mem::align_of::<&T>() as *const _);
+                *val = &*std::ptr::dangling();
             }
         }
 
@@ -527,7 +524,7 @@ impl StructSchema {
             Ok(field)
         } else {
             let mut error = crate::Error::from_kind(crate::ErrorKind::FieldNotFound);
-            write!(error, "{}", name);
+            write!(error, "{name}");
             Err(error)
         }
     }

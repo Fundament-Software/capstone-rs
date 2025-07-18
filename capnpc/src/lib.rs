@@ -341,30 +341,26 @@ impl CompilerCommand {
                     && file_path
                         .file_name()
                         .ok_or(capnp::Error::failed(format!(
-                            "Couldn't parse file: {:?}",
-                            file_path
+                            "Couldn't parse file: {file_path:?}",
                         )))?
                         .to_str()
                         .ok_or(capnp::Error::failed(format!(
-                            "Couldn't convert to &str: {:?}",
-                            file_path,
+                            "Couldn't convert to &str: {file_path:?}",
                         )))?
                         .ends_with("_capnp.rs")
                 {
                     let file_stem = file_path
                         .file_stem()
                         .ok_or(capnp::Error::failed(format!(
-                            "Couldn't parse file: {:?}",
-                            file_path
+                            "Couldn't parse file: {file_path:?}",
                         )))?
                         .to_str()
                         .ok_or(capnp::Error::failed(format!(
-                            "Couldn't convert to &str: {:?}",
-                            file_path
+                            "Couldn't convert to &str: {file_path:?}",
                         )))?
                         .to_case(Case::Snake);
 
-                    f.write_all(format!("pub mod {} {{", file_stem).as_bytes())
+                    f.write_all(format!("pub mod {file_stem} {{").as_bytes())
                         .map_err(|e| capnp::Error::failed(e.to_string()))?;
                     f.write_all(
                         std::fs::read_to_string(file_path)
@@ -426,10 +422,8 @@ impl CompilerCommand {
                         if ensure_some.peek().is_none() {
                             return Err(capnp::Error::failed(format!(
                                 "No capnp files found matching {pattern}, did you mean to use an absolute path instead of a relative one?
-                    Manifest directory for relative paths: {:#?}
-                    Potential directories for absolute paths: {:#?}",
-                                manifest,
-                                search_paths
+                    Manifest directory for relative paths: {manifest:#?}
+                    Potential directories for absolute paths: {search_paths:#?}",
                             )));
                         }
                         Ok(ensure_some)
@@ -450,10 +444,8 @@ impl CompilerCommand {
             // I think the only way we can reach this now is by failing the is_file() check above
             return Err(::capnp::Error::failed(format!(
             "No capnp files found, did you mean to use an absolute path instead of a relative one?
-  Manifest directory for relative paths: {:#?}
-  Potential directories for absolute paths: {:#?}",
-            manifest,
-            search_paths
+  Manifest directory for relative paths: {manifest:#?}
+  Potential directories for absolute paths: {search_paths:#?}",
         )));
         }
         Ok(())

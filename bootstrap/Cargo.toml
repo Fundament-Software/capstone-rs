@@ -1,0 +1,15 @@
+[package]
+
+name = "bootstrap"
+version = "0.0.0"
+authors = ["Erik McClure"]
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "bootstrap"
+path = "main.rs"
+
+[dependencies]
+capstone-gen.workspace = true
+capnp-sys.workspace = true
