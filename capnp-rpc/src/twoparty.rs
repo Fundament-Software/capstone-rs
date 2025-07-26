@@ -190,8 +190,12 @@ where
         }
     }
 
-    fn shutdown(&mut self, result: ::capnp::Result<()>) -> Promise<(), ::capnp::Error> {
-        Promise::from_future(self.inner.borrow_mut().sender.terminate(result))
+    fn shutdown(
+        &mut self,
+        result: ::capnp::Result<()>,
+        flush: bool,
+    ) -> Promise<(), ::capnp::Error> {
+        Promise::from_future(self.inner.borrow_mut().sender.terminate(result, flush))
     }
 }
 

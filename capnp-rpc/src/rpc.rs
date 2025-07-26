@@ -410,7 +410,7 @@ impl<VatId> ConnectionErrorHandler<VatId> {
 impl<VatId> crate::task_set::TaskReaper<capnp::Error> for ConnectionErrorHandler<VatId> {
     fn task_failed(&mut self, error: ::capnp::Error) {
         if let Some(state) = self.weak_state.upgrade() {
-            state.disconnect(error)
+            state.disconnect(error, false)
         }
     }
 }
@@ -473,7 +473,7 @@ impl<VatId> ConnectionState<VatId> {
         }
     }
 
-    fn disconnect(&self, error: ::capnp::Error) {
+    fn disconnect(&self, error: ::capnp::Error, flush: bool) {
         if self.connection.borrow().is_err() {
             // Already disconnected.
             return;
@@ -562,7 +562,7 @@ impl<VatId> ConnectionState<VatId> {
 
         match connection {
             Ok(mut c) => {
-                let promise = c.shutdown(Err(error)).then(|r| match r {
+                let promise = c.shutdown(Err(error), flush).then(|r| match r {
                     Ok(()) => Promise::ok(()),
                     Err(e) => {
                         if e.kind != ::capnp::ErrorKind::Disconnected {
@@ -677,7 +677,7 @@ impl<VatId> ConnectionState<VatId> {
                     weak_state
                         .upgrade()
                         .expect("message loop outlived connection state?")
-                        .disconnect(Error::disconnected("Peer disconnected.".to_string()));
+                        .disconnect(Error::disconnected("Peer disconnected.".to_string()), false);
                 }
             }
             Ok(())
@@ -1618,9 +1618,10 @@ impl<VatId> Disconnector<VatId> {
     }
     fn disconnect(&self) {
         if let Some(ref state) = *(self.connection_state.borrow()) {
-            state.disconnect(::capnp::Error::disconnected(
-                "client requested disconnect".to_owned(),
-            ));
+            state.disconnect(
+                ::capnp::Error::disconnected("client requested disconnect".to_owned()),
+                true,
+            );
         }
     }
 }
