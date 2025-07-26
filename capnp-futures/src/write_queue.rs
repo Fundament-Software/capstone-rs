@@ -76,13 +76,16 @@ where
         while let Some(item) = rx_stream.next().await {
             match item {
                 Item::Message(m, returner) => {
-                    let result = crate::serialize::write_message(&mut writer, &m).await;
-                    in_flight.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
-                    result?;
-                    writer.flush().await?;
+                    if in_flight.load(std::sync::atomic::Ordering::SeqCst) >= 0 {
+                        let result = crate::serialize::write_message(&mut writer, &m).await;
+                        in_flight.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+                        result?;
+                        writer.flush().await?;
+                    }
                     let _ = returner.send(m);
                 }
                 Item::Done(r, finisher) => {
+                    writer.shutdown().await.unwrap();
                     let _ = finisher.send(());
                     return r;
                 }
@@ -127,9 +130,15 @@ where
     pub fn terminate(
         &mut self,
         result: Result<(), Error>,
+        flush: bool,
     ) -> impl Future<Output = Result<(), Error>> + Unpin + use<M> {
         let (complete, receiver) = oneshot::channel();
 
+        if !flush {
+            // If we don't want to flush any messages, immediately command the queue to skip all future writes
+            self.in_flight
+                .store(-1, std::sync::atomic::Ordering::SeqCst);
+        }
         let _ = self.sender.send(Item::Done(result, complete));
 
         receiver.map_err(|_| Error::disconnected("WriteQueue has terminated".into()))
