@@ -3760,6 +3760,9 @@ fn generate_node(
             mod_interior.push(line("#![allow(clippy::extra_unused_type_parameters)]"));
             mod_interior.push(line("#![allow(clippy::wrong_self_convention)]"));
             mod_interior.push(line("#![allow(clippy::needless_lifetimes)]"));
+            mod_interior.push(line("#![allow(clippy::useless_conversion)]"));
+            mod_interior.push(line("#![allow(clippy::identity_op)]"));
+
             mod_interior.push(BlankLine);
             let methods = interface.get_methods()?;
             let mut method_count = 0;
