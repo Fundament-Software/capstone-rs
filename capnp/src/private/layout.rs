@@ -3989,6 +3989,9 @@ pub struct ListReader<'a> {
 }
 
 impl<'a> ListReader<'a> {
+    // We can't use ptr_eq because this code must work with no_std
+    #![allow(clippy::ptr_eq)]
+
     pub fn new_default<'b>() -> ListReader<'b> {
         ListReader {
             arena: &NULL_ARENA,
