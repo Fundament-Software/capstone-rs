@@ -9,7 +9,7 @@ license = "MIT"
 members = ["."]
 
 [dependencies]
-wasmer = { version = "5.0.0", default-features = false, features = [
+wasmer = { version = "6.0.0", default-features = false, features = [
   "cranelift",
 ] }
 
