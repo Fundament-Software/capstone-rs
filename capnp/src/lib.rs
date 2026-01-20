@@ -63,6 +63,7 @@ pub mod struct_list;
 pub mod text;
 pub mod text_list;
 pub mod traits;
+pub use tokio;
 
 #[cfg(feature = "alloc")]
 use alloc::string::String;
