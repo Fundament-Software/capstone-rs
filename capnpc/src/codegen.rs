@@ -3916,7 +3916,7 @@ fn generate_node(
 
                         shared_client_impl_interior.push(indent(Line(fmt!(
                     ctx,
-                    "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as capnp::traits::Owned>::Builder<'_>>();{builder_params_inner_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({ordinal}, message, tx)).await.map_err(|_| capnp::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.unwrap()?.into_reader().into_typed())\n     }}", 
+                    "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as capnp::traits::Owned>::Builder<'_>>();{builder_params_inner_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({ordinal}, message, tx)).await.map_err(|_| capnp::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.map_err(|_| capnp::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))??.into_reader().into_typed())\n     }}", 
                     param_type
                 ))));
 
@@ -4304,7 +4304,7 @@ fn generate_node(
 
                                 shared_client_impl_interior.push(indent(Line(fmt!(
                             ctx,
-                            "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as capnp::traits::Owned>::Builder<'_>>();{builder_params_impl_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({method_count}, message, tx)).await.map_err(|_| capnp::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.unwrap()?.into_reader().into_typed())\n     }}", 
+                            "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as capnp::traits::Owned>::Builder<'_>>();{builder_params_impl_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({method_count}, message, tx)).await.map_err(|_| capnp::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.map_err(|_| capnp::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))??.into_reader().into_typed())\n     }}", 
                             param_type
                         ))));
                                 shared_client_match_arms.push_str(format!("\n       {method_count} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = capnp::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
