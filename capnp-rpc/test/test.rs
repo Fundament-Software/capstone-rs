@@ -306,7 +306,7 @@ async fn basic_rpc_calls() {
 
         //let mut request1 = client.foo_request();
         //request1.get().set_i(123);
-        //request1.get().set_j(true);
+        //request1get().set_j(true);
         let request1 = client.build_foo_request(123, true);
 
         let promise1 = request1.send();
