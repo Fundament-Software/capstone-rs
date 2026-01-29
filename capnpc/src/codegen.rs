@@ -3916,11 +3916,11 @@ fn generate_node(
 
                         shared_client_impl_interior.push(indent(Line(fmt!(
                     ctx,
-                    "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as capnp::traits::Owned>::Builder<'_>>();{builder_params_inner_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({ordinal}, message, tx)).await.map_err(|_| capnp::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.map_err(|_| capnp::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))??.into_reader().into_typed())\n     }}", 
+                    "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as {capnp}::traits::Owned>::Builder<'_>>();{builder_params_inner_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({ordinal}, message, tx)).await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))??.into_reader().into_typed())\n     }}", 
                     param_type
                 ))));
 
-                        shared_client_match_arms.push_str(format!("\n       {ordinal} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = capnp::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
+                        shared_client_match_arms.push_str(fmt!(ctx, "\n       {ordinal} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
                     }
                 }
 
@@ -4304,10 +4304,10 @@ fn generate_node(
 
                                 shared_client_impl_interior.push(indent(Line(fmt!(
                             ctx,
-                            "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as capnp::traits::Owned>::Builder<'_>>();{builder_params_impl_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({method_count}, message, tx)).await.map_err(|_| capnp::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.map_err(|_| capnp::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))??.into_reader().into_typed())\n     }}", 
+                            "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as {capnp}::traits::Owned>::Builder<'_>>();{builder_params_impl_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({method_count}, message, tx)).await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))??.into_reader().into_typed())\n     }}", 
                             param_type
                         ))));
-                                shared_client_match_arms.push_str(format!("\n       {method_count} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = capnp::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
+                                shared_client_match_arms.push_str(fmt!(ctx, "\n       {method_count} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
                             }
                         }
 
@@ -4444,7 +4444,7 @@ fn generate_node(
             )));
 
             client_impl_interior.push(indent(Line(fmt!(ctx,
-                            "let (tx, mut rx) = {capnp}::tokio::sync::mpsc::channel::<(u8, capnp::message::Builder<capnp::message::HeapAllocator>, capnp::tokio::sync::oneshot::Sender<capnp::Result<capnp::message::Builder<capnp::message::HeapAllocator>>>)>(100);\n      let client = self.clone();\n      {capnp}::tokio::task::spawn_local(async move {{\n      loop {{\n      let (ordinal, message, oneshot) = rx.recv().await.unwrap();\n      match ordinal {{{shared_client_match_arms}\n      }}}}}});\n      Ok(SharedClient{{_mpsc: tx}})\n      }}"
+                            "let (tx, mut rx) = {capnp}::tokio::sync::mpsc::channel::<(u8, {capnp}::message::Builder<{capnp}::message::HeapAllocator>, {capnp}::tokio::sync::oneshot::Sender<{capnp}::Result<{capnp}::message::Builder<{capnp}::message::HeapAllocator>>>)>(100);\n      let client = self.clone();\n      {capnp}::tokio::task::spawn_local(async move {{\n      loop {{\n      let (ordinal, message, oneshot) = rx.recv().await.unwrap();\n      match ordinal {{{shared_client_match_arms}\n      }}}}}});\n      Ok(SharedClient{{_mpsc: tx}})\n      }}"
                         ))));
 
             mod_interior.push(Branch(vec![
@@ -4457,8 +4457,8 @@ fn generate_node(
 
             mod_interior.push(BlankLine);
             mod_interior.push(Line(format!("pub struct SharedClient {{")));
-            mod_interior.push(indent(Line(format!(
-                "_mpsc: capnp::tokio::sync::mpsc::Sender<(u8, capnp::message::Builder<capnp::message::HeapAllocator>, capnp::tokio::sync::oneshot::Sender<capnp::Result<capnp::message::Builder<capnp::message::HeapAllocator>>>)>,"
+            mod_interior.push(indent(Line(fmt!(ctx,
+                "_mpsc: {capnp}::tokio::sync::mpsc::Sender<(u8, {capnp}::message::Builder<{capnp}::message::HeapAllocator>, {capnp}::tokio::sync::oneshot::Sender<{capnp}::Result<{capnp}::message::Builder<{capnp}::message::HeapAllocator>>>)>,"
             ))));
             mod_interior.push(line("}"));
             mod_interior.push(BlankLine);
