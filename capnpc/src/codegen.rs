@@ -1043,6 +1043,7 @@ fn generate_setter(
     rust_struct_impl_inner: &mut String,
     set_types: &mut String,
     set_inner: &mut String,
+    get_inner: &mut Vec<FormattedText>,
     is_params_struct: bool,
     params_struct_generics: &mut HashSet<String>,
     interface_implicit_generics: &[String],
@@ -1126,6 +1127,9 @@ fn generate_setter(
                     .as_str(),
                 );
                 rust_struct_impl_inner.push_str(format!("\n  {params_struct_impl_prefix}_{styled_name}.build_capnp_struct(_builder.reborrow().init_{styled_name}());").as_str());
+                get_inner.push(line(format!(
+                    "_{styled_name}: self.get_{styled_name}().get()?,"
+                )));
             }
             let params_string = if params.is_empty() {
                 "".to_string()
@@ -1163,6 +1167,7 @@ fn generate_setter(
                             format!("{params_struct_prefix}_{styled_name}: (),").as_str(),
                         );
                         rust_struct_impl_inner.push_str(format!("\n  _builder.set_{styled_name}({params_struct_impl_prefix}_{styled_name});").as_str());
+                        get_inner.push(line(format!("_{styled_name}: self.get_{styled_name}(),")));
                     }
                     (Some("()".to_string()), None)
                 }
@@ -1188,6 +1193,7 @@ fn generate_setter(
                             format!("{params_struct_prefix}_{styled_name}: bool,").as_str(),
                         );
                         rust_struct_impl_inner.push_str(format!("\n  _builder.set_{styled_name}({params_struct_impl_prefix}_{styled_name});").as_str());
+                        get_inner.push(line(format!("_{styled_name}: self.get_{styled_name}(),")));
                     }
                     (Some("bool".to_string()), None)
                 }
@@ -1214,6 +1220,7 @@ fn generate_setter(
                             format!("{params_struct_prefix}_{styled_name}: {tstr},").as_str(),
                         );
                         rust_struct_impl_inner.push_str(format!("\n  _builder.set_{styled_name}({params_struct_impl_prefix}_{styled_name});").as_str());
+                        get_inner.push(line(format!("_{styled_name}: self.get_{styled_name}(),")));
                     }
                     (Some(tstr), None)
                 }
@@ -1235,6 +1242,9 @@ fn generate_setter(
                             format!("{params_struct_prefix}_{styled_name}: &'a str,").as_str(),
                         );
                         rust_struct_impl_inner.push_str(format!("\n  _builder.set_{styled_name}({params_struct_impl_prefix}_{styled_name}.into());").as_str());
+                        get_inner.push(line(format!(
+                            "_{styled_name}: self.get_{styled_name}()?.to_str()?,"
+                        )));
                     }
                     (
                         Some(fmt!(ctx, "{capnp}::text::Reader<'_>")),
@@ -1259,6 +1269,7 @@ fn generate_setter(
                             format!("{params_struct_prefix}_{styled_name}: &'a [u8],").as_str(),
                         );
                         rust_struct_impl_inner.push_str(format!("\n  _builder.set_{styled_name}({params_struct_impl_prefix}_{styled_name});").as_str());
+                        get_inner.push(line(format!("_{styled_name}: self.get_{styled_name}()?,")));
                     }
                     (
                         Some(fmt!(ctx, "{capnp}::data::Reader<'_>")),
@@ -1307,6 +1318,7 @@ fn generate_setter(
                                 )?
                                 .as_str(),
                             );
+                            get_inner.push(line(format!("_{styled_name}: Vec::new(),"))); //todo
                         }
                     }
 
@@ -1341,6 +1353,7 @@ fn generate_setter(
                             format!("{params_struct_prefix}_{styled_name}: {the_mod},").as_str(),
                         );
                         rust_struct_impl_inner.push_str(format!("\n  _builder.set_{styled_name}({params_struct_impl_prefix}_{styled_name});").as_str());
+                        get_inner.push(line(format!("_{styled_name}: self.get_{styled_name}()?,")));
                     }
                     if !reg_field.get_had_explicit_default() {
                         setter_interior.push(Line(format!(
@@ -1412,6 +1425,7 @@ fn generate_setter(
                                 .as_str(),
                             );
                             rust_struct_impl_inner.push_str(format!("\n  if let Some(st) = {params_struct_impl_prefix}_{styled_name} {{st.build_capnp_struct(_builder.reborrow().init_{styled_name}());}}").as_str());
+                            get_inner.push(line(format!("_{styled_name}: if self.has_{styled_name}() {{Some(Box::new(self.get_{styled_name}()?.get()?))}} else {{None}},")));
                         } else {
                             rust_struct_inner.push_str(
                                 format!(
@@ -1420,6 +1434,7 @@ fn generate_setter(
                                 .as_str(),
                             );
                             rust_struct_impl_inner.push_str(format!("\n  if let Some(st) = {params_struct_impl_prefix}_{styled_name} {{st.build_capnp_struct(_builder.reborrow().init_{styled_name}());}}").as_str());
+                            get_inner.push(line(format!("_{styled_name}: if self.has_{styled_name}() {{Some(self.get_{styled_name}()?.get()?)}} else {{None}},")));
                         }
                     }
 
@@ -1463,6 +1478,7 @@ fn generate_setter(
                             .as_str(),
                         );
                         rust_struct_impl_inner.push_str(fmt!(ctx, "\n  _builder.set_{styled_name}({capnp}::capability::FromClientHook::new({params_struct_impl_prefix}_{styled_name}.client.hook));").as_str());
+                        get_inner.push(line(format!("_{styled_name}: self.get_{styled_name}()?,")));
                     }
                     setter_interior.push(Line(format!(
                         "self.builder.reborrow().get_pointer_field({offset}).set_capability(value.client.hook);"
@@ -1495,6 +1511,8 @@ fn generate_setter(
                             } else {
                                 rust_struct_impl_inner.push_str(format!("\n      _builder.set_{styled_name}({params_struct_impl_prefix}_{styled_name}).unwrap();").as_str());
                             }
+                            get_inner
+                                .push(line(format!("_{styled_name}: self.get_{styled_name}()?,")));
                         }
 
                         initter_interior.push(Line(fmt!(ctx,"{capnp}::any_pointer::Builder::new(self.builder.get_pointer_field({offset})).init_as()")));
@@ -1522,6 +1540,7 @@ fn generate_setter(
                         if no_discriminant {
                             rust_struct_inner.push_str(fmt!(ctx, "{params_struct_prefix}_{styled_name}: Box<dyn {capnp}::private::capability::ClientHook>,").as_str());
                             rust_struct_impl_inner.push_str(format!("\n  _builder.reborrow().init_{styled_name}().set_as_capability({params_struct_impl_prefix}_{styled_name});").as_str());
+                            get_inner.push(line(fmt!(ctx, "_{styled_name}: self.get_{styled_name}().get_as_capability::<{capnp}::capability::Client>()?.hook,")));
                         }
                         initter_interior.push(Line(fmt!(ctx,"let mut result = {capnp}::any_pointer::Builder::new(self.builder.get_pointer_field({offset}));")));
                         initter_interior.push(line("result.clear();"));
@@ -1652,23 +1671,21 @@ fn check_fields_of_struct_for_lifetimes(
                 _ => (),
             },
             capnp::schema_capnp::field::Which::Group(group) => {
-                if field.get_discriminant_value() == schema_capnp::field::NO_DISCRIMINANT {
-                    let capnp::schema_capnp::node::Struct(struct_node) =
-                        ctx.node_map[&group.get_type_id()].which()?
-                    else {
-                        return Err(capnp::Error::failed("Type mismatch".to_string()));
-                    };
-                    if maybe_cyclical_counter > 10 {
-                        continue;
-                    }
-                    maybe_cyclical_counter += 1;
-                    check_fields_of_struct_for_lifetimes(
-                        ctx,
-                        struct_node.get_fields()?,
-                        lifetime,
-                        maybe_cyclical_counter,
-                    )?;
+                let capnp::schema_capnp::node::Struct(struct_node) =
+                    ctx.node_map[&group.get_type_id()].which()?
+                else {
+                    return Err(capnp::Error::failed("Type mismatch".to_string()));
+                };
+                if maybe_cyclical_counter > 10 {
+                    continue;
                 }
+                maybe_cyclical_counter += 1;
+                check_fields_of_struct_for_lifetimes(
+                    ctx,
+                    struct_node.get_fields()?,
+                    lifetime,
+                    maybe_cyclical_counter,
+                )?;
             }
         }
     }
@@ -2030,6 +2047,7 @@ fn generate_union(
     params_enum_string: &mut String,
     set_types: &mut String,
     set_inner: &mut String,
+    union_into_inner: &mut String,
     generate_params: bool,
     union_only_struct: bool,
     params_union_name: &String,
@@ -2098,6 +2116,7 @@ fn generate_union(
                                 .push_str(format!("\n _{enumerant_name}(&'a str),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.reborrow().set_{}(t.into()),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t.into()),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t?.to_str()?),").as_str());
                         }
                         type_::Which::Data(_) => {
                             *union_lifetime = "'a,";
@@ -2105,6 +2124,7 @@ fn generate_union(
                                 .push_str(format!("\n _{enumerant_name}(&'a [u8]),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.reborrow().set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::List(l) => {
                             let mut temp = HashSet::new();
@@ -2121,6 +2141,8 @@ fn generate_union(
                             if !temp.is_empty() {
                                 *union_lifetime = "'a,";
                             }
+                            //TODO
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(Vec::new()),").as_str());
                         }
                         type_::Which::Enum(e) => {
                             let id = e.get_type_id();
@@ -2129,6 +2151,7 @@ fn generate_union(
                                 .push_str(format!("\n _{enumerant_name}({the_mod}),",).as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.reborrow().set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::Struct(st) => {
                             let path_string = get_params_struct_path_string(ctx, st)?;
@@ -2149,6 +2172,7 @@ fn generate_union(
                                 *union_lifetime = "'a,";
                                 temp = "'a";
                             }
+
                             for field in struct_node.get_fields()? {
                                 match field.which()? {
                                     field::Which::Slot(sl) => match sl.get_type()?.which()? {
@@ -2181,7 +2205,6 @@ fn generate_union(
                                     )
                                     .as_str(),
                                 );
-                                params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => t.build_capnp_struct(_builder.reborrow().init_{}()),", camel.as_str()).as_str());
                             } else {
                                 params_enum_string.push_str(
                                     format!(
@@ -2189,9 +2212,14 @@ fn generate_union(
                                     )
                                     .as_str(),
                                 );
-                                params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => t.build_capnp_struct(_builder.reborrow().init_{}()),", camel.as_str()).as_str());
                             }
+                            params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => t.build_capnp_struct(_builder.reborrow().init_{}()),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => t.build_capnp_struct(self.reborrow().init_{}()),", camel.as_str()).as_str());
+                            if possibly_cyclical {
+                                union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(Box::new(t?.get()?)),").as_str());
+                            } else {
+                                union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t?.get()?),").as_str());
+                            }
                         }
                         type_::Which::Interface(_) => {
                             params_enum_string.push_str(
@@ -2203,6 +2231,7 @@ fn generate_union(
                             );
                             params_impl_interior.push_str(format!("\n  {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t?),").as_str());
                         }
                         type_::Which::AnyPointer(an) => {
                             match an.which()? {
@@ -2222,82 +2251,130 @@ fn generate_union(
                                 }
                             }
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t).unwrap(),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t?),").as_str());
                         }
                         type_::Which::Void(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(()),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::Bool(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(bool),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::Int8(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(i8),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::Int16(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(i16),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::Int32(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(i32),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::Int64(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(i64),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::Uint8(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(u8),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::Uint16(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(u16),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.reborrow().set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::Uint32(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(u32),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::Uint64(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(u64),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::Float32(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(f32),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                         type_::Which::Float64(_) => {
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(f64),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
                         }
                     }
                 }
-                field::Which::Group(_) => (),
+                field::Which::Group(group) => {
+                    let the_mod = ctx.get_qualified_module(group.get_type_id());
+                    let mut lifetime = "";
+                    let node::Struct(struct_node) = ctx.node_map[&group.get_type_id()].which()?
+                    else {
+                        return Err(capnp::Error::failed("Type mismatch".to_string()));
+                    };
+                    check_fields_of_struct_for_lifetimes(
+                        ctx,
+                        struct_node.get_fields()?,
+                        &mut lifetime,
+                        0,
+                    )?;
+                    if !lifetime.is_empty() {
+                        *union_lifetime = "'a,";
+                        lifetime = "'a";
+                    }
+                    let params = get_params(ctx, group.get_type_id())?;
+                    let mut used_params = HashSet::new();
+                    used_params_of_group(ctx, group.get_type_id(), &mut used_params)?;
+                    for par in &used_params {
+                        union_params.insert(par.to_string());
+                    }
+                    let bracketed_params = format! {"<{lifetime}{}>", used_params.into_iter().collect::<Vec<String>>().join(",")};
+                    params_enum_string.push_str(
+                        format!(
+                            "\n _{enumerant_name}({}::{}{bracketed_params}),",
+                            the_mod,
+                            snake_to_camel_case(ctx.get_last_name(group.get_type_id())?)
+                        )
+                        .as_str(),
+                    );
+                    params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => t.build_capnp_struct(_builder.reborrow().init_{}()),", camel.as_str()).as_str());
+                    set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => t.build_capnp_struct(self.reborrow().init_{}()),", camel.as_str()).as_str());
+                    union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t.get()?),").as_str());
+                }
             }
         }
 
@@ -3102,12 +3179,16 @@ fn generate_node(
             let mut set_types = String::new();
             let mut set_inner = String::new();
             let mut union_only_struct = true;
+            let mut get_inner = Vec::new();
+            let mut has_option_fields = false;
 
             let fields = struct_reader.get_fields()?;
             for field in fields {
                 let name = get_field_name(field)?;
                 let styled_name = camel_to_snake_case(name);
-
+                if is_option_field(field)? {
+                    has_option_fields = true
+                }
                 let discriminant_value = field.get_discriminant_value();
                 let is_union_field = discriminant_value != field::NO_DISCRIMINANT;
 
@@ -3144,6 +3225,7 @@ fn generate_node(
                     rust_struct_impl_inner,
                     &mut set_types,
                     &mut set_inner,
+                    &mut get_inner,
                     is_params_struct,
                     params_struct_generics,
                     interface_implicit_generics,
@@ -3217,12 +3299,14 @@ fn generate_node(
             let mut union_lifetime = "";
             if discriminant_count > 0 {
                 let mut params_union_name;
+                let mut union_into_inner = String::new();
                 if union_only_struct {
                     params_union_name = snake_to_camel_case(node_name);
                     params_struct_string = "".to_string();
                 } else {
                     params_union_name = snake_to_camel_case(node_name);
                     params_union_name.push_str("Union");
+                    get_inner.push(line(format!("uni: self.which()?.try_into()?,")));
                 }
 
                 let (which_enums1, union_getter, typedef, mut default_decls) = generate_union(
@@ -3236,12 +3320,18 @@ fn generate_node(
                     &mut params_enum_string,
                     &mut set_types,
                     &mut set_inner,
+                    &mut union_into_inner,
                     true,
                     union_only_struct,
                     &params_union_name,
                     &mut union_params,
                     &mut union_lifetime,
                 )?;
+                let contains_lifetime = if let FormattedText::Line(l) = &typedef {
+                    l.contains("'a")
+                } else {
+                    false
+                };
                 which_enums.push(which_enums1);
                 which_enums.push(typedef);
                 reader_members.push(union_getter);
@@ -3257,6 +3347,7 @@ fn generate_node(
                     &mut params_struct_string,
                     &mut params_struct_impl_string,
                     &mut params_enum_string,
+                    &mut String::new(),
                     &mut String::new(),
                     &mut String::new(),
                     false,
@@ -3278,37 +3369,60 @@ fn generate_node(
                 reexports.push_str("};");
                 preamble.push(Line(reexports));
                 preamble.push(BlankLine);
-                let enum_bracketed = if union_only_struct {
+                if bracketed_with_where.is_empty() && !union_lifetime.is_empty() {
+                    bracketed_with_where = "<'a>".to_string();
+                    bracketed = "<'a>".to_string();
+                } else if !union_lifetime.is_empty() {
+                    //TODO clean up groups so this is not needed
+                    if let Some(l) = bracketed.chars().nth(1) {
+                        if l != '\'' {
+                            bracketed.insert_str(1, "'a,");
+                            bracketed_with_where.insert_str(1, "'a,");
+                        }
+                    }
+                }
+                let (enum_bracketed, enum_bracketed_with_where) = if union_only_struct {
                     set_inner = String::new();
-                    bracketed_with_where.clone()
+                    (bracketed.clone(), bracketed_with_where.clone())
                 } else if !union_params.is_empty() || !union_lifetime.is_empty() {
                     let mut temp = format!("<{union_lifetime}");
+                    let mut temp_where = format!("<{union_lifetime}");
                     for p in union_params.iter() {
-                        temp.push_str(fmt!(ctx, "{p}: {capnp}::traits::Owned,").as_str());
+                        temp.push_str(format!("{p},").as_str());
+                        temp_where.push_str(fmt!(ctx, "{p}: {capnp}::traits::Owned,").as_str());
                     }
                     temp.push('>');
-                    temp
+                    temp_where.push('>');
+                    (temp, temp_where)
                 } else {
-                    "".to_string()
+                    ("".to_string(), "".to_string())
+                };
+                let (which_bracketed, which_bracketed_with_where) = if contains_lifetime {
+                    if enum_bracketed.is_empty() {
+                        ("<'a>".to_string(), "<'a>".to_string())
+                    } else if let Some(l) = enum_bracketed.chars().nth(1)
+                        && l != '\''
+                    {
+                        let mut temp = enum_bracketed.clone();
+                        temp.insert_str(1, "'a");
+                        let mut temp2 = enum_bracketed_with_where.clone();
+                        temp2.insert_str(1, "'a");
+                        (temp, temp2)
+                    } else {
+                        (enum_bracketed.clone(), enum_bracketed_with_where.clone())
+                    }
+                } else {
+                    (enum_bracketed.clone(), enum_bracketed_with_where.clone())
                 };
                 params_enum_string = format!(
-                    "pub enum {params_union_name}{enum_bracketed} {{\n UNINITIALIZED,{params_enum_string}"
+                    "pub enum {params_union_name}{enum_bracketed_with_where} {{\n UNINITIALIZED,{params_enum_string}\n}}"
                 );
+                params_enum_string.push_str(fmt!(ctx, "\nimpl {which_bracketed_with_where}TryInto<{params_union_name}{enum_bracketed}> for WhichReader{which_bracketed} {{\n  type Error = {capnp}::Error;\n  fn try_into(self) -> Result<{params_union_name}{enum_bracketed}, Self::Error> {{\n    Ok(match self {{{union_into_inner}\n    }})  \n  }} \n}}").as_str());
             }
 
-            if !params_enum_string.is_empty() {
-                params_enum_string.push_str("\n}");
-            }
             params_struct_impl_string = format!(
                 "impl {bracketed_with_where} {}{bracketed} {{",
                 snake_to_camel_case(node_name)
-            );
-            params_struct_impl_string.push_str(
-                format!(
-                    "\npub fn build_capnp_struct{}(self, mut _builder: Builder<'_,{}>) {{",
-                    implicit_generics, params.params
-                )
-                .as_str(),
             );
             let set = if set_inner.is_empty() {
                 BlankLine
@@ -3320,19 +3434,44 @@ fn generate_node(
                     Line("}".to_string()),
                 ])
             };
-            if !is_params_struct {
-                params_struct_string.push_str(rust_struct_inner);
-                params_struct_impl_string.push_str(rust_struct_impl_inner);
-                params_struct_impl_string.push_str("  \n}}");
-                if !params_struct_string.is_empty() {
-                    params_struct_string.push_str("  \n}");
-                }
-                output.push(Branch(vec![
-                    Line(params_struct_string),
-                    Line(params_struct_impl_string),
-                    Line(params_enum_string),
-                ]));
+            params_struct_string.push_str(rust_struct_inner);
+            if !params_struct_string.is_empty() {
+                params_struct_string.push_str("  \n}");
             }
+            if !is_params_struct {
+                params_struct_impl_string.push_str(
+                    format!(
+                        "\npub fn build_capnp_struct{implicit_generics}(self, mut _builder: Builder<'_,{}>) {{",
+                        params.params
+                    )
+                    .as_str(),
+                );
+                params_struct_impl_string.push_str(rust_struct_impl_inner);
+                params_struct_impl_string.push_str("  \n}");
+            }
+
+            if !has_option_fields {
+                //TODO won't work for some weird nested annotation cases
+                reader_members.push(Branch(vec![line(fmt!(
+                    ctx,
+                    "pub fn get(&self) -> {capnp}::Result<{}{bracketed}> {{",
+                    snake_to_camel_case(node_name)
+                ))]));
+                if union_only_struct && !params_enum_string.is_empty() {
+                    reader_members.push(line("  self.which()?.try_into()"));
+                } else {
+                    reader_members.push(Branch(vec![
+                        line(format!("Ok({} {{", snake_to_camel_case(node_name))),
+                        indent(Branch(get_inner)),
+                        line("})"),
+                    ]));
+                }
+                reader_members.push(line("}"));
+            }
+            output.push(Line(params_struct_string));
+            output.push(Line(params_struct_impl_string));
+            output.push(line("}"));
+            output.push(Line(params_enum_string));
 
             let builder_struct_size = Branch(vec![
                 Line(fmt!(
