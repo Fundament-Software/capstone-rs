@@ -124,20 +124,20 @@ pub(crate) fn print(
             };
             let mut first = true;
             for field in non_union_fields {
-                if let Some(ff) = union_field {
-                    if ff.get_index() < field.get_index() {
-                        // It's time to print the union field.
-                        if first {
-                            first = false
-                        } else {
-                            indent2.comma(formatter)?;
-                        }
-                        indent2.maybe_newline(formatter)?;
-                        formatter.write_str(cvt(cvt(ff.get_proto().get_name())?.to_str())?)?;
-                        formatter.write_str(" = ")?;
-                        print(cvt(st.get(ff))?, formatter, indent2)?;
-                        union_field = None;
+                if let Some(ff) = union_field
+                    && ff.get_index() < field.get_index()
+                {
+                    // It's time to print the union field.
+                    if first {
+                        first = false
+                    } else {
+                        indent2.comma(formatter)?;
                     }
+                    indent2.maybe_newline(formatter)?;
+                    formatter.write_str(cvt(cvt(ff.get_proto().get_name())?.to_str())?)?;
+                    formatter.write_str(" = ")?;
+                    print(cvt(st.get(ff))?, formatter, indent2)?;
+                    union_field = None;
                 }
                 if cvt(st.has(field))? {
                     if first {
