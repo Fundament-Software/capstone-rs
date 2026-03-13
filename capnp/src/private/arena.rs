@@ -104,7 +104,7 @@ where
             Some(seg) => {
                 #[cfg(not(feature = "unaligned"))]
                 {
-                    if seg.as_ptr() as usize % BYTES_PER_WORD != 0 {
+                    if !(seg.as_ptr() as usize).is_multiple_of(BYTES_PER_WORD) {
                         return Err(Error::from_kind(ErrorKind::UnalignedSegment));
                     }
                 }
@@ -267,7 +267,7 @@ where
         self.inner.allocate_segment(minimum_size)
     }
 
-    pub fn get_segments_for_output(&self) -> OutputSegments {
+    pub fn get_segments_for_output(&self) -> OutputSegments<'_> {
         let reff = &self.inner;
         if reff.segments.len() == 1 {
             let seg = &reff.segments[0];

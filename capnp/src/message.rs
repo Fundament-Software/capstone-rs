@@ -509,7 +509,7 @@ where
         Ok(())
     }
 
-    pub fn get_segments_for_output(&self) -> OutputSegments {
+    pub fn get_segments_for_output(&self) -> OutputSegments<'_> {
         self.arena.get_segments_for_output()
     }
 
@@ -825,7 +825,7 @@ impl<'a> ScratchSpaceHeapAllocator<'a> {
     pub fn new(scratch_space: &'a mut [u8]) -> ScratchSpaceHeapAllocator<'a> {
         #[cfg(not(feature = "unaligned"))]
         {
-            if scratch_space.as_ptr() as usize % BYTES_PER_WORD != 0 {
+            if !(scratch_space.as_ptr() as usize).is_multiple_of(BYTES_PER_WORD) {
                 panic!(
                     "Scratch space must be 8-byte aligned, or you must enable the \"unaligned\" \
                         feature in the capnp crate"
@@ -926,7 +926,7 @@ impl<'a> SingleSegmentAllocator<'a> {
     pub fn new(segment: &'a mut [u8]) -> SingleSegmentAllocator<'a> {
         #[cfg(not(feature = "unaligned"))]
         {
-            if segment.as_ptr() as usize % BYTES_PER_WORD != 0 {
+            if !(segment.as_ptr() as usize).is_multiple_of(BYTES_PER_WORD) {
                 panic!(
                     "Segment must be 8-byte aligned, or you must enable the \"unaligned\" \
                         feature in the capnp crate"

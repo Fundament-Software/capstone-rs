@@ -268,7 +268,7 @@ impl SegmentLengthsBuilder {
         self,
         slice: &[u8],
         segment_table_bytes_len: usize,
-    ) -> SliceSegments {
+    ) -> SliceSegments<'_> {
         assert!(self.total_words * BYTES_PER_WORD <= slice.len());
         BufferSegments {
             buffer: slice,
@@ -344,7 +344,7 @@ pub fn try_read_message_no_alloc<R>(
 where
     R: Read,
 {
-    if !cfg!(feature = "unaligned") && buffer.as_ptr() as usize % BYTES_PER_WORD != 0 {
+    if !cfg!(feature = "unaligned") && !(buffer.as_ptr() as usize).is_multiple_of(BYTES_PER_WORD) {
         return Err(Error::from_kind(ErrorKind::UnalignedSegment));
     }
 
@@ -400,12 +400,12 @@ where
         num_segment_counts_read += 1;
     }
 
-    if let Some(limit) = options.traversal_limit_in_words {
-        if total_body_words > limit {
-            return Err(Error::from_kind(ErrorKind::MessageTooLarge(
-                total_body_words,
-            )));
-        }
+    if let Some(limit) = options.traversal_limit_in_words
+        && total_body_words > limit
+    {
+        return Err(Error::from_kind(ErrorKind::MessageTooLarge(
+            total_body_words,
+        )));
     }
 
     let start = (num_segment_counts_read + 1) * 4;
@@ -503,12 +503,12 @@ where
     // Don't accept a message which the receiver couldn't possibly traverse without hitting the
     // traversal limit. Without this check, a malicious client could transmit a very large segment
     // size to make the receiver allocate excessive space and possibly crash.
-    if let Some(limit) = options.traversal_limit_in_words {
-        if segment_lengths_builder.total_words() > limit {
-            return Err(Error::from_kind(ErrorKind::MessageTooLarge(
-                segment_lengths_builder.total_words(),
-            )));
-        }
+    if let Some(limit) = options.traversal_limit_in_words
+        && segment_lengths_builder.total_words() > limit
+    {
+        return Err(Error::from_kind(ErrorKind::MessageTooLarge(
+            segment_lengths_builder.total_words(),
+        )));
     }
 
     Ok(Some(segment_lengths_builder))
@@ -644,7 +644,7 @@ where
                             .to_le_bytes(),
                     );
                 }
-                if segment_count % 2 == 0 {
+                if segment_count.is_multiple_of(2) {
                     let start_idx = buf.len() - 4;
                     for b in &mut buf[start_idx..] {
                         *b = 0
