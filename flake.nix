@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-25.11";
     rust-overlay.url = "github:oxalica/rust-overlay";
     flake-utils.url = "github:numtide/flake-utils";
 
@@ -36,7 +36,7 @@
 
     in
     rec {
-      devShells.default = (pkgs.mkShell.override { stdenv = pkgs.stdenvAdapters.useMoldLinker pkgs.llvmPackages_15.stdenv; }) {
+      devShells.default = (pkgs.mkShell.override { stdenv = pkgs.stdenvAdapters.useMoldLinker pkgs.llvmPackages_21.stdenv; }) {
         buildInputs = with pkgs; [
           openssl
           pkg-config
@@ -64,7 +64,7 @@
             buildInputs = with pkgs; [ pkg-config openssl zlib ];
             strictDeps = true;
             version = "0.1.0";
-            stdenv = pkgs: pkgs.stdenvAdapters.useMoldLinker pkgs.llvmPackages_15.stdenv;
+            stdenv = pkgs: pkgs.stdenvAdapters.useMoldLinker pkgs.llvmPackages_21.stdenv;
             CARGO_BUILD_RUSTFLAGS = "-C linker=clang -C link-arg=-fuse-ld=${pkgs.mold}/bin/mold";
           };
           pname = "capnp-checks";
