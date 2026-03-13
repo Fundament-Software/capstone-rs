@@ -27,7 +27,6 @@
 
       rust-custom-toolchain = (pkgs.rust-bin.stable.latest.default.override {
         extensions = [
-          "rust-bin.stable."1.94.0".default"
           "rust-src"
           "rustfmt"
           "llvm-tools-preview"
