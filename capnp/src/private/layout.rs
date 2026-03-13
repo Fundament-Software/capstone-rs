@@ -1983,7 +1983,7 @@ mod wire_helpers {
 
         if canonicalize {
             // StructReaders should not have bitwidths other than 1, but let's be safe
-            if !(value.data_size == 1 || value.data_size % BITS_PER_BYTE as u32 == 0) {
+            if !(value.data_size == 1 || value.data_size.is_multiple_of(BITS_PER_BYTE as u32)) {
                 return Err(Error::from_kind(
                     ErrorKind::StructReaderHadBitwidthOtherThan1,
                 ));
@@ -3681,7 +3681,10 @@ impl<'a> StructReader<'a> {
             return Ok(false);
         }
 
-        if self.get_data_section_size() % BITS_PER_WORD as u32 != 0 {
+        if !self
+            .get_data_section_size()
+            .is_multiple_of(BITS_PER_WORD as u32)
+        {
             // legacy non-word-size struct
             return Ok(false);
         }
@@ -4095,7 +4098,7 @@ impl<'a> ListReader<'a> {
                 if self.ptr as *const _ != read_head.get() {
                     return Ok(false);
                 }
-                if self.struct_data_size % BITS_PER_WORD as u32 != 0 {
+                if !self.struct_data_size.is_multiple_of(BITS_PER_WORD as u32) {
                     return Ok(false);
                 }
                 let struct_size = (self.struct_data_size / BITS_PER_WORD as u32)

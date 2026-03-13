@@ -145,7 +145,7 @@ impl DynamicSchema {
         let mut message = crate::message::Builder::new(allocator);
         message.set_root(value)?;
         let segment = message.get_segments_for_output()[0];
-        if segment.len() % 8 != 0 {
+        if !segment.len().is_multiple_of(8) {
             panic!("Segment invalid size!");
         }
         let boxed = unsafe {
@@ -154,7 +154,7 @@ impl DynamicSchema {
                 8,
             ));
             std::slice::from_raw_parts_mut(p, segment.len()).copy_from_slice(segment);
-            Box::from_raw(std::slice::from_raw_parts_mut(
+            Box::from_raw(std::ptr::slice_from_raw_parts_mut(
                 p as *mut crate::Word,
                 segment.len() / 8,
             ))
@@ -351,7 +351,7 @@ impl DynamicSchema {
         self.nodes.get(&id)
     }
 
-    pub fn get_files(&self) -> std::collections::hash_map::Keys<String, u64> {
+    pub fn get_files(&self) -> std::collections::hash_map::Keys<'_, String, u64> {
         self.files.keys()
     }
 

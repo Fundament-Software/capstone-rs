@@ -431,13 +431,13 @@ impl<_S: Server + 'static + Clone> crate::capability::FromServer<_S> for Client 
 
 #[cfg(feature = "alloc")]
 impl crate::capability::FromClientHook for Client {
-    fn new(hook: Box<dyn (ClientHook)>) -> Self {
+    fn new(hook: Box<dyn ClientHook>) -> Self {
         Self { hook }
     }
-    fn into_client_hook(self) -> Box<dyn (ClientHook)> {
+    fn into_client_hook(self) -> Box<dyn ClientHook> {
         self.hook
     }
-    fn as_client_hook(&self) -> &dyn (ClientHook) {
+    fn as_client_hook(&self) -> &dyn ClientHook {
         &*self.hook
     }
 }

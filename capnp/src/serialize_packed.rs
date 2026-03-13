@@ -83,7 +83,10 @@ where
             return Ok(0);
         }
 
-        assert!(len % 8 == 0, "PackedRead reads must be word-aligned.");
+        assert!(
+            len.is_multiple_of(8),
+            "PackedRead reads must be word-aligned."
+        );
 
         unsafe {
             let out_buf_start = out_buf.as_mut_ptr();

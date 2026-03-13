@@ -408,10 +408,10 @@ impl<'a> Builder<'a> {
                     }
                     (TypeVariant::List(element_type), dval) => {
                         let mut p = self.builder.get_pointer_field(offset as usize);
-                        if p.is_null() {
-                            if let value::List(l) = dval {
-                                p.copy_from(l.reader, false)?;
-                            }
+                        if p.is_null()
+                            && let value::List(l) = dval
+                        {
+                            p.copy_from(l.reader, false)?;
                         }
                         let l = if let TypeVariant::Struct(ss) = element_type.which() {
                             p.get_struct_list(struct_size_from_schema(ss.into())?, None)?
