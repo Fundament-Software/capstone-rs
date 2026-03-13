@@ -11,7 +11,7 @@ readme = "README.md"
 keywords = ["encoding", "protocol", "serialization"]
 
 [dependencies]
-rand = "0.9"
+rand = "0.10"
 capstone.workspace = true
 
 [build-dependencies]
