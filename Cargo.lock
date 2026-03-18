@@ -42,9 +42,9 @@ dependencies = [
 
 [[package]]
 name = "anstyle"
-version = "1.0.13"
+version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5192cca8006f1fd4f7237516f40fa183bb07f8fbdfedaa0036de5ea9b0b45e78"
+checksum = "940b3a0ca603d1eade50a4846a2afffd5ef57a9feac2c0e2ec2e14f9ead76000"
 
 [[package]]
 name = "anyhow"
@@ -147,7 +147,7 @@ dependencies = [
 [[package]]
 name = "capnp-sys"
 version = "1.2.0"
-source = "git+https://github.com/Fundament-Software/capstone#c6e4352127ddfa68046ae585866a931518bd3555"
+source = "git+https://github.com/Fundament-Software/capstone#4538bd75e21b03e2479d66084a8665118ce897c3"
 dependencies = [
  "cc",
  "cxx",
@@ -236,9 +236,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.56"
+version = "1.2.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aebf35691d1bfb0ac386a69bac2fde4dd276fb618cf8bf4f5318fe285e821bb2"
+checksum = "7a0dd1ca384932ff3641c8718a02769f1698e7563dc6974ffd03346116310423"
 dependencies = [
  "find-msvc-tools",
  "shlex",
@@ -666,7 +666,7 @@ checksum = "92ecc6618181def0457392ccd0ee51198e065e016d1d527a7ac1b6dc7c1f09d2"
 [[package]]
 name = "kj-sys"
 version = "1.2.0"
-source = "git+https://github.com/Fundament-Software/capstone#c6e4352127ddfa68046ae585866a931518bd3555"
+source = "git+https://github.com/Fundament-Software/capstone#4538bd75e21b03e2479d66084a8665118ce897c3"
 dependencies = [
  "cc",
  "cxx",
