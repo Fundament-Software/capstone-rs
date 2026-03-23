@@ -2124,7 +2124,7 @@ fn generate_union(
                                 .push_str(format!("\n _{enumerant_name}(&'a [u8]),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.reborrow().set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
-                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t?),").as_str());
                         }
                         type_::Which::List(l) => {
                             let mut temp = HashSet::new();
@@ -2142,7 +2142,7 @@ fn generate_union(
                                 *union_lifetime = "'a,";
                             }
                             //TODO
-                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(Vec::new()),").as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(_t) => {params_union_name}::_{enumerant_name}(Vec::new()),").as_str());
                         }
                         type_::Which::Enum(e) => {
                             let id = e.get_type_id();
@@ -2151,11 +2151,10 @@ fn generate_union(
                                 .push_str(format!("\n _{enumerant_name}({the_mod}),",).as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.reborrow().set_{}(t),", camel.as_str()).as_str());
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
-                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t),").as_str());
+                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t?),").as_str());
                         }
                         type_::Which::Struct(st) => {
                             let path_string = get_params_struct_path_string(ctx, st)?;
-                            let mut possibly_cyclical = false;
                             let mut temp = "";
                             let schema_capnp::node::Which::Struct(struct_node) =
                                 ctx.node_map[&st.get_type_id()].which()?
@@ -2173,6 +2172,7 @@ fn generate_union(
                                 temp = "'a";
                             }
 
+                            let mut possibly_cyclical = false;
                             for field in struct_node.get_fields()? {
                                 match field.which()? {
                                     field::Which::Slot(sl) => match sl.get_type()?.which()? {
@@ -2239,6 +2239,7 @@ fn generate_union(
                                     //TODO
                                     params_enum_string.push_str(fmt!(ctx, "\n _{enumerant_name}(Box<dyn {capnp}::private::capability::ClientHook>),").as_str());
                                     params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.reborrow().init_{}().set_as_capability(t),", camel.as_str()).as_str());
+                                    union_into_inner.push_str(fmt!(ctx, "\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t.get_as_capability::<{capnp}::capability::Client>()?.hook),").as_str());
                                 }
                                 type_::any_pointer::Which::ImplicitMethodParameter(_) => (),
                                 type_::any_pointer::Which::Parameter(_) => {
@@ -2248,10 +2249,10 @@ fn generate_union(
                                         format!("\n _{enumerant_name}({reader_type}),").as_str(),
                                     );
                                     params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.set_{}(t).unwrap(),", camel.as_str()).as_str());
+                                    union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t?),").as_str());
                                 }
                             }
                             set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t).unwrap(),", camel.as_str()).as_str());
-                            union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t?),").as_str());
                         }
                         type_::Which::Void(_) => {
                             params_enum_string
@@ -2356,6 +2357,18 @@ fn generate_union(
                         *union_lifetime = "'a,";
                         lifetime = "'a";
                     }
+
+                    let mut possibly_cyclical = false;
+                    for field in struct_node.get_fields()? {
+                        match field.which()? {
+                            field::Which::Slot(sl) => match sl.get_type()?.which()? {
+                                type_::Which::List(_) => possibly_cyclical = true,
+                                type_::Which::Struct(_) => possibly_cyclical = true,
+                                _ => (),
+                            },
+                            field::Which::Group(_) => possibly_cyclical = true,
+                        }
+                    }
                     let params = get_params(ctx, group.get_type_id())?;
                     let mut used_params = HashSet::new();
                     used_params_of_group(ctx, group.get_type_id(), &mut used_params)?;
@@ -2363,17 +2376,34 @@ fn generate_union(
                         union_params.insert(par.to_string());
                     }
                     let bracketed_params = format! {"<{lifetime}{}>", used_params.into_iter().collect::<Vec<String>>().join(",")};
-                    params_enum_string.push_str(
-                        format!(
-                            "\n _{enumerant_name}({}::{}{bracketed_params}),",
-                            the_mod,
-                            snake_to_camel_case(ctx.get_last_name(group.get_type_id())?)
-                        )
-                        .as_str(),
-                    );
+                    if possibly_cyclical {
+                        params_enum_string.push_str(
+                            format!(
+                                "\n _{enumerant_name}(Box<{}::{}{bracketed_params}>),",
+                                the_mod,
+                                snake_to_camel_case(ctx.get_last_name(group.get_type_id())?)
+                            )
+                            .as_str(),
+                        );
+                    } else {
+                        params_enum_string.push_str(
+                            format!(
+                                "\n _{enumerant_name}({}::{}{bracketed_params}),",
+                                the_mod,
+                                snake_to_camel_case(ctx.get_last_name(group.get_type_id())?)
+                            )
+                            .as_str(),
+                        );
+                    }
+
                     params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => t.build_capnp_struct(_builder.reborrow().init_{}()),", camel.as_str()).as_str());
                     set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => t.build_capnp_struct(self.reborrow().init_{}()),", camel.as_str()).as_str());
-                    union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t.get()?),").as_str());
+
+                    if possibly_cyclical {
+                        union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(Box::new(t.get()?)),").as_str());
+                    } else {
+                        union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t.get()?),").as_str());
+                    }
                 }
             }
         }
@@ -4477,13 +4507,13 @@ fn generate_node(
             mod_interior.push(
                 Branch(vec![
                     Line(fmt!(ctx,"impl {bracketed_params} {capnp}::capability::FromClientHook for Client{bracketed_params} {} {{", params.where_clause)),
-                    indent(Line(fmt!(ctx,"fn new(hook: Box<dyn ({capnp}::private::capability::ClientHook)>) -> Self {{"))),
+                    indent(Line(fmt!(ctx,"fn new(hook: Box<dyn {capnp}::private::capability::ClientHook>) -> Self {{"))),
                     indent(indent(Line(fmt!(ctx,"Self {{ client: {capnp}::capability::Client::new(hook), {} }}", params.phantom_data_value)))),
                     indent(line("}")),
-                    indent(Line(fmt!(ctx,"fn into_client_hook(self) -> Box<dyn ({capnp}::private::capability::ClientHook)> {{"))),
+                    indent(Line(fmt!(ctx,"fn into_client_hook(self) -> Box<dyn {capnp}::private::capability::ClientHook> {{"))),
                     indent(indent(line("self.client.hook"))),
                     indent(line("}")),
-                    indent(Line(fmt!(ctx,"fn as_client_hook(&self) -> &dyn ({capnp}::private::capability::ClientHook) {{"))),
+                    indent(Line(fmt!(ctx,"fn as_client_hook(&self) -> &dyn {capnp}::private::capability::ClientHook {{"))),
                     indent(indent(line("&*self.client.hook"))),
                     indent(line("}")),
                     line("}"),
