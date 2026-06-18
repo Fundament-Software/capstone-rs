@@ -4,6 +4,7 @@ use rand::distr::uniform::SampleUniform;
 use capnp::introspect::TypeVariant;
 use capnp::schema;
 use capnp::{dynamic_struct, dynamic_value};
+use rand::RngExt;
 
 pub mod fill_capnp {
     include!(concat!(env!("OUT_DIR"), "/fill_capnp.rs"));
