@@ -140,7 +140,7 @@ impl<T> ExportTable<T> {
         }
     }
 
-    pub fn iter(&self) -> ExportTableIter<T> {
+    pub fn iter(&self) -> ExportTableIter<'_, T> {
         ExportTableIter {
             table: self,
             idx: 0,
@@ -487,10 +487,10 @@ impl<VatId> ConnectionState<VatId> {
         let mut resolve_ops_to_release = Vec::new();
 
         for q in self.questions.borrow().iter() {
-            if let Some(ref weak_question_ref) = q.self_ref {
-                if let Some(question_ref) = weak_question_ref.upgrade() {
-                    question_ref.borrow_mut().reject(error.clone());
-                }
+            if let Some(ref weak_question_ref) = q.self_ref
+                && let Some(question_ref) = weak_question_ref.upgrade()
+            {
+                question_ref.borrow_mut().reject(error.clone());
             }
         }
 
@@ -519,20 +519,20 @@ impl<VatId> ConnectionState<VatId> {
         {
             let import_slots = &mut self.imports.borrow_mut().slots;
             for (_, ref mut import) in import_slots.iter_mut() {
-                if let Some(f) = import.promise_client_to_resolve.take() {
-                    if let Some(promise_client) = f.upgrade() {
-                        promise_client.borrow_mut().resolve(Err(error.clone()));
-                    }
+                if let Some(f) = import.promise_client_to_resolve.take()
+                    && let Some(promise_client) = f.upgrade()
+                {
+                    promise_client.borrow_mut().resolve(Err(error.clone()));
                 }
             }
         }
 
         let len = self.embargoes.borrow().slots.len();
         for idx in 0..len {
-            if let Some(ref mut emb) = self.embargoes.borrow_mut().slots[idx] {
-                if let Some(f) = emb.fulfiller.take() {
-                    let _ = f.send(Err(error.clone()));
-                }
+            if let Some(ref mut emb) = self.embargoes.borrow_mut().slots[idx]
+                && let Some(f) = emb.fulfiller.take()
+            {
+                let _ = f.send(Err(error.clone()));
             }
         }
         *self.embargoes.borrow_mut() = ExportTable::new();
@@ -1564,13 +1564,12 @@ impl<VatId> ConnectionState<VatId> {
             cap_descriptor::ReceiverAnswer(receiver_answer) => {
                 let promised_answer = receiver_answer?;
                 let question_id = promised_answer.get_question_id();
-                if let Some(answer) = state.answers.borrow().slots.get(&question_id) {
-                    if answer.active {
-                        if let Some(ref pipeline) = answer.pipeline {
-                            let ops = to_pipeline_ops(promised_answer.get_transform()?)?;
-                            return Ok(Some(pipeline.get_pipelined_cap(&ops)));
-                        }
-                    }
+                if let Some(answer) = state.answers.borrow().slots.get(&question_id)
+                    && answer.active
+                    && let Some(ref pipeline) = answer.pipeline
+                {
+                    let ops = to_pipeline_ops(promised_answer.get_transform()?)?;
+                    return Ok(Some(pipeline.get_pipelined_cap(&ops)));
                 }
                 Ok(Some(broken::new_cap(Error::failed(
                     "invalid 'receiver answer'".to_string(),
@@ -1715,7 +1714,7 @@ impl<VatId> Clone for Response<VatId> {
 }
 
 impl<VatId> ResponseHook for Response<VatId> {
-    fn get(&self) -> ::capnp::Result<any_pointer::Reader> {
+    fn get(&self) -> ::capnp::Result<any_pointer::Reader<'_>> {
         match *self.variant {
             ResponseVariant::Rpc(ref state) => {
                 match state
@@ -1750,7 +1749,7 @@ where
     cap_table: Vec<Option<Box<dyn ClientHook>>>,
 }
 
-fn get_call(message: &mut Box<dyn crate::OutgoingMessage>) -> ::capnp::Result<call::Builder> {
+fn get_call(message: &mut Box<dyn crate::OutgoingMessage>) -> ::capnp::Result<call::Builder<'_>> {
     let message_root: message::Builder = message.get_body()?.get_as()?;
     match message_root.which()? {
         message::Call(call) => call,
@@ -1778,7 +1777,7 @@ where
         })
     }
 
-    fn init_call(&mut self) -> call::Builder {
+    fn init_call(&mut self) -> call::Builder<'_> {
         let message_root: message::Builder = self.message.get_body().unwrap().get_as().unwrap();
         message_root.init_call()
     }
@@ -1840,7 +1839,7 @@ where
 }
 
 impl<VatId> RequestHook for Request<VatId> {
-    fn get(&mut self) -> any_pointer::Builder {
+    fn get(&mut self) -> any_pointer::Builder<'_> {
         use ::capnp::traits::ImbueMut;
         let mut builder = get_call(&mut self.message)
             .unwrap()
@@ -2151,7 +2150,7 @@ impl Params {
 }
 
 impl ParamsHook for Params {
-    fn get(&self) -> ::capnp::Result<any_pointer::Reader> {
+    fn get(&self) -> ::capnp::Result<any_pointer::Reader<'_>> {
         let root: message::Reader = self.request.get_body()?.get_as()?;
         match root.which()? {
             message::Call(call) => {
@@ -2268,7 +2267,7 @@ impl<VatId> Drop for Results<VatId> {
 }
 
 impl<VatId> ResultsHook for Results<VatId> {
-    fn get(&mut self) -> ::capnp::Result<any_pointer::Builder> {
+    fn get(&mut self) -> ::capnp::Result<any_pointer::Builder<'_>> {
         use ::capnp::traits::ImbueMut;
         if let Some(ref mut inner) = self.inner {
             inner.ensure_initialized();
@@ -2509,7 +2508,7 @@ impl ResultsDoneHook for ResultsDone {
             inner: self.inner.clone(),
         })
     }
-    fn get(&self) -> ::capnp::Result<any_pointer::Reader> {
+    fn get(&self) -> ::capnp::Result<any_pointer::Reader<'_>> {
         use ::capnp::traits::Imbue;
         match *self.inner {
             ResultsDoneVariant::Rpc(ref message, ref cap_table) => {
@@ -2619,12 +2618,11 @@ impl<VatId> Drop for ImportClient<VatId> {
 
         // Remove self from the import table, if the table is still pointing at us.
         let mut remove = false;
-        if let Some(import) = connection_state.imports.borrow().slots.get(&self.import_id) {
-            if let Some((_, ptr)) = import.import_client {
-                if ptr == ((&*self) as *const _ as usize) {
-                    remove = true;
-                }
-            }
+        if let Some(import) = connection_state.imports.borrow().slots.get(&self.import_id)
+            && let Some((_, ptr)) = import.import_client
+            && ptr == ((&*self) as *const _ as usize)
+        {
+            remove = true;
         }
 
         if remove {
@@ -2841,12 +2839,11 @@ impl<VatId> Drop for PromiseClient<VatId> {
             let slots = &mut self.connection_state.imports.borrow_mut().slots;
             if let Some(import) = slots.get_mut(&id) {
                 let mut drop_it = false;
-                if let Some(c) = &import.app_client {
-                    if let Some(cs) = c.upgrade() {
-                        if cs.get_ptr() == self_ptr {
-                            drop_it = true;
-                        }
-                    }
+                if let Some(c) = &import.app_client
+                    && let Some(cs) = c.upgrade()
+                    && cs.get_ptr() == self_ptr
+                {
+                    drop_it = true;
                 }
                 if drop_it {
                     import.app_client = None;

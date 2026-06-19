@@ -70,25 +70,25 @@ pub struct PipelineInnerSender {
 
 impl Drop for PipelineInnerSender {
     fn drop(&mut self) {
-        if let Some(weak_queued) = self.inner.take() {
-            if let Some(pipeline_inner) = weak_queued.upgrade() {
-                PipelineInner::resolve(
-                    &pipeline_inner,
-                    Ok(Box::new(crate::broken::Pipeline::new(Error::failed(
-                        "PipelineInnerSender was canceled".into(),
-                    )))),
-                );
-            }
+        if let Some(weak_queued) = self.inner.take()
+            && let Some(pipeline_inner) = weak_queued.upgrade()
+        {
+            PipelineInner::resolve(
+                &pipeline_inner,
+                Ok(Box::new(crate::broken::Pipeline::new(Error::failed(
+                    "PipelineInnerSender was canceled".into(),
+                )))),
+            );
         }
     }
 }
 
 impl PipelineInnerSender {
     pub fn complete(mut self, pipeline: Box<dyn PipelineHook>) {
-        if let Some(weak_queued) = self.inner.take() {
-            if let Some(pipeline_inner) = weak_queued.upgrade() {
-                crate::queued::PipelineInner::resolve(&pipeline_inner, Ok(pipeline));
-            }
+        if let Some(weak_queued) = self.inner.take()
+            && let Some(pipeline_inner) = weak_queued.upgrade()
+        {
+            crate::queued::PipelineInner::resolve(&pipeline_inner, Ok(pipeline));
         }
     }
 }
