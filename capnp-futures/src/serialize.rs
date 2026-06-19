@@ -109,14 +109,14 @@ where
     // Don't accept a message which the receiver couldn't possibly traverse without hitting the
     // traversal limit. Without this check, a malicious client could transmit a very large segment
     // size to make the receiver allocate excessive space and possibly crash.
-    if let Some(traversal_limit_in_words) = options.traversal_limit_in_words {
-        if segment_lengths_builder.total_words() > traversal_limit_in_words {
-            return Err(Error::failed(format!(
-                "Message has {} words, which is too large. To increase the limit on the \
+    if let Some(traversal_limit_in_words) = options.traversal_limit_in_words
+        && segment_lengths_builder.total_words() > traversal_limit_in_words
+    {
+        return Err(Error::failed(format!(
+            "Message has {} words, which is too large. To increase the limit on the \
                          receiving end, see capnp::message::ReaderOptions.",
-                segment_lengths_builder.total_words()
-            )));
-        }
+            segment_lengths_builder.total_words()
+        )));
     }
 
     Ok(Some(segment_lengths_builder))
@@ -156,14 +156,14 @@ fn parse_segment_table_first(buf: &[u8]) -> Result<(usize, usize)> {
 
 /// Something that contains segments ready to be written out.
 pub trait AsOutputSegments {
-    fn as_output_segments(&self) -> OutputSegments;
+    fn as_output_segments(&self) -> OutputSegments<'_>;
 }
 
 impl<M> AsOutputSegments for &M
 where
     M: AsOutputSegments,
 {
-    fn as_output_segments(&self) -> OutputSegments {
+    fn as_output_segments(&self) -> OutputSegments<'_> {
         (*self).as_output_segments()
     }
 }
@@ -172,7 +172,7 @@ impl<A> AsOutputSegments for message::Builder<A>
 where
     A: message::Allocator,
 {
-    fn as_output_segments(&self) -> OutputSegments {
+    fn as_output_segments(&self) -> OutputSegments<'_> {
         self.get_segments_for_output()
     }
 }
@@ -187,7 +187,7 @@ impl<A> AsOutputSegments for ::std::rc::Rc<message::Builder<A>>
 where
     A: message::Allocator,
 {
-    fn as_output_segments(&self) -> OutputSegments {
+    fn as_output_segments(&self) -> OutputSegments<'_> {
         self.get_segments_for_output()
     }
 }
@@ -234,7 +234,7 @@ where
                 buf[(idx - 1) * 4..idx * 4]
                     .copy_from_slice(&((segments[idx].len() / 8) as u32).to_le_bytes());
             }
-            if segment_count % 2 == 0 {
+            if segment_count.is_multiple_of(2) {
                 for idx in (buf.len() - 4)..(buf.len()) {
                     buf[idx] = 0
                 }

@@ -556,7 +556,7 @@ const NAME_ANNOTATION_ID: u64 = 0xc2fe4c6d100166d0;
 const PARENT_MODULE_ANNOTATION_ID: u64 = 0xabee386cd1450364;
 const OPTION_ANNOTATION_ID: u64 = 0xabfef22c4ee1964e;
 
-fn name_annotation_value(annotation: schema_capnp::annotation::Reader) -> capnp::Result<&str> {
+fn name_annotation_value(annotation: schema_capnp::annotation::Reader<'_>) -> capnp::Result<&str> {
     if let schema_capnp::value::Text(t) = annotation.get_value()?.which()? {
         let name = t?.to_str()?;
         for c in name.chars() {
@@ -575,7 +575,7 @@ fn name_annotation_value(annotation: schema_capnp::annotation::Reader) -> capnp:
     }
 }
 
-fn get_field_name(field: schema_capnp::field::Reader) -> capnp::Result<&str> {
+fn get_field_name(field: schema_capnp::field::Reader<'_>) -> capnp::Result<&str> {
     for annotation in field.get_annotations()? {
         if annotation.get_id() == NAME_ANNOTATION_ID {
             return name_annotation_value(annotation);
@@ -584,7 +584,7 @@ fn get_field_name(field: schema_capnp::field::Reader) -> capnp::Result<&str> {
     Ok(field.get_name()?.to_str()?)
 }
 
-fn get_enumerant_name(enumerant: schema_capnp::enumerant::Reader) -> capnp::Result<&str> {
+fn get_enumerant_name(enumerant: schema_capnp::enumerant::Reader<'_>) -> capnp::Result<&str> {
     for annotation in enumerant.get_annotations()? {
         if annotation.get_id() == NAME_ANNOTATION_ID {
             return name_annotation_value(annotation);
@@ -1285,41 +1285,40 @@ fn generate_setter(
                     initter_interior.push(
                         Line(fmt!(ctx,"{capnp}::traits::FromPointerBuilder::init_pointer(self.builder.get_pointer_field({offset}), size)")));
 
-                    if no_discriminant {
-                        if let Ok(vec_of_list_element_types) =
+                    if no_discriminant
+                        && let Ok(vec_of_list_element_types) =
                             vec_of_list_element_types(ctx, ot1.reborrow(), params_struct_generics)
-                        {
-                            set_types.push_str(
-                                format!(", _{styled_name}: {vec_of_list_element_types}").as_str(),
-                            );
-                            set_inner.push_str(
-                                build_impl_for_list_type(
-                                    styled_name,
-                                    "self",
-                                    ot1.reborrow(),
-                                    false,
-                                    true,
-                                )?
-                                .as_str(),
-                            );
-                            rust_struct_inner.push_str(
-                                format!(
-                                    "{params_struct_prefix}_{styled_name}: {vec_of_list_element_types},"
-                                )
-                                .as_str(),
-                            );
-                            rust_struct_impl_inner.push_str(
-                                build_impl_for_list_type(
-                                    styled_name,
-                                    "_builder",
-                                    ot1.reborrow(),
-                                    false,
-                                    is_params_struct,
-                                )?
-                                .as_str(),
-                            );
-                            get_inner.push(line(format!("_{styled_name}: Vec::new(),"))); //todo
-                        }
+                    {
+                        set_types.push_str(
+                            format!(", _{styled_name}: {vec_of_list_element_types}").as_str(),
+                        );
+                        set_inner.push_str(
+                            build_impl_for_list_type(
+                                styled_name,
+                                "self",
+                                ot1.reborrow(),
+                                false,
+                                true,
+                            )?
+                            .as_str(),
+                        );
+                        rust_struct_inner.push_str(
+                            format!(
+                                "{params_struct_prefix}_{styled_name}: {vec_of_list_element_types},"
+                            )
+                            .as_str(),
+                        );
+                        rust_struct_impl_inner.push_str(
+                            build_impl_for_list_type(
+                                styled_name,
+                                "_builder",
+                                ot1.reborrow(),
+                                false,
+                                is_params_struct,
+                            )?
+                            .as_str(),
+                        );
+                        get_inner.push(line(format!("_{styled_name}: Vec::new(),"))); //todo
                     }
 
                     match ot1.get_element_type()?.which()? {
@@ -2369,7 +2368,7 @@ fn generate_union(
                             field::Which::Group(_) => possibly_cyclical = true,
                         }
                     }
-                    let params = get_params(ctx, group.get_type_id())?;
+                    let _params = get_params(ctx, group.get_type_id())?;
                     let mut used_params = HashSet::new();
                     used_params_of_group(ctx, group.get_type_id(), &mut used_params)?;
                     for par in &used_params {
@@ -3336,7 +3335,7 @@ fn generate_node(
                 } else {
                     params_union_name = snake_to_camel_case(node_name);
                     params_union_name.push_str("Union");
-                    get_inner.push(line(format!("uni: self.which()?.try_into()?,")));
+                    get_inner.push(line("uni: self.which()?.try_into()?,".to_string()));
                 }
 
                 let (which_enums1, union_getter, typedef, mut default_decls) = generate_union(
@@ -3404,11 +3403,11 @@ fn generate_node(
                     bracketed = "<'a>".to_string();
                 } else if !union_lifetime.is_empty() {
                     //TODO clean up groups so this is not needed
-                    if let Some(l) = bracketed.chars().nth(1) {
-                        if l != '\'' {
-                            bracketed.insert_str(1, "'a,");
-                            bracketed_with_where.insert_str(1, "'a,");
-                        }
+                    if let Some(l) = bracketed.chars().nth(1)
+                        && l != '\''
+                    {
+                        bracketed.insert_str(1, "'a,");
+                        bracketed_with_where.insert_str(1, "'a,");
                     }
                 }
                 let (enum_bracketed, enum_bracketed_with_where) = if union_only_struct {
@@ -4073,9 +4072,8 @@ fn generate_node(
                     result_type
                 ))));
                 client_impl_interior.push(line("}"));
-                if builder_params.is_empty() {
-                    if !is_generic {
-                        shared_client_impl_interior.push(Line(fmt!(
+                if builder_params.is_empty() && !is_generic {
+                    shared_client_impl_interior.push(Line(fmt!(
                     ctx,
                     "pub async fn build_{}_request<'a{builder_params}>(&'a self{}) -> {capnp}::Result<{capnp}::message::TypedReader<{capnp}::message::Builder<{capnp}::message::HeapAllocator>, {result_type}>> {} {{",
                     camel_to_snake_case(name),
@@ -4083,14 +4081,13 @@ fn generate_node(
                     params.where_clause
                 )));
 
-                        shared_client_impl_interior.push(indent(Line(fmt!(
+                    shared_client_impl_interior.push(indent(Line(fmt!(
                     ctx,
                     "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as {capnp}::traits::Owned>::Builder<'_>>();{builder_params_inner_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({ordinal}, message, tx)).await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))??.into_reader().into_typed())\n     }}", 
                     param_type
                 ))));
 
-                        shared_client_match_arms.push_str(fmt!(ctx, "\n       {ordinal} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
-                    }
+                    shared_client_match_arms.push_str(fmt!(ctx, "\n       {ordinal} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
                 }
 
                 method.get_annotations()?;
@@ -4219,31 +4216,30 @@ fn generate_node(
                                             }
                                         }
                                         type_::List(ot1) => {
-                                            if no_discriminant {
-                                                if let Ok(vec_of_list_element_types) =
+                                            if no_discriminant
+                                                && let Ok(vec_of_list_element_types) =
                                                     vec_of_list_element_types(
                                                         ctx,
                                                         ot1.reborrow(),
                                                         &mut HashSet::new(),
                                                     )
-                                                {
-                                                    builder_params_string.push_str(
+                                            {
+                                                builder_params_string.push_str(
                                                         format!(
                                                             "_{styled_name}: {vec_of_list_element_types},",
                                                         )
                                                         .as_str(),
                                                     );
-                                                    builder_params_impl_string.push_str(
-                                                        build_impl_for_list_type(
-                                                            styled_name.as_str(),
-                                                            "_builder",
-                                                            ot1.reborrow(),
-                                                            false,
-                                                            true,
-                                                        )?
-                                                        .as_str(),
-                                                    );
-                                                }
+                                                builder_params_impl_string.push_str(
+                                                    build_impl_for_list_type(
+                                                        styled_name.as_str(),
+                                                        "_builder",
+                                                        ot1.reborrow(),
+                                                        false,
+                                                        true,
+                                                    )?
+                                                    .as_str(),
+                                                );
                                             }
                                         }
                                         type_::Enum(e) => {
@@ -4460,9 +4456,8 @@ fn generate_node(
                         ))));
                         client_impl_interior.push(line("}"));
 
-                        if extra_params.is_empty() {
-                            if !is_generic {
-                                shared_client_impl_interior.push(Line(fmt!(
+                        if extra_params.is_empty() && !is_generic {
+                            shared_client_impl_interior.push(Line(fmt!(
                             ctx,
                             "pub async fn build_{}_request<'a,{}>(&'a self, {}) -> {capnp}::Result<{capnp}::message::TypedReader<{capnp}::message::Builder<{capnp}::message::HeapAllocator>, {result_type}>> {} {{",
                             camel_to_snake_case(name),
@@ -4471,13 +4466,12 @@ fn generate_node(
                             params.where_clause
                         )));
 
-                                shared_client_impl_interior.push(indent(Line(fmt!(
+                            shared_client_impl_interior.push(indent(Line(fmt!(
                             ctx,
                             "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as {capnp}::traits::Owned>::Builder<'_>>();{builder_params_impl_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({method_count}, message, tx)).await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))??.into_reader().into_typed())\n     }}", 
                             param_type
                         ))));
-                                shared_client_match_arms.push_str(fmt!(ctx, "\n       {method_count} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
-                            }
+                            shared_client_match_arms.push_str(fmt!(ctx, "\n       {method_count} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
                         }
 
                         dispatch_arms.push(
@@ -4625,14 +4619,14 @@ fn generate_node(
             ]));
 
             mod_interior.push(BlankLine);
-            mod_interior.push(Line(format!("pub struct SharedClient {{")));
+            mod_interior.push(Line("pub struct SharedClient {".to_string()));
             mod_interior.push(indent(Line(fmt!(ctx,
                 "_mpsc: {capnp}::tokio::sync::mpsc::Sender<(u8, {capnp}::message::Builder<{capnp}::message::HeapAllocator>, {capnp}::tokio::sync::oneshot::Sender<{capnp}::Result<{capnp}::message::Builder<{capnp}::message::HeapAllocator>>>)>,"
             ))));
             mod_interior.push(line("}"));
             mod_interior.push(BlankLine);
             mod_interior.push(Branch(vec![
-                Line(format!("impl SharedClient {{")),
+                Line("impl SharedClient {".to_string()),
                 indent(shared_client_impl_interior),
                 line("}"),
             ]));
