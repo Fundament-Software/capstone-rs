@@ -410,18 +410,15 @@ impl CompilerCommand {
                 Ok((pattern, search_prefix, glob))
             }).map(|maybe_pattern| {
                 match maybe_pattern {
-                    Ok((pattern, _search_prefix, None)) => {Err(capnp::Error::failed(format!(
-                                "No capnp files found matching {pattern}, did you mean to use an absolute path instead of a relative one?
-                    Potential directories for absolute paths: {search_paths:#?}",
-                            )))}
-                    Ok((pattern, search_prefix, Some(glob))) => {
+                    Ok((pattern, search_prefix, glob)) => {
                         let initial_paths = if pattern.starts_with('/')  { search_paths } else { &manifest };
                         let mut ensure_some = initial_paths
                         .iter()
                         .flat_map(move |dir: &PathBuf| -> _ {
                             // build glob and partition it into a static prefix and shorter glob pattern
                             // For example, converts "../schemas/*.capnp" into Path(../schemas) and Glob(*.capnp)
-                            glob.walk(dir.join(&search_prefix)).flatten().collect::<Vec<_>>()
+                            let empty = Glob::empty();
+                            glob.as_ref().unwrap_or(&empty).walk(dir.join(&search_prefix)).flatten().collect::<Vec<_>>()
                         }).peekable();
                         if ensure_some.peek().is_none() {
                             return Err(capnp::Error::failed(format!(
