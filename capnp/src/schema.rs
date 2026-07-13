@@ -52,7 +52,7 @@ impl DynamicSchemaToken {
 
 #[cfg(all(feature = "std", feature = "alloc"))]
 struct DynamicSchemaRegistry {
-    schemas: flurry::HashMap<DynamicSchemaToken, Weak<HashMap<u64, TypeVariant>>>,
+    schemas: papaya::HashMap<DynamicSchemaToken, Weak<HashMap<u64, TypeVariant>>>,
 }
 
 #[cfg(all(feature = "std", feature = "alloc"))]
@@ -72,7 +72,7 @@ impl DynamicSchemaRegistry {
 
 #[cfg(all(feature = "std", feature = "alloc"))]
 static REGISTRY: LazyLock<DynamicSchemaRegistry> = LazyLock::new(|| DynamicSchemaRegistry {
-    schemas: flurry::HashMap::new(),
+    schemas: papaya::HashMap::new(),
 });
 
 #[cfg(all(feature = "std", feature = "alloc"))]

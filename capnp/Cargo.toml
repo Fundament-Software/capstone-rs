@@ -20,15 +20,15 @@ keywords = ["encoding", "protocol", "serialization"]
 name = "capnp"
 
 [dependencies]
-proptest = { version = "1.6", optional = true }
+proptest = { version = "1.11", optional = true }
 
 embedded-io = { version = "0.7", default-features = false, optional = true }
 smallvec = "1.13.1"
-flurry = "0.5.1"
+papaya = "0.2"
 tokio.workspace = true
 
 [dev-dependencies]
-proptest = "1.6"
+proptest = "*"
 
 [features]
 alloc = ["embedded-io?/alloc"]
