@@ -24,7 +24,7 @@ futures-util.workspace = true
 [dev-dependencies]
 capstone = { workspace = true, features = ["proptest"] }
 tokio = { workspace = true, features = ["io-util", "rt"] }
-proptest = "1.5"
+proptest = "*"
 
 [lints]
 workspace = true
