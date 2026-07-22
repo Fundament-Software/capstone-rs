@@ -54,7 +54,7 @@ capstone-futures = { version = "0.18", path = "./capnp-futures" }
 capnp-sys = { git = "https://github.com/Fundament-Software/capstone" }
 async-byte-channel = { path = "./async-byte-channel" }
 futures-util = "0.3"
-syn = { version = "2.0", features = ["full"] }
+syn = { version = "3.0", features = ["full"] }
 proc-macro2 = "1.0"
 quote = "1.0"
 tempfile = "3.*"
