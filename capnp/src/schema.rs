@@ -32,6 +32,55 @@ pub struct DynamicSchema {
     files: HashMap<String, u64>,
 }
 
+#[cfg(all(feature = "std", feature = "alloc"))]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum DynamicSchemaError {
+    /// Schema token not present in schema registry
+    TokenNotPresent,
+
+    /// Could not find type id
+    TypeIdNotFound(u64),
+
+    /// Not a file in this DynamicSchema
+    FileNotFound(String),
+
+    /// Cannot infer root because this DynamicSchema set has more than one file
+    InferenceFailed,
+
+    /// This DynamicSchema set has no files.
+    EmptySchema,
+
+    /// Provided key was not in scope
+    InvalidKey(String),
+
+    // Invalid scope
+    InvalidScope,
+
+    /// Internal error during child lookup
+    InternalFailure,
+}
+
+#[cfg(all(feature = "std", feature = "alloc"))]
+impl ::std::error::Error for DynamicSchemaError {}
+
+#[cfg(all(feature = "std", feature = "alloc"))]
+impl core::fmt::Display for DynamicSchemaError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::TokenNotPresent => f.write_str("Schema token not present in schema registry"),
+            Self::TypeIdNotFound(id) => write!(f, "Could not find type id {id}"),
+            Self::FileNotFound(path) => write!(f, "{path} is not a file in this DynamicSchema"),
+            Self::InferenceFailed => f.write_str(
+                "Cannot infer root because this DynamicSchema set has more than one file",
+            ),
+            Self::EmptySchema => f.write_str("This DynamicSchema set has no files"),
+            Self::InvalidKey(k) => write!(f, "{k} was not in scope"),
+            Self::InvalidScope => f.write_str("Invalid scope"),
+            Self::InternalFailure => f.write_str("Internal error during child lookup"),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
 pub struct DynamicSchemaToken(u64);
 
@@ -81,14 +130,18 @@ fn get_registry() -> &'static DynamicSchemaRegistry {
 }
 
 #[cfg(all(feature = "std", feature = "alloc"))]
-fn get_type_variant(token: &DynamicSchemaToken, id: u64) -> Result<TypeVariant> {
-    let hash = token.try_as_ref().ok_or(crate::Error::failed(
-        "Schema token not present in registry!".into(),
-    ))?;
+fn get_type_variant(
+    token: &DynamicSchemaToken,
+    id: u64,
+) -> std::result::Result<TypeVariant, DynamicSchemaError> {
+    let hash = token
+        .try_as_ref()
+        .ok_or(DynamicSchemaError::TokenNotPresent)?;
 
-    Ok(*hash.as_ref().get(&id).ok_or(crate::Error::failed(format!(
-        "Could not find type id {id}",
-    )))?)
+    Ok(*hash
+        .as_ref()
+        .get(&id)
+        .ok_or(DynamicSchemaError::TypeIdNotFound(id))?)
 }
 
 #[unsafe(no_mangle)]
@@ -359,32 +412,32 @@ impl DynamicSchema {
         &self,
         scope: &[impl AsRef<str>],
         file: Option<&str>,
-    ) -> Result<&TypeVariant> {
+    ) -> std::result::Result<&TypeVariant, DynamicSchemaError> {
         let mut parent = if let Some(f) = file {
-            *self.files.get(f).ok_or(crate::Error::failed(format!(
-                "{f} is not a file in this DynamicSchema",
-            )))?
+            *self
+                .files
+                .get(f)
+                .ok_or(DynamicSchemaError::FileNotFound(f.to_string()))?
         } else if self.files.len() > 1 {
-            return Err(crate::Error::failed(
-                "Cannot infer root filename because DynamicSchema set has more than one file"
-                    .into(),
-            ));
+            return Err(DynamicSchemaError::InferenceFailed);
         } else {
-            *self.files.values().next().ok_or(crate::Error::failed(
-                "DynamicSchema does not contain a root file.".into(),
-            ))?
+            *self
+                .files
+                .values()
+                .next()
+                .ok_or(DynamicSchemaError::EmptySchema)?
         };
         let mut result = None;
 
         for name in scope {
             let key = &(parent, name.as_ref().to_string());
             result = self.scopes.get(key);
-            parent = *result.ok_or(crate::Error::failed(format!("{} was not in scope", key.1)))?;
+            parent = *result.ok_or(DynamicSchemaError::InvalidKey(key.1.clone()))?;
         }
 
         self.nodes
-            .get(result.ok_or(crate::Error::failed("Invalid scope".into()))?)
-            .ok_or(crate::Error::failed("Internal child lookup failure".into()))
+            .get(result.ok_or(DynamicSchemaError::InvalidScope)?)
+            .ok_or(DynamicSchemaError::InternalFailure)
     }
 }
 
@@ -605,14 +658,15 @@ impl Field {
             crate::schema_capnp::type_::Which::List(r) => {
                 TypeVariant::List(Self::resolve_type_reader(&r.get_element_type()?, token)?.into())
             }
-            crate::schema_capnp::type_::Which::Enum(r) => {
-                get_type_variant(&token, r.get_type_id())?
-            }
+            crate::schema_capnp::type_::Which::Enum(r) => get_type_variant(&token, r.get_type_id())
+                .map_err(|e| crate::Error::failed(e.to_string()))?,
             crate::schema_capnp::type_::Which::Struct(r) => {
-                get_type_variant(&token, r.get_type_id())?
+                get_type_variant(&token, r.get_type_id())
+                    .map_err(|e| crate::Error::failed(e.to_string()))?
             }
             crate::schema_capnp::type_::Which::Interface(r) => {
-                get_type_variant(&token, r.get_type_id())?
+                get_type_variant(&token, r.get_type_id())
+                    .map_err(|e| crate::Error::failed(e.to_string()))?
             }
         })
     }
