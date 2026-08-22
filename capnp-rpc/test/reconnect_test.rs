@@ -5,7 +5,7 @@ use std::rc::Rc;
 use capnp::Error;
 use capnp::capability::{Promise, Response};
 use capnp_rpc::{
-    RpcSystem, auto_reconnect, lazy_auto_reconnect, new_client, new_promise_client,
+    RpcSystem, auto_reconnect, lazy_auto_reconnect, new_client, new_future_client,
     rpc_twoparty_capnp, twoparty,
 };
 use futures_util::FutureExt;
@@ -76,7 +76,7 @@ impl test_interface::Server for TestInterfaceImpl {
         );
         {
             let mut results = results.get();
-            results.set_x(s[..].into());
+            results.set_x(&s[..]);
         }
         let borrowed = self.inner.borrow();
         if let Some(fut) = borrowed.block.as_ref() {
@@ -134,7 +134,7 @@ fn test(
 }
 
 // Lets us poll a future without consuming it
-pub struct PollOnce<'a, F: Future + Unpin>(&'a mut F);
+pub struct PollOnce<'a, F: Future + Unpin>(pub &'a mut F);
 
 impl<F: Future + Unpin> Future for PollOnce<'_, F> {
     type Output = core::task::Poll<F::Output>;
@@ -382,8 +382,8 @@ async fn auto_reconnect_rpc_call() {
     do_autoconnect_test(&mut pool, |c| {
         b.set_interface(c);
         let req = client.test_interface_request();
-        new_promise_client(req.send().promise.map(|resp| match resp {
-            Ok(resp) => Ok(resp.get()?.get_cap()?.client),
+        new_future_client(req.send().promise.map(|resp| match resp {
+            Ok(resp) => Ok(resp.get()?.get_cap()?),
             Err(err) => Err(err),
         }))
     })
@@ -394,7 +394,7 @@ async fn auto_reconnect_rpc_call() {
     .unwrap();
 }
 
-/// lazyAutoReconnect() initialies lazily
+/// lazyAutoReconnect() initializes lazily
 #[tokio::test(flavor = "multi_thread", worker_threads = 1)]
 async fn lazy_auto_reconnect_test() {
     let pool = LocalSet::new();

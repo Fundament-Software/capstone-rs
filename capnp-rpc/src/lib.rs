@@ -34,14 +34,14 @@
 //! // Rust server defining an implementation of Foo.
 //! struct FooImpl;
 //! impl foo::Server for FooImpl {
-//!     fn identity(&mut self,
-//!                 params: foo::IdentityParams,
-//!                 mut results: foo::IdentityResults)
-//!                 -> Promise<(), ::capnp::Error>
-//!     {
-//!         let x = pry!(params.get()).get_x();
+//!     async fn identity(
+//!         self: Rc<Self>,
+//!         params: foo::IdentityParams,
+//!         mut results: foo::IdentityResults
+//!     ) -> Result<(), ::capnp::Error> {
+//!         let x = params.get()?.get_x();
 //!         results.get().set_y(x);
-//!         Promise::ok(())
+//!         Ok(())
 //!     }
 //! }
 //! ```
@@ -84,7 +84,7 @@ pub mod rpc_capnp;
 /// [rpc-twoparty.capnp](https://github.com/capnproto/capnproto/blob/master/c%2B%2B/src/capnp/rpc-twoparty.capnp).
 pub mod rpc_twoparty_capnp;
 
-/// Like `try!()`, but for functions that return a `Promise<T, E>` rather than a `Result<T, E>`.
+/// Like [`try!()`], but for functions that return a [`Promise<T, E>`] rather than a [`Result<T, E>`].
 ///
 /// Unwraps a `Result<T, E>`. In the case of an error `Err(e)`, immediately returns from the
 /// enclosing function with `Promise::err(e)`.
@@ -102,8 +102,9 @@ macro_rules! pry {
 
 mod attach;
 mod broken;
-pub mod local;
-pub mod queued;
+mod flow_control;
+mod local;
+mod queued;
 mod reconnect;
 pub mod rpc;
 mod sender_queue;
@@ -113,7 +114,6 @@ pub mod twoparty;
 
 use capnp::message;
 
-#[allow(clippy::type_complexity)]
 /// A message to be sent by a [`VatNetwork`].
 pub trait OutgoingMessage {
     /// Gets the message body, which the caller may fill in any way it wants.
@@ -125,17 +125,23 @@ pub trait OutgoingMessage {
     /// Same as `get_body()`, but returns the corresponding reader type.
     fn get_body_as_reader(&self) -> ::capnp::Result<::capnp::any_pointer::Reader<'_>>;
 
-    /// Sends the message. Returns a promise for the message that resolves once the send has completed.
+    /// Sends the message. Returns a promise that resolves once the send has completed.
     /// Dropping the returned promise does *not* cancel the send.
     fn send(
         self: Box<Self>,
     ) -> (
-        Promise<Rc<message::Builder<message::HeapAllocator>>, ::capnp::Error>,
+        Promise<(), Error>,
         Rc<message::Builder<message::HeapAllocator>>,
     );
 
     /// Takes the inner message out of `self`.
-    fn take(self: Box<Self>) -> message::Builder<message::HeapAllocator>;
+    fn take(self: Box<Self>) -> ::capnp::message::Builder<::capnp::message::HeapAllocator>;
+
+    /// Gets the total size of the message, for flow control purposes. Although the caller
+    /// could also call get_body().target_size(), doing that would walk the message tree,
+    /// whereas typical implementations can compute the size more cheaply by summing
+    /// segment sizes.
+    fn size_in_words(&self) -> usize;
 }
 
 /// A message received from a [`VatNetwork`].
@@ -168,9 +174,30 @@ pub trait Connection<VatId> {
     /// returns None. If any other problem occurs, returns an Error.
     fn receive_incoming_message(&mut self) -> Promise<Option<Box<dyn IncomingMessage>>, Error>;
 
+    /// Constructs a flow controller for a new stream on this connection.
+    ///
+    /// Returns (fc, p), where fc is the new flow controller and p is a promise
+    /// that must be polled in order to drive the flow controller.
+    fn new_stream(&mut self) -> (Box<dyn FlowController>, Promise<(), Error>) {
+        let (fc, f) = crate::flow_control::FixedWindowFlowController::new(
+            crate::flow_control::DEFAULT_WINDOW_SIZE,
+        );
+        (Box::new(fc), f)
+    }
+
     /// Waits until all outgoing messages have been sent, then shuts down the outgoing stream. The
     /// returned promise resolves after shutdown is complete.
     fn shutdown(&mut self, result: ::capnp::Result<()>, flush: bool) -> Promise<(), Error>;
+}
+
+/// Tracks a particular RPC stream in order to implement a flow control algorithm.
+pub trait FlowController {
+    fn send(
+        &mut self,
+        message: Box<dyn OutgoingMessage>,
+        ack: Promise<(), Error>,
+    ) -> Promise<(), Error>;
+    fn wait_all_acked(&mut self) -> Promise<(), Error>;
 }
 
 /// Network facility between vats, it determines how to form connections between
@@ -181,23 +208,26 @@ pub trait Connection<VatId> {
 /// Cap'n Proto RPC operates between vats, where a "vat" is some sort of host of
 /// objects.  Typically one Cap'n Proto process (in the Unix sense) is one vat.
 pub trait VatNetwork<VatId> {
-    /// Returns None if `hostId` refers to the local vat.
+    /// Connects to `host_id`.
+    ///
+    /// Returns None if `host_id` refers to the local vat.
     fn connect(&mut self, host_id: VatId) -> Option<Box<dyn Connection<VatId>>>;
 
     /// Waits for the next incoming connection and return it.
     fn accept(&mut self) -> Promise<Box<dyn Connection<VatId>>, ::capnp::Error>;
 
+    /// A promise that cannot be resolved until the shutdown.
     fn drive_until_shutdown(&mut self) -> Promise<(), Error>;
 }
 
 /// A portal to objects available on the network.
 ///
-/// The RPC implementation sits on top of an implementation of `VatNetwork`, which
+/// The RPC implementation sits on top of an implementation of [`VatNetwork`], which
 /// determines how to form connections between vats. The RPC implementation determines
 /// how to use such connections to manage object references and make method calls.
 ///
 /// At the moment, this is all rather more general than it needs to be, because the only
-/// implementation of `VatNetwork` is `twoparty::VatNetwork`. However, eventually we
+/// implementation of `VatNetwork` is [`twoparty::VatNetwork`]. However, eventually we
 /// will need to have more sophisticated `VatNetwork` implementations, in order to support
 /// [level 3](https://capnproto.org/rpc.html#protocol-features) features.
 ///
@@ -331,6 +361,8 @@ impl<VatId> RpcSystem<VatId> {
     }
 
     /// Returns a `Disconnector` future that can be run to cleanly close the connection to this `RpcSystem`'s network.
+    /// The future resolves once the connection's shutdown has completed, and it reports any error
+    /// that occurred during shutdown.
     /// You should get the `Disconnector` before you spawn the `RpcSystem`.
     pub fn get_disconnector(&self) -> rpc::Disconnector<VatId> {
         rpc::Disconnector::new(self.connection_state.clone())
@@ -352,20 +384,36 @@ pub fn new_client<C, S>(s: S) -> C
 where
     C: capnp::capability::FromServer<S>,
 {
+    new_client_from_rc(Rc::new(s))
+}
+
+/// Variant of `new_client` that works on an `Rc<S>`.
+pub fn new_client_from_rc<C, S>(s: Rc<S>) -> C
+where
+    C: capnp::capability::FromServer<S>,
+{
     capnp::capability::FromClientHook::new(Box::new(local::Client::new(
         <C as capnp::capability::FromServer<S>>::from_server(s),
     )))
 }
 
-pub fn new_client_from_rc<C, S>(rc: Rc<S>) -> C
-where
-    C: capnp::capability::FromServer<S>,
-{
-    capnp::capability::FromClientHook::new(Box::new(local::Client::new(
-        <C as capnp::capability::FromServer<S>>::from_rc(rc),
-    )))
+/// Creates a "broken" capability that returns the given error from every operation.
+///
+/// The returned client fails with a clone of `error` on every method call
+/// (via both `call` and `new_call`) and on any pipelined capability obtained
+/// from such a call. It never resolves to a working capability.
+///
+/// This is useful when building a capability membrane or other interposition
+/// layer on top of `ClientHook`: the "deny" path of a membrane needs a
+/// capability that rejects all access with a specific error rather than
+/// forwarding to a real object. This parallels the `newBrokenCap` function
+/// exposed by the C++ implementation of Cap'n Proto.
+pub fn new_broken_cap(error: capnp::Error) -> capnp::capability::Client {
+    capnp::capability::Client::new(broken::new_cap(error))
 }
 
+/// Collection of unwrappable capabilities.
+///
 /// Allows a server to recognize its own capabilities when passed back to it, and obtain the
 /// underlying Server objects associated with them. Holds only weak references to Server objects
 /// allowing Server objects to be dropped when dropped by the remote client. Call the `gc` method
@@ -375,7 +423,7 @@ where
     C: capnp::capability::FromServer<S>,
 {
     caps: std::collections::HashMap<usize, Weak<S>>,
-    phantom: PhantomData<C>,
+    marker: std::marker::PhantomData<C>,
 }
 
 impl<S, C> Default for CapabilityServerSet<S, C>
@@ -385,7 +433,7 @@ where
     fn default() -> Self {
         Self {
             caps: std::default::Default::default(),
-            phantom: PhantomData,
+            marker: std::marker::PhantomData,
         }
     }
 }
@@ -400,20 +448,16 @@ where
 
     /// Adds a new capability to the set and returns a client backed by it.
     pub fn new_client(&mut self, s: S) -> C {
-        let rc = Rc::new(s);
-        let ptr = Rc::<S>::as_ptr(&rc) as usize;
-        let weak = Rc::<S>::downgrade(&rc);
-        self.caps.insert(ptr, weak);
-        let dispatch = <C as capnp::capability::FromServer<S>>::from_rc(rc);
-        capnp::capability::FromClientHook::new(Box::new(local::Client::new(dispatch)))
+        self.new_client_from_rc(Rc::new(s))
     }
 
-    /// Adds a new capability to the set and returns a client backed by it.
+    /// Variant of `new_client` that works on an `Rc<S>`.
     pub fn new_client_from_rc(&mut self, rc: Rc<S>) -> C {
-        let ptr = Rc::<S>::as_ptr(&rc) as usize;
-        let weak = Rc::<S>::downgrade(&rc);
+        let weak = Rc::downgrade(&rc);
+        let ptr = Rc::as_ptr(&rc) as usize;
         self.caps.insert(ptr, weak);
-        let dispatch = <C as capnp::capability::FromServer<S>>::from_rc(rc);
+
+        let dispatch = <C as capnp::capability::FromServer<S>>::from_server(rc);
         capnp::capability::FromClientHook::new(Box::new(local::Client::new(dispatch)))
     }
 
@@ -452,21 +496,21 @@ where
     }
 }
 
-/// Converts a promise for a client into a client that queues up any calls that arrive
-/// before the promise resolves.
-// TODO: figure out a better way to allow construction of promise clients.
-pub fn new_promise_client<T, F>(client_promise: F) -> T
+/// Creates a `Client` from a future that resolves to a `Client`.
+///
+/// Any calls that arrive before the resolution are accumulated in a queue.
+pub fn new_future_client<T>(
+    client_future: impl std::future::Future<Output = Result<T, Error>> + 'static,
+) -> T
 where
     T: ::capnp::capability::FromClientHook,
-    F: std::future::Future<Output = Result<capnp::capability::Client, Error>>,
-    F: 'static + Unpin,
 {
     let mut queued_client = crate::queued::Client::new(None);
     let weak_client = Rc::downgrade(&queued_client.inner);
 
-    queued_client.drive(client_promise.then(move |r| {
+    queued_client.drive(client_future.then(move |r| {
         if let Some(queued_inner) = weak_client.upgrade() {
-            crate::queued::ClientInner::resolve(&queued_inner, r.map(|c| c.hook));
+            crate::queued::ClientInner::resolve(&queued_inner, r.map(|c| c.into_client_hook()));
         }
         Promise::ok(())
     }));
@@ -485,7 +529,7 @@ pub struct ImbuedMessageBuilder<A>
 where
     A: message::Allocator,
 {
-    builder: message::Builder<A>,
+    builder: ::capnp::message::Builder<A>,
     cap_table: Vec<Option<Box<dyn ::capnp::private::capability::ClientHook>>>,
 }
 
@@ -510,10 +554,10 @@ where
         root.get_as()
     }
 
-    pub fn set_root<From>(&mut self, value: From) -> ::capnp::Result<()>
-    where
-        From: ::capnp::traits::SetPointerBuilder,
-    {
+    pub fn set_root<T: ::capnp::traits::Owned>(
+        &mut self,
+        value: impl ::capnp::traits::SetterInput<T>,
+    ) -> ::capnp::Result<()> {
         use capnp::traits::ImbueMut;
         let mut root: ::capnp::any_pointer::Builder = self.builder.get_root()?;
         root.imbue_mut(&mut self.cap_table);

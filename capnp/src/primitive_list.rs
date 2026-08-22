@@ -26,7 +26,8 @@ use core::marker;
 use crate::Result;
 use crate::introspect;
 use crate::private::layout::{
-    ListBuilder, ListReader, PointerBuilder, PointerReader, PrimitiveElement, data_bits_per_element,
+    ElementSize, ListBuilder, ListReader, PointerBuilder, PointerReader, PrimitiveElement,
+    data_bits_per_element,
 };
 use crate::traits::{FromPointerBuilder, FromPointerReader, IndexMove, ListIter};
 
@@ -123,14 +124,23 @@ impl<T: PrimitiveElement> Reader<'_, T> {
     const _CHECK_SLICE: () = check_slice_supported::<T>();
 
     /// Attempts to return a view of the list as a native Rust slice.
-    /// Returns `None` if the elements of the list are non-contiguous,
-    /// which can happen if the schema has evolved.
+    ///
+    /// Returns `None` if either:
+    ///  * The elements of the list are non-contiguous, which can happen if the
+    ///    schema has evolved.
+    ///  * The elements of the list are bit-sized, i.e. T is bool. In the case, the
+    ///    list is bit-packed, and therefore differs in representation from Rust's
+    ///    `&[bool]`.
     ///
     /// This method raises a compile-time error if `T` is larger than one
     /// byte and either the `unaligned` feature is enabled or the target
     /// is big-endian.
     pub fn as_slice(&self) -> Option<&[T]> {
         let () = Self::_CHECK_SLICE;
+        if self.reader.get_element_size() == ElementSize::Bit {
+            // TODO: make this a comple-time check.
+            return None;
+        }
         if self.reader.get_element_size() == T::element_size() {
             let bytes = self.reader.into_raw_bytes();
             let bits_per_element = data_bits_per_element(T::element_size()) as usize;
@@ -212,14 +222,23 @@ where
     const _CHECK_SLICE: () = check_slice_supported::<T>();
 
     /// Attempts to return a view of the list as a native Rust slice.
-    /// Returns `None` if the elements of the list are non-contiguous,
-    /// which can happen if the schema has evolved.
+    ///
+    /// Returns `None` if either:
+    ///  * The elements of the list are non-contiguous, which can happen if the
+    ///    schema has evolved.
+    ///  * The elements of the list are bit-sized, i.e. T is bool. In the case, the
+    ///    list is bit-packed, and therefore differs in representation from Rust's
+    ///    `&[bool]`.
     ///
     /// This method raises a compile-time error if `T` is larger than one
     /// byte and either the `unaligned` feature is enabled or the target
     /// is big-endian.
     pub fn as_slice(&mut self) -> Option<&mut [T]> {
         let () = Self::_CHECK_SLICE;
+        if self.builder.get_element_size() == ElementSize::Bit {
+            // TODO: make this a comple-time check.
+            return None;
+        }
         if self.builder.get_element_size() == T::element_size() {
             let bytes = self.builder.as_raw_bytes();
             let bits_per_element = data_bits_per_element(T::element_size()) as usize;
@@ -286,16 +305,55 @@ impl<T: PrimitiveElement> Builder<'_, T> {
     }
 }
 
-impl<'a, T> crate::traits::SetPointerBuilder for Reader<'a, T>
+impl<'a, T> crate::traits::SetterInput<Owned<T>> for Reader<'a, T>
 where
     T: PrimitiveElement,
 {
+    #[inline]
     fn set_pointer_builder<'b>(
         mut pointer: PointerBuilder<'b>,
         value: Reader<'a, T>,
         canonicalize: bool,
     ) -> Result<()> {
         pointer.set_list(&value.reader, canonicalize)
+    }
+}
+
+impl<'a, T> crate::traits::SetterInput<Owned<T>> for &'a [T]
+where
+    T: PrimitiveElement + Copy,
+{
+    #[inline]
+    fn set_pointer_builder<'b>(
+        pointer: PointerBuilder<'b>,
+        value: &'a [T],
+        _canonicalize: bool,
+    ) -> Result<()> {
+        let builder = pointer.init_list(
+            <T as PrimitiveElement>::element_size(),
+            value
+                .len()
+                .try_into()
+                .expect("list size too large to fit in a u32"),
+        );
+        for (idx, v) in value.iter().enumerate() {
+            PrimitiveElement::set(&builder, u32::try_from(idx).unwrap(), *v)
+        }
+        Ok(())
+    }
+}
+
+impl<'a, T, const N: usize> crate::traits::SetterInput<Owned<T>> for &'a [T; N]
+where
+    T: PrimitiveElement + Copy,
+{
+    #[inline]
+    fn set_pointer_builder<'b>(
+        pointer: PointerBuilder<'b>,
+        value: &'a [T; N],
+        canonicalize: bool,
+    ) -> Result<()> {
+        crate::traits::SetterInput::set_pointer_builder(pointer, &value[..], canonicalize)
     }
 }
 
@@ -322,6 +380,19 @@ impl<'a, T: PrimitiveElement + crate::introspect::Introspect> From<Reader<'a, T>
     }
 }
 
+impl<'a, T: PrimitiveElement + crate::introspect::Introspect>
+    crate::dynamic_value::DowncastReader<'a> for Reader<'a, T>
+{
+    fn downcast_reader(v: crate::dynamic_value::Reader<'a>) -> Self {
+        let dl: crate::dynamic_list::Reader = v.downcast();
+        assert!(dl.element_type() == T::introspect());
+        Reader {
+            reader: dl.reader,
+            marker: marker::PhantomData,
+        }
+    }
+}
+
 impl<'a, T: PrimitiveElement + crate::introspect::Introspect> From<Builder<'a, T>>
     for crate::dynamic_value::Builder<'a>
 {
@@ -330,5 +401,26 @@ impl<'a, T: PrimitiveElement + crate::introspect::Introspect> From<Builder<'a, T
             t.builder,
             T::introspect(),
         ))
+    }
+}
+
+impl<'a, T: PrimitiveElement + crate::introspect::Introspect>
+    crate::dynamic_value::DowncastBuilder<'a> for Builder<'a, T>
+{
+    fn downcast_builder(v: crate::dynamic_value::Builder<'a>) -> Self {
+        let dl: crate::dynamic_list::Builder = v.downcast();
+        assert!(dl.element_type() == T::introspect());
+        Builder {
+            builder: dl.builder,
+            marker: marker::PhantomData,
+        }
+    }
+}
+
+impl<T: Copy + PrimitiveElement + crate::introspect::Introspect> core::fmt::Debug
+    for Reader<'_, T>
+{
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Debug::fmt(&crate::dynamic_value::Reader::from(*self), f)
     }
 }

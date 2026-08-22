@@ -19,15 +19,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use std::rc::Rc;
+use std::cell::RefCell;
 
+use ::capnp::message::HeapAllocator;
 use capnp::Error;
+use capnp::capability::Promise;
 use capnp::primitive_list;
 
-use capnp_rpc::{RpcSystem, pry, rpc_twoparty_capnp, twoparty};
+use ::capnp_rpc::ImbuedMessageBuilder;
+use capnp_rpc::{RpcSystem, rpc_twoparty_capnp, twoparty};
 
 use crate::calculator_capnp::calculator;
-use capnp::capability::Promise;
 
 use futures_util::{FutureExt, TryFutureExt};
 
@@ -43,38 +45,43 @@ impl ValueImpl {
 
 impl calculator::value::Server for ValueImpl {
     async fn read(
-        self: Rc<Self>,
+        self: std::rc::Rc<Self>,
         _params: calculator::value::ReadParams,
         mut results: calculator::value::ReadResults,
-    ) -> Result<(), capnp::Error> {
+    ) -> Result<(), Error> {
         results.get().set_value(self.value);
         Ok(())
     }
 }
 
+// Returns a `Result` so that the synchronous reading of `expression` can use the `?`
+// operator. The `Promise` itself owns everything it needs, so callers can drop any borrow
+// backing `expression` (e.g. a `RefCell` guard) before awaiting it.
 fn evaluate_impl(
-    expression: calculator::expression::Reader,
-    params: Option<primitive_list::Reader<f64>>,
-) -> Promise<f64, Error> {
-    match pry!(expression.which()) {
+    expression: calculator::expression::Reader<'_>,
+    params: Option<primitive_list::Reader<'_, f64>>,
+) -> Result<Promise<f64, Error>, Error> {
+    Ok(match expression.which()? {
         calculator::expression::Literal(v) => Promise::ok(v),
         calculator::expression::PreviousResult(p) => Promise::from_future(
-            pry!(p)
-                .read_request()
+            p?.read_request()
                 .send()
                 .promise
                 .map(|v| Ok(v?.get()?.get_value())),
         ),
+
         calculator::expression::Parameter(p) => match params {
             Some(params) if p < params.len() => Promise::ok(params.get(p)),
-            _ => Promise::err(Error::failed(format!("bad parameter: {p}"))),
+            _ => return Err(Error::failed(format!("bad parameter: {p}"))),
         },
+
         calculator::expression::Call(call) => {
-            let func = pry!(call.get_function());
-            let eval_params = futures_util::future::try_join_all(
-                pry!(call.get_params())
+            let func = call.get_function()?;
+            let eval_params = future::try_join_all(
+                call.get_params()?
                     .iter()
-                    .map(|p| evaluate_impl(p, params)),
+                    .map(|p| evaluate_impl(p, params))
+                    .collect::<Result<Vec<_>, _>>()?,
             );
             Promise::from_future(async move {
                 let param_values = eval_params.await?;
@@ -88,20 +95,19 @@ fn evaluate_impl(
                 Ok(request.send().promise.await?.get()?.get_value())
             })
         }
-    }
+    })
 }
 
 struct FunctionImpl {
     param_count: u32,
-    body: std::cell::RefCell<::capnp_rpc::ImbuedMessageBuilder<::capnp::message::HeapAllocator>>,
+    body: RefCell<ImbuedMessageBuilder<HeapAllocator>>,
 }
 
 impl FunctionImpl {
     fn new(param_count: u32, body: calculator::expression::Reader) -> ::capnp::Result<Self> {
         let result = Self {
             param_count,
-            body: ::capnp_rpc::ImbuedMessageBuilder::new(::capnp::message::HeapAllocator::new())
-                .into(),
+            body: RefCell::new(ImbuedMessageBuilder::new(HeapAllocator::new())),
         };
         result.body.borrow_mut().set_root(body)?;
         Ok(result)
@@ -110,10 +116,10 @@ impl FunctionImpl {
 
 impl calculator::function::Server for FunctionImpl {
     async fn call(
-        self: Rc<Self>,
+        self: std::rc::Rc<Self>,
         params: calculator::function::CallParams,
         mut results: calculator::function::CallResults,
-    ) -> Result<(), capnp::Error> {
+    ) -> Result<(), Error> {
         let params = params.get()?.get_params()?;
         if params.len() != self.param_count {
             return Err(Error::failed(format!(
@@ -129,7 +135,7 @@ impl calculator::function::Server for FunctionImpl {
                 .get_root::<calculator::expression::Builder>()?
                 .into_reader(),
             Some(params),
-        );
+        )?;
 
         results.get().set_value(eval.await?);
         Ok(())
@@ -143,13 +149,13 @@ pub struct OperatorImpl {
 
 impl calculator::function::Server for OperatorImpl {
     async fn call(
-        self: Rc<Self>,
+        self: std::rc::Rc<Self>,
         params: calculator::function::CallParams,
         mut results: calculator::function::CallResults,
-    ) -> Result<(), capnp::Error> {
+    ) -> Result<(), Error> {
         let params = params.get()?.get_params()?;
         if params.len() != 2 {
-            Err(Error::failed("Wrong number of paramters.".to_string()))
+            Err(Error::failed("Wrong number of parameters.".to_string()))
         } else {
             let v = match self.op {
                 calculator::Operator::Add => params.get(0) + params.get(1),
@@ -167,21 +173,22 @@ struct CalculatorImpl;
 
 impl calculator::Server for CalculatorImpl {
     async fn evaluate(
-        self: Rc<Self>,
+        self: std::rc::Rc<Self>,
         params: calculator::EvaluateParams,
         mut results: calculator::EvaluateResults,
-    ) -> Result<(), capnp::Error> {
-        let v = evaluate_impl(params.get()?.get_expression()?, None).await?;
+    ) -> Result<(), Error> {
+        let v = evaluate_impl(params.get()?.get_expression()?, None)?.await?;
         results
             .get()
             .set_value(capnp_rpc::new_client(ValueImpl::new(v)));
         Ok(())
     }
+
     async fn def_function(
-        self: Rc<Self>,
+        self: std::rc::Rc<Self>,
         params: calculator::DefFunctionParams,
         mut results: calculator::DefFunctionResults,
-    ) -> Result<(), capnp::Error> {
+    ) -> Result<(), Error> {
         results
             .get()
             .set_func(capnp_rpc::new_client(FunctionImpl::new(
@@ -190,11 +197,12 @@ impl calculator::Server for CalculatorImpl {
             )?));
         Ok(())
     }
+
     async fn get_operator(
-        self: Rc<Self>,
+        self: std::rc::Rc<Self>,
         params: calculator::GetOperatorParams,
         mut results: calculator::GetOperatorResults,
-    ) -> Result<(), capnp::Error> {
+    ) -> Result<(), Error> {
         let op = params.get()?.get_op()?;
         results
             .get()
@@ -226,8 +234,8 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 stream.set_nodelay(true)?;
                 let (reader, writer) = stream.into_split();
                 let network = twoparty::VatNetwork::new(
-                    reader,
-                    writer,
+                    futures::io::BufReader::new(reader),
+                    futures::io::BufWriter::new(writer),
                     rpc_twoparty_capnp::Side::Server,
                     Default::default(),
                 );

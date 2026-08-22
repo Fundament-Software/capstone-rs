@@ -19,8 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use std::rc::Rc;
-
 use crate::pubsub_capnp::{publisher, subscriber};
 use capnp_rpc::{RpcSystem, rpc_twoparty_capnp, twoparty};
 
@@ -28,10 +26,10 @@ struct SubscriberImpl;
 
 impl subscriber::Server<::capnp::text::Owned> for SubscriberImpl {
     async fn push_message(
-        self: Rc<Self>,
+        self: std::rc::Rc<Self>,
         params: subscriber::PushMessageParams<::capnp::text::Owned>,
         _results: subscriber::PushMessageResults<::capnp::text::Owned>,
-    ) -> Result<(), capnp::Error> {
+    ) -> Result<(), ::capnp::Error> {
         println!(
             "message from publisher: {}",
             params.get()?.get_message()?.to_str()?
@@ -59,8 +57,8 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
             stream.set_nodelay(true)?;
             let (reader, writer) = stream.into_split();
             let rpc_network = Box::new(twoparty::VatNetwork::new(
-                reader,
-                writer,
+                futures::io::BufReader::new(reader),
+                futures::io::BufWriter::new(writer),
                 rpc_twoparty_capnp::Side::Client,
                 Default::default(),
             ));

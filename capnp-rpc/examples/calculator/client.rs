@@ -19,8 +19,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use std::rc::Rc;
-
 use crate::calculator_capnp::calculator;
 use capnp_rpc::{RpcSystem, rpc_twoparty_capnp, twoparty};
 
@@ -29,10 +27,10 @@ pub struct PowerFunction;
 
 impl calculator::function::Server for PowerFunction {
     async fn call(
-        self: Rc<Self>,
+        self: std::rc::Rc<Self>,
         params: calculator::function::CallParams,
         mut results: calculator::function::CallResults,
-    ) -> Result<(), capnp::Error> {
+    ) -> Result<(), ::capnp::Error> {
         let params = params.get()?.get_params()?;
         if params.len() != 2 {
             Err(::capnp::Error::failed(
@@ -66,8 +64,8 @@ async fn try_main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let (reader, writer) = stream.into_split();
 
     let network = Box::new(twoparty::VatNetwork::new(
-        reader,
-        writer,
+        futures::io::BufReader::new(reader),
+        futures::io::BufWriter::new(writer),
         rpc_twoparty_capnp::Side::Client,
         Default::default(),
     ));

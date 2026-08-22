@@ -20,3 +20,6 @@ capstone-rpc.workspace = true
 
 [build-dependencies]
 capstone-gen.workspace = true
+
+[lints]
+workspace = true

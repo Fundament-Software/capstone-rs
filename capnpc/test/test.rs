@@ -21,62 +21,37 @@
 
 // Enable this lint to catch violations in the generated code.
 #![warn(elided_lifetimes_in_paths)]
-#![allow(clippy::bool_assert_comparison)]
+#![allow(clippy::bool_assert_comparison, clippy::approx_constant)]
 
-pub mod test_capnp {
-    include!(concat!(env!("OUT_DIR"), "/test_capnp.rs"));
-}
+capnp::generated_code!(pub mod test_capnp);
 
 pub mod foo {
     pub mod bar {
-        pub mod in_submodule_capnp {
-            include!(concat!(env!("OUT_DIR"), "/in_submodule_capnp.rs"));
-        }
+        capnp::generated_code!(pub mod in_submodule_capnp);
     }
 }
 
 pub mod baz {
-    pub mod in_other_submodule_capnp {
-        include!(concat!(env!("OUT_DIR"), "/in_other_submodule_capnp.rs"));
-    }
+    capnp::generated_code!(pub mod in_other_submodule_capnp);
 }
 
 pub mod test_default_parent_module {
     pub mod test_default_parent_module_inner {
         // In build.rs we specify this is the default parent module.
-        pub mod test_default_parent_module_capnp {
-            include!(concat!(
-                env!("OUT_DIR"),
-                "/test_default_parent_module_capnp.rs"
-            ));
-        }
+        capnp::generated_code!(pub mod test_default_parent_module_capnp);
     }
 
     // Put this in somewhere other than the default parent module, to test whether the `parentModule`
     // annotation successfully overrides the default.
-    pub mod test_default_parent_module_override_capnp {
-        include!(concat!(
-            env!("OUT_DIR"),
-            "/test_default_parent_module_override_capnp.rs"
-        ));
-    }
+    capnp::generated_code!(pub mod test_default_parent_module_override_capnp);
 }
 
-pub mod test_in_dir_capnp {
-    include!(concat!(env!("OUT_DIR"), "/schema/test_in_dir_capnp.rs"));
-}
+capnp::generated_code!(pub mod test_in_dir_capnp, "schema/test_in_dir_capnp.rs");
 
-pub mod test_in_src_prefix_dir_capnp {
-    // The src_prefix gets stripped away, so the generated code ends up directly in OUT_DIR.
-    include!(concat!(env!("OUT_DIR"), "/test_in_src_prefix_dir_capnp.rs"));
-}
+// The src_prefix gets stripped away, so the generated code ends up directly in OUT_DIR.
+capnp::generated_code!(pub mod test_in_src_prefix_dir_capnp);
 
-pub mod test_output_path_capnp {
-    include!(concat!(
-        env!("OUT_DIR"),
-        "/inner-output-path/test_output_path_capnp.rs"
-    ));
-}
+capnp::generated_code!(pub mod test_output_path_capnp, "inner-output-path/test_output_path_capnp.rs");
 
 #[cfg(test)]
 mod test_util;
@@ -107,7 +82,7 @@ mod tests {
     }
 
     #[test]
-    fn field_subset_indexes_corrently() {
+    fn field_subset_indexes_correctly() {
         use crate::test_capnp::field_subset_indexes_correctly;
         use capnp::{
             introspect::{Introspect, TypeVariant},
@@ -245,7 +220,7 @@ mod tests {
         let mut test_blob = message.init_root::<test_blob::Builder<'_>>();
 
         assert_eq!(test_blob.has_text_field(), false);
-        test_blob.set_text_field("abcdefghi".into());
+        test_blob.set_text_field("abcdefghi");
         assert_eq!(test_blob.has_text_field(), true);
 
         assert_eq!(test_blob.has_data_field(), false);
@@ -357,8 +332,8 @@ mod tests {
 
             {
                 let mut text_list = test_complex_list.reborrow().init_text_list(2);
-                text_list.set(0, "garply".into());
-                text_list.set(1, "foo".into());
+                text_list.set(0, "garply");
+                text_list.set(1, "foo");
             }
 
             {
@@ -370,11 +345,8 @@ mod tests {
             {
                 let mut prim_list_list = test_complex_list.reborrow().init_prim_list_list(2);
                 {
-                    let mut prim_list = prim_list_list.reborrow().init(0, 3);
-                    prim_list.set(0, 5);
-                    prim_list.set(1, 6);
-                    prim_list.set(2, 7);
-                    assert_eq!(prim_list.len(), 3);
+                    prim_list_list.set(0, &[5, 6, 7]).unwrap();
+                    assert_eq!(prim_list_list.reborrow().get(0).unwrap().len(), 3);
                 }
                 let mut prim_list = prim_list_list.init(1, 1);
                 prim_list.set(0, -1);
@@ -413,7 +385,7 @@ mod tests {
 
             {
                 let text_list_list = test_complex_list.reborrow().init_text_list_list(1);
-                text_list_list.init(0, 1).set(0, "abc".into());
+                text_list_list.init(0, 1).set(0, "abc");
             }
 
             {
@@ -571,7 +543,7 @@ mod tests {
 
             {
                 let mut sub_builder = test_defaults.reborrow().get_struct_field().unwrap();
-                sub_builder.set_text_field("garply".into());
+                sub_builder.set_text_field("garply");
             }
 
             assert_eq!(test_defaults.reborrow().get_bool_field(), false);
@@ -778,7 +750,7 @@ mod tests {
 
         // Check setters
 
-        test_set.set_text("foo".into());
+        test_set.set_text("foo");
         test_set.set_data(&[42]);
         {
             let mut b = test_set.reborrow().init_list(3);
@@ -787,10 +759,7 @@ mod tests {
             b.set(2, 3);
         }
         test_set.reborrow().init_empty_struct();
-        test_set
-            .reborrow()
-            .init_simple_struct()
-            .set_field("buzz".into());
+        test_set.reborrow().init_simple_struct().set_field("buzz");
         {
             let mut b = test_set.reborrow().init_any();
             b.set_as("dyn")?;
@@ -861,7 +830,7 @@ mod tests {
         {
             let branded_field = branded.reborrow().init_branded_field();
             let mut foo = branded_field.init_generic_field();
-            foo.set_text_field("blah".into());
+            foo.set_text_field("blah");
         }
 
         let reader = branded.into_reader();
@@ -885,9 +854,9 @@ mod tests {
         let mut branded = message_for_brand.init_root::<brand_twice::Builder<'_>>();
         {
             let mut baz = branded.reborrow().init_baz_field();
-            baz.set_foo_field("blah".into()).unwrap();
+            baz.set_foo_field("blah").unwrap();
             let mut bar = baz.init_bar_field();
-            bar.set_text_field("some text".into());
+            bar.set_text_field("some text");
             bar.set_data_field(b"some data");
         }
 
@@ -926,11 +895,8 @@ mod tests {
         let mut root: test_generics::Builder<'_, test_all_types::Owned, text::Owned> =
             message.init_root();
         init_test_message(root.reborrow().get_foo().unwrap());
-        root.reborrow()
-            .get_dub()
-            .unwrap()
-            .set_foo("Hello".into())
-            .unwrap();
+        root.reborrow().set_bar("garply").unwrap();
+        root.reborrow().get_dub().unwrap().set_foo("Hello").unwrap();
         {
             let mut bar: ::capnp::primitive_list::Builder<'_, u8> =
                 root.reborrow().get_dub().unwrap().initn_bar(1);
@@ -947,6 +913,7 @@ mod tests {
         CheckTestMessage::check_test_message(root.reborrow().get_foo().unwrap());
         let root_reader = root.into_reader();
         CheckTestMessage::check_test_message(root_reader.get_foo().unwrap());
+        assert_eq!("garply", root_reader.get_bar().unwrap());
         let dub_reader = root_reader.get_dub().unwrap();
         assert_eq!("Hello", dub_reader.get_foo().unwrap());
         let bar_reader = dub_reader.get_bar().unwrap();
@@ -1090,10 +1057,7 @@ mod tests {
         }
 
         assert_eq!(union_struct.reborrow().get_union0().has_u0f0sp(), false);
-        union_struct
-            .reborrow()
-            .init_union0()
-            .set_u0f0sp("abcdef".into());
+        union_struct.reborrow().init_union0().set_u0f0sp("abcdef");
         assert_eq!(union_struct.get_union0().has_u0f0sp(), true);
     }
 
@@ -1183,6 +1147,36 @@ mod tests {
         assert_eq!(int8_list.get(0), 111);
         assert_eq!(int8_list.get(1), -111);
 
+        let int16_list_const = test_constants::INT16_LIST_CONST;
+        let int16_list = int16_list_const.get().unwrap();
+        assert_eq!(int16_list.len(), 2);
+        assert_eq!(int16_list.get(0), 11111);
+        assert_eq!(int16_list.get(1), -11111);
+
+        let int32_list_const = test_constants::INT32_LIST_CONST;
+        let int32_list = int32_list_const.get().unwrap();
+        assert_eq!(int32_list.len(), 2);
+        assert_eq!(int32_list.get(0), 111111111);
+        assert_eq!(int32_list.get(1), -111111111);
+
+        let int64_list_const = test_constants::INT64_LIST_CONST;
+        let int64_list = int64_list_const.get().unwrap();
+        assert_eq!(int64_list.len(), 2);
+        assert_eq!(int64_list.get(0), 1111111111111111111);
+        assert_eq!(int64_list.get(1), -1111111111111111111);
+
+        let uint8_list_const = test_constants::UINT8_LIST_CONST;
+        let uint8_list = uint8_list_const.get().unwrap();
+        assert_eq!(uint8_list.len(), 2);
+        assert_eq!(uint8_list.get(0), 111);
+        assert_eq!(uint8_list.get(1), 222);
+
+        let uint16_list_const = test_constants::UINT16_LIST_CONST;
+        let uint16_list = uint16_list_const.get().unwrap();
+        assert_eq!(uint16_list.len(), 2);
+        assert_eq!(uint16_list.get(0), 33333);
+        assert_eq!(uint16_list.get(1), 44444);
+
         // ...
 
         let text_list_const = test_constants::TEXT_LIST_CONST;
@@ -1192,7 +1186,12 @@ mod tests {
         assert_eq!(text_list.get(1).unwrap(), "xyzzy");
         assert_eq!(text_list.get(2).unwrap(), "thud");
 
-        // TODO: DATA_LIST_CONST
+        let data_list_const = test_constants::DATA_LIST_CONST;
+        let data_list = data_list_const.get().unwrap();
+        assert_eq!(data_list.len(), 3);
+        assert_eq!(data_list.get(0).unwrap(), b"oops");
+        assert_eq!(data_list.get(1).unwrap(), b"exhausted");
+        assert_eq!(data_list.get(2).unwrap(), b"rfc3092");
 
         let struct_list_const = test_constants::STRUCT_LIST_CONST;
         let struct_list = struct_list_const.get().unwrap();
@@ -1200,6 +1199,30 @@ mod tests {
         assert_eq!(struct_list.get(0).get_text_field().unwrap(), "structlist 1");
         assert_eq!(struct_list.get(1).get_text_field().unwrap(), "structlist 2");
         assert_eq!(struct_list.get(2).get_text_field().unwrap(), "structlist 3");
+    }
+
+    #[test]
+    fn test_float_constants() {
+        use crate::test_capnp::test_float_consts;
+
+        assert!(test_float_consts::A.is_infinite());
+        assert!(test_float_consts::A.is_sign_positive());
+
+        assert!(test_float_consts::B.is_infinite());
+        assert!(test_float_consts::B.is_sign_negative());
+
+        assert!(test_float_consts::C.is_nan());
+
+        assert!(test_float_consts::X.is_infinite());
+        assert!(test_float_consts::X.is_sign_positive());
+
+        assert!(test_float_consts::Y.is_infinite());
+        assert!(test_float_consts::Y.is_sign_negative());
+
+        assert!(test_float_consts::Z.is_nan());
+
+        assert_eq!(test_float_consts::PI32, std::f32::consts::PI);
+        assert_eq!(test_float_consts::PI64, std::f64::consts::PI);
     }
 
     #[test]
@@ -1225,11 +1248,28 @@ mod tests {
             let mut old_version = message.init_root::<test_old_version::Builder<'_>>();
             old_version.set_old1(123);
             let mut names = old_version.init_old4(2);
-            names.set(0, "alice".into());
-            names.set(1, "bob".into());
+            names.set(0, "alice");
+            names.set(1, "bob");
+        }
+        {
+            let new_version = message
+                .get_root_as_reader::<test_new_version::Reader<'_>>()
+                .unwrap();
+            assert!(!new_version.has_new2());
+            new_version.get_new2().unwrap();
+            assert_eq!(
+                new_version.reborrow().get_new3().unwrap().get_int8_field(),
+                -123
+            );
+
+            let names = new_version.get_old4().unwrap();
+            assert_eq!(names.len(), 2);
+            assert_eq!(names.get(0).get_text_field().unwrap(), "alice");
+            assert_eq!(names.get(1).get_text_field().unwrap(), "bob");
         }
         {
             let mut new_version = message.get_root::<test_new_version::Builder<'_>>().unwrap();
+            assert!(!new_version.has_new2());
             new_version.reborrow().get_new2().unwrap();
             assert_eq!(
                 new_version.reborrow().get_new3().unwrap().get_int8_field(),
@@ -1252,8 +1292,8 @@ mod tests {
             let mut new_version = message.init_root::<test_new_version::Builder<'_>>();
             new_version.set_old1(123);
             let mut names = new_version.init_old4(2);
-            names.reborrow().get(0).set_text_field("alice".into());
-            names.get(1).set_text_field("bob".into());
+            names.reborrow().get(0).set_text_field("alice");
+            names.get(1).set_text_field("bob");
         }
         {
             let old_version = message
@@ -1264,6 +1304,14 @@ mod tests {
             assert_eq!(names.len(), 2);
             assert_eq!(names.get(0).unwrap(), "alice");
             assert_eq!(names.get(1).unwrap(), "bob");
+        }
+        {
+            let mut old_version = message.get_root::<test_old_version::Builder<'_>>().unwrap();
+            assert_eq!(old_version.reborrow().get_old1(), 123);
+            let mut names = old_version.get_old4().unwrap();
+            assert_eq!(names.len(), 2);
+            assert_eq!(names.reborrow().get(0).unwrap(), "alice");
+            assert_eq!(names.reborrow().get(1).unwrap(), "bob");
         }
     }
 
@@ -1324,9 +1372,9 @@ mod tests {
                     .reborrow()
                     .get_any_pointer_field()
                     .initn_as::<::capnp::text_list::Builder<'_>>(3);
-                list.set(0, "foo".into());
-                list.set(1, "bar".into());
-                list.set(2, "baz".into());
+                list.set(0, "foo");
+                list.set(1, "bar");
+                list.set(2, "baz");
             }
             {
                 let mut l = root
@@ -1443,35 +1491,22 @@ mod tests {
 
         let mut message = message::Builder::new_default();
         init_test_message(message.init_root());
-        CheckTestMessage::check_test_message(
-            message.get_root::<test_all_types::Builder<'_>>().unwrap(),
-        );
-        CheckTestMessage::check_test_message(
-            message
-                .get_root::<test_all_types::Builder<'_>>()
-                .unwrap()
-                .into_reader(),
-        );
-    }
+        let mut root = message.get_root::<test_all_types::Builder<'_>>().unwrap();
+        CheckTestMessage::check_test_message(root.reborrow());
+        CheckTestMessage::check_test_message(root.reborrow().into_reader());
 
-    #[test]
-    fn all_types_multi_segment() {
-        use crate::test_capnp::test_all_types;
-
+        // Now force there to be multiple segments.
         let builder_options = message::HeapAllocator::new()
             .first_segment_words(1)
             .allocation_strategy(::capnp::message::AllocationStrategy::FixedSize);
-        let mut message = message::Builder::new(builder_options);
-        init_test_message(message.init_root());
-        CheckTestMessage::check_test_message(
-            message.get_root::<test_all_types::Builder<'_>>().unwrap(),
-        );
-        CheckTestMessage::check_test_message(
-            message
-                .get_root::<test_all_types::Builder<'_>>()
-                .unwrap()
-                .into_reader(),
-        );
+        let mut message2 = message::Builder::new(builder_options);
+        init_test_message(message2.init_root());
+        let mut root2 = message2.get_root::<test_all_types::Builder<'_>>().unwrap();
+        CheckTestMessage::check_test_message(root2.reborrow());
+        CheckTestMessage::check_test_message(root2.reborrow().into_reader());
+
+        // Far pointer overhead does not get counted in total_size().
+        assert_eq!(root.total_size().unwrap(), root2.total_size().unwrap());
     }
 
     #[test]
@@ -1522,6 +1557,25 @@ mod tests {
             let reader = all_types2.into_reader().get_struct_field().unwrap();
             CheckTestMessage::check_test_message(reader);
         }
+    }
+
+    /// https://github.com/capnproto/capnproto-rust/issues/525
+    #[test]
+    fn copy_nonoverlapping_null() {
+        use crate::test_capnp::test_all_types;
+
+        let mut message = message::Builder::new_default();
+        let mut root: test_all_types::Builder<'_> = message.init_root();
+
+        let mut message2 = message::Builder::new_default();
+        let mut root2: test_all_types::Builder<'_> = message2.init_root();
+        root2
+            .set_data_list(root.reborrow().into_reader().get_data_list().unwrap())
+            .unwrap();
+
+        root2
+            .set_struct_field(root.into_reader().get_struct_field().unwrap())
+            .unwrap();
     }
 
     #[test]
@@ -1926,7 +1980,7 @@ mod tests {
         let mut message = message::Builder::new_default();
         {
             let mut test = message.init_root::<test_all_types::Builder<'_>>();
-            test.set_text_field("Hello".into());
+            test.set_text_field("Hello");
         }
         let reader = message
             .get_root::<test_all_types::Builder<'_>>()
@@ -2078,11 +2132,17 @@ mod tests {
         }
 
         {
+            assert_eq!(structs.len(), 6);
             let mut overflow_iter = structs.iter();
+            assert_eq!(overflow_iter.size_hint(), (6, Some(6)));
             assert!(overflow_iter.nth(4).is_some());
 
-            // The first four elements have been consumed, so going another 4 should overflow.
-            assert!(overflow_iter.nth(4).is_none());
+            // `nth` is zero-indexed, so the first five elements have been consumed.
+            // One element remains.
+            assert_eq!(overflow_iter.size_hint(), (1, Some(1)));
+
+            // Taking the second element now fails. (Zero indexing means "second" = `nth(1)`).
+            assert!(overflow_iter.nth(1).is_none());
 
             // The previous call pushed us to the end, even though it returned None.
             assert!(overflow_iter.next().is_none());
@@ -2271,11 +2331,103 @@ mod tests {
 
     // At one point, the lifetimes in the generated code made the following function
     // fail to typecheck.
-    //#[allow(unused)]
-    //fn set_struct_list<'a, 'b>(
-    //    mut b: crate::test_capnp::test_all_types::Builder<'a>,
-    //    r: crate::test_capnp::test_all_types::Reader<'b>,
-    //) -> ::capnp::Result<()> {
-    //    b.set_struct_list(r.get_struct_list()?)
-    //}
+    #[allow(unused)]
+    fn set_struct_list<'a, 'b>(
+        mut b: crate::test_capnp::test_all_types::Builder<'a>,
+        r: crate::test_capnp::test_all_types::Reader<'b>,
+    ) -> ::capnp::Result<()> {
+        b.set_struct_list(r.get_struct_list()?)
+    }
+
+    #[test]
+    fn different_brands_of_structs_compare_differently() -> capnp::Result<()> {
+        use crate::test_capnp::test_generics;
+        use capnp::introspect::Introspect;
+        let schema_t_t = {
+            let capnp::introspect::TypeVariant::Struct(schema) =
+                test_generics::Owned::<capnp::text::Owned, capnp::text::Owned>::introspect()
+                    .which()
+            else {
+                panic!("expected struct")
+            };
+            capnp::schema::StructSchema::new(schema)
+        };
+        let schema_d_d = {
+            let capnp::introspect::TypeVariant::Struct(schema) =
+                test_generics::Owned::<capnp::data::Owned, capnp::data::Owned>::introspect()
+                    .which()
+            else {
+                panic!("expected struct")
+            };
+            capnp::schema::StructSchema::new(schema)
+        };
+
+        assert_ne!(schema_t_t, schema_d_d);
+
+        let foo_t_t = schema_t_t.get_field_by_name("foo")?;
+        let foo_d_d = schema_d_d.get_field_by_name("foo")?;
+
+        assert_ne!(foo_t_t, foo_d_d);
+
+        Ok(())
+    }
+
+    #[test]
+    fn types_compare_in_sane_ways() -> capnp::Result<()> {
+        use capnp::introspect::Introspect;
+        let all_types = {
+            let capnp::introspect::TypeVariant::Struct(all_types) =
+                crate::test_capnp::test_all_types::Owned::introspect().which()
+            else {
+                panic!("expected struct")
+            };
+            capnp::schema::StructSchema::new(all_types)
+        };
+
+        let all_defaults = {
+            let capnp::introspect::TypeVariant::Struct(all_defaults) =
+                crate::test_capnp::test_defaults::Owned::introspect().which()
+            else {
+                panic!("expected struct")
+            };
+            capnp::schema::StructSchema::new(all_defaults)
+        };
+
+        assert_eq!(
+            all_types.get_field_by_name("int8Field")?.get_type(),
+            all_types.get_field_by_name("int8Field")?.get_type()
+        );
+        assert_ne!(
+            all_types.get_field_by_name("int8Field")?.get_type(),
+            all_types.get_field_by_name("int64Field")?.get_type()
+        );
+        assert_eq!(
+            all_types.get_field_by_name("dataField")?.get_type(),
+            all_defaults.get_field_by_name("dataField")?.get_type()
+        );
+        assert_ne!(
+            all_types.get_field_by_name("dataField")?.get_type(),
+            all_defaults.get_field_by_name("dataList")?.get_type()
+        );
+        assert_eq!(
+            all_types.get_field_by_name("structField")?.get_type(),
+            all_defaults.get_field_by_name("structField")?.get_type()
+        );
+
+        let capnp::introspect::TypeVariant::List(list_member) =
+            all_types.get_field_by_name("textList")?.get_type().which()
+        else {
+            panic!("expected list")
+        };
+        assert_eq!(
+            list_member,
+            all_types.get_field_by_name("textField")?.get_type()
+        );
+        assert_ne!(
+            list_member,
+            all_types.get_field_by_name("dataField")?.get_type()
+        );
+
+        Ok(())
+    }
 }

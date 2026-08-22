@@ -169,14 +169,14 @@ impl<'a> FromPointerBuilder<'a> for Builder<'a> {
     }
 }
 
-impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+impl<'a> crate::traits::SetterInput<Owned> for Reader<'a> {
+    #[inline]
     fn set_pointer_builder<'b>(
         mut pointer: PointerBuilder<'b>,
         value: Reader<'a>,
         canonicalize: bool,
     ) -> Result<()> {
-        pointer.set_list(&value.reader, canonicalize)?;
-        Ok(())
+        pointer.set_list(&value.reader, canonicalize)
     }
 }
 
@@ -206,11 +206,9 @@ impl<'a> From<Builder<'a>> for crate::dynamic_value::Builder<'a> {
         ))
     }
 }
+
 impl core::fmt::Debug for Reader<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::fmt::Debug::fmt(
-            &::core::convert::Into::<crate::dynamic_value::Reader<'_>>::into(*self),
-            f,
-        )
+        core::fmt::Debug::fmt(&crate::dynamic_value::Reader::from(*self), f)
     }
 }

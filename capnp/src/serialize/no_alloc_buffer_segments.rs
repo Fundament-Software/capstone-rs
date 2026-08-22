@@ -1,5 +1,3 @@
-use core::convert::TryInto;
-
 use crate::message::ReaderOptions;
 use crate::message::ReaderSegments;
 use crate::private::units::BYTES_PER_WORD;
@@ -282,7 +280,7 @@ fn u32_to_segments_count(val: u32) -> Result<usize> {
 
 /// Converts 32 bit value which represents encoded segment length to usize segment length in bytes
 fn u32_to_segment_length_bytes(val: u32) -> Result<usize> {
-    // This convertion can fail on 8 or 16 bit machines.
+    // This conversion can fail on 8 or 16 bit machines.
     let length_in_words: Option<usize> = val.try_into().ok();
 
     let length_in_bytes = length_in_words.and_then(|l| l.checked_mul(BYTES_PER_WORD));
@@ -294,7 +292,7 @@ fn u32_to_segment_length_bytes(val: u32) -> Result<usize> {
 /// in the capnp message.
 /// Message data comes right after message header and potential padding
 ///
-/// Returns None if it's impossible to calculate offset without arithmentic overflow of usize or
+/// Returns None if it's impossible to calculate offset without arithmetic overflow of usize or
 /// if segments count is invalid
 fn calculate_data_offset(segments_count: usize) -> Option<usize> {
     // Message data goes right after message header.
@@ -359,14 +357,7 @@ mod tests {
     #[cfg(feature = "alloc")]
     use crate::OutputSegments;
 
-    #[cfg(feature = "alloc")]
-    use super::NoAllocSliceSegments;
-    use super::{
-        read_u32_le, u32_to_segment_length_bytes, u32_to_segments_count, verify_alignment,
-    };
-
-    #[cfg(feature = "alloc")]
-    use alloc::vec::Vec;
+    use super::*;
 
     #[repr(align(8))]
     struct Aligned([u8; 8]);
@@ -447,6 +438,64 @@ mod tests {
     }
 
     #[cfg(feature = "alloc")]
+    proptest! {
+        #[cfg_attr(miri, ignore)]
+        fn test_no_alloc_buffer_segments_single_segment_optimization(
+            segment_0 in any::<alloc::vec::Vec<Word>>()
+        ) {
+            let words = &segment_0[..];
+            let bytes = Word::words_to_bytes(words);
+            let output_segments = OutputSegments::SingleSegment([bytes]);
+            let mut msg = vec![];
+
+            serialize::write_message_segments(&mut msg, &output_segments).unwrap();
+
+            let no_alloc_segments =
+                NoAllocSliceSegments::from_slice(&mut msg.as_slice(), ReaderOptions::new()).unwrap();
+
+            assert!(matches!(
+                no_alloc_segments,
+                NoAllocBufferSegments { buffer: _,
+                                        segment_type : NoAllocBufferSegmentType::SingleSegment { .. },
+                }
+            ));
+
+            assert_eq!(no_alloc_segments.len(), 1);
+            assert_eq!(no_alloc_segments.get_segment(0), Some(bytes));
+            assert_eq!(no_alloc_segments.get_segment(1), None);
+        }
+
+        #[cfg_attr(miri, ignore)]
+        fn test_no_alloc_buffer_segments_multiple_segments(
+            segments_vec in any::<alloc::vec::Vec<alloc::vec::Vec<Word>>>()
+        ) {
+            prop_assume!(!segments_vec.is_empty());
+
+            let segments: alloc::vec::Vec<_> = segments_vec.iter()
+                .map(|s| Word::words_to_bytes(s.as_slice()))
+                .collect();
+
+            let output_segments = OutputSegments::MultiSegment(segments.clone());
+            let mut msg = vec![];
+
+            serialize::write_message_segments(&mut msg, &output_segments).unwrap();
+
+            let no_alloc_segments =
+                NoAllocSliceSegments::from_slice(&mut msg.as_slice(), ReaderOptions::new()).unwrap();
+
+            assert_eq!(no_alloc_segments.len(), segments.len());
+            for (i, segment) in segments.iter().enumerate() {
+                assert_eq!(no_alloc_segments.get_segment(i as u32), Some(*segment));
+            }
+
+            assert_eq!(
+                no_alloc_segments.get_segment(no_alloc_segments.len() as u32),
+                None
+            );
+        }
+    }
+
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_no_alloc_buffer_segments_message_postfix() {
         let output_segments = OutputSegments::SingleSegment([&[1, 2, 3, 4, 5, 6, 7, 8]]);
@@ -485,15 +534,15 @@ mod tests {
         assert!(NoAllocSliceSegments::from_slice(&mut &buf[..], ReaderOptions::new()).is_err());
         buf.clear();
     }
-
     #[cfg(feature = "alloc")]
     proptest! {
         #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
-        #[test]
-        fn test_no_alloc_buffer_segments_message_truncated(segments_vec: Vec<Vec<Word>>) {
-            if segments_vec.is_empty() { return Ok(()); }
+        fn test_no_alloc_buffer_segments_message_truncated(
+            segments_vec in any::<alloc::vec::Vec<alloc::vec::Vec<Word>>>()
+        ) {
+            prop_assume!(!segments_vec.is_empty());
 
-            let segments: Vec<_> = segments_vec.iter()
+            let segments: alloc::vec::Vec<_> = segments_vec.iter()
                 .map(|s| Word::words_to_bytes(s.as_slice())).collect();
 
             let output_segments = OutputSegments::MultiSegment(segments.clone());
@@ -512,18 +561,17 @@ mod tests {
         }
 
         #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
-        #[test]
         fn test_no_alloc_buffer_segments_message_options_limit(
-            segments_vec: Vec<Vec<Word>>)
-        {
+            segments_vec in any::<alloc::vec::Vec<alloc::vec::Vec<Word>>>()
+        ) {
             let mut word_count = 0;
-            let segments: Vec<_> = segments_vec.iter()
+            let segments: alloc::vec::Vec<_> = segments_vec.iter()
                 .map(|s| {
                     let ws = Word::words_to_bytes(s.as_slice());
                     word_count += s.len();
                     ws
                 }).collect();
-            if word_count == 0 { return Ok(()) };
+            prop_assume!(word_count != 0);
 
             let output_segments = OutputSegments::MultiSegment(segments.clone());
 
@@ -546,9 +594,10 @@ mod tests {
         }
 
         #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
-        #[test]
-        fn test_no_alloc_buffer_segments_bad_alignment(segment_0: Vec<Word>) {
-            if segment_0.is_empty() { return Ok(()); }
+        fn test_no_alloc_buffer_segments_bad_alignment(
+            segment_0 in any::<alloc::vec::Vec<Word>>()
+        ) {
+            prop_assume!(!segment_0.is_empty());
             let output_segments = OutputSegments::SingleSegment([Word::words_to_bytes(&segment_0)]);
 
             let mut msg = vec![];

@@ -19,3 +19,6 @@ tempfile.workspace = true
 capstone.workspace = true
 capstone-gen.workspace = true
 external-crate = { path = "../test/external-crate" }
+
+[lints]
+workspace = true

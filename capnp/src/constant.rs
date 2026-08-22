@@ -31,24 +31,25 @@ use crate::private::layout::PointerReader;
 use crate::traits::Owned;
 
 #[derive(Copy, Clone)]
-#[repr(C, align(8))]
 pub struct Reader<T> {
-    #[doc(hidden)]
-    pub phantom: PhantomData<T>,
-
-    #[doc(hidden)]
-    pub words: &'static [crate::Word],
+    pub(crate) phantom: PhantomData<T>,
+    pub(crate) arena: &'static crate::private::arena::GeneratedCodeArena,
 }
 
 impl<T> Reader<T>
 where
     T: Owned,
 {
+    /// Constructs a new `constant::Reader`.
+    pub const fn new(arena: &'static crate::private::arena::GeneratedCodeArena) -> Self {
+        Self {
+            phantom: PhantomData,
+            arena,
+        }
+    }
+
     /// Retrieve the value.
     pub fn get(&self) -> Result<<T as Owned>::Reader<'static>> {
-        any_pointer::Reader::new(unsafe {
-            PointerReader::get_root_unchecked(self.words.as_ptr() as *const u8)
-        })
-        .get_as()
+        any_pointer::Reader::new(PointerReader::get_root_from_arena(self.arena)?).get_as()
     }
 }

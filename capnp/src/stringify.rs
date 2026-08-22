@@ -47,10 +47,7 @@ impl Indent {
 }
 
 fn cvt<T, E>(r: core::result::Result<T, E>) -> Result<T, fmt::Error> {
-    match r {
-        Ok(v) => Ok(v),
-        Err(_) => Err(fmt::Error),
-    }
+    r.map_err(|_| fmt::Error)
 }
 
 pub(crate) fn print(
@@ -60,28 +57,28 @@ pub(crate) fn print(
 ) -> Result<(), fmt::Error> {
     match value {
         dynamic_value::Reader::Void => formatter.write_str("()"),
-        dynamic_value::Reader::Bool(b) => formatter.write_fmt(format_args!("{b}")),
-        dynamic_value::Reader::Int8(x) => formatter.write_fmt(format_args!("{x}")),
-        dynamic_value::Reader::Int16(x) => formatter.write_fmt(format_args!("{x}")),
-        dynamic_value::Reader::Int32(x) => formatter.write_fmt(format_args!("{x}")),
-        dynamic_value::Reader::Int64(x) => formatter.write_fmt(format_args!("{x}")),
-        dynamic_value::Reader::UInt8(x) => formatter.write_fmt(format_args!("{x}")),
-        dynamic_value::Reader::UInt16(x) => formatter.write_fmt(format_args!("{x}")),
-        dynamic_value::Reader::UInt32(x) => formatter.write_fmt(format_args!("{x}")),
-        dynamic_value::Reader::UInt64(x) => formatter.write_fmt(format_args!("{x}")),
-        dynamic_value::Reader::Float32(x) => formatter.write_fmt(format_args!("{x}")),
-        dynamic_value::Reader::Float64(x) => formatter.write_fmt(format_args!("{x}")),
+        dynamic_value::Reader::Bool(b) => write!(formatter, "{b}"),
+        dynamic_value::Reader::Int8(x) => write!(formatter, "{x}"),
+        dynamic_value::Reader::Int16(x) => write!(formatter, "{x}"),
+        dynamic_value::Reader::Int32(x) => write!(formatter, "{x}"),
+        dynamic_value::Reader::Int64(x) => write!(formatter, "{x}"),
+        dynamic_value::Reader::UInt8(x) => write!(formatter, "{x}"),
+        dynamic_value::Reader::UInt16(x) => write!(formatter, "{x}"),
+        dynamic_value::Reader::UInt32(x) => write!(formatter, "{x}"),
+        dynamic_value::Reader::UInt64(x) => write!(formatter, "{x}"),
+        dynamic_value::Reader::Float32(x) => write!(formatter, "{x}"),
+        dynamic_value::Reader::Float64(x) => write!(formatter, "{x}"),
         dynamic_value::Reader::Enum(e) => match cvt(e.get_enumerant())? {
             Some(enumerant) => {
                 formatter.write_str(cvt(cvt(enumerant.get_proto().get_name())?.to_str())?)
             }
-            None => formatter.write_fmt(format_args!("{}", e.get_value())),
+            None => write!(formatter, "{}", e.get_value()),
         },
-        dynamic_value::Reader::Text(t) => formatter.write_fmt(format_args!("{t:?}")),
+        dynamic_value::Reader::Text(t) => write!(formatter, "{t:?}"),
         dynamic_value::Reader::Data(d) => {
             formatter.write_str("0x\"")?;
             for b in d {
-                formatter.write_fmt(format_args!("{:02x}", *b))?;
+                write!(formatter, "{:02x}", *b)?;
             }
             formatter.write_str("\"")
         }
@@ -114,7 +111,7 @@ pub(crate) fn print(
             let mut union_field = match cvt(st.which())? {
                 None => None,
                 Some(field) => {
-                    // If it's not the default descriminant, then we always need to print it.
+                    // If it's not the default discriminant, then we always need to print it.
                     if field.get_proto().get_discriminant_value() != 0 || cvt(st.has(field))? {
                         Some(field)
                     } else {

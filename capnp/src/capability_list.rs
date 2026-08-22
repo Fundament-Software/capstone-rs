@@ -21,7 +21,6 @@
 //! List of capabilities.
 #![cfg(feature = "alloc")]
 
-use alloc::boxed::Box;
 use core::marker::PhantomData;
 
 use crate::Result;
@@ -182,7 +181,7 @@ where
         }
     }
 
-    pub fn set(&mut self, index: u32, value: Box<dyn ClientHook>) {
+    pub fn set(&mut self, index: u32, value: alloc::boxed::Box<dyn ClientHook>) {
         assert!(index < self.len());
         self.builder
             .reborrow()
@@ -253,10 +252,11 @@ where
     }
 }
 
-impl<'a, T> crate::traits::SetPointerBuilder for Reader<'a, T>
+impl<'a, T> crate::traits::SetterInput<Owned<T>> for Reader<'a, T>
 where
     T: FromClientHook,
 {
+    #[inline]
     fn set_pointer_builder<'b>(
         mut pointer: crate::private::layout::PointerBuilder<'b>,
         value: Reader<'a, T>,
@@ -298,9 +298,6 @@ impl<'a, T: FromClientHook> From<Builder<'a, T>> for crate::dynamic_value::Build
 
 impl<T: FromClientHook> core::fmt::Debug for Reader<'_, T> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::fmt::Debug::fmt(
-            &::core::convert::Into::<crate::dynamic_value::Reader<'_>>::into(self.reborrow()),
-            f,
-        )
+        core::fmt::Debug::fmt(&crate::dynamic_value::Reader::from(self.reborrow()), f)
     }
 }

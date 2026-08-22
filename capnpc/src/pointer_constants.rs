@@ -26,11 +26,11 @@ use crate::codegen_types::{Leaf, RustTypeInfo};
 use capnp::schema_capnp::type_;
 
 #[derive(Clone, Copy)]
-pub struct WordArrayDeclarationOptions {
-    pub public: bool,
+pub(crate) struct WordArrayDeclarationOptions {
+    pub(crate) pub_crate: bool,
 }
 
-fn word_array_declaration_aux<T: ::capnp::traits::SetPointerBuilder>(
+fn word_array_declaration_aux<T: ::capnp::traits::SetterInput<impl ::capnp::traits::Owned>>(
     ctx: &GeneratorContext,
     name: &str,
     value: T,
@@ -61,7 +61,7 @@ fn word_array_declaration_aux<T: ::capnp::traits::SetPointerBuilder>(
 
     // `static` instead of `const` because these arrays can be large
     // and consts get inlined at each usage.
-    let vis = if options.public { "pub " } else { "" };
+    let vis = if options.pub_crate { "pub(crate) " } else { "" };
     Ok(Branch(vec![
         Line(fmt!(
             ctx,
@@ -75,7 +75,7 @@ fn word_array_declaration_aux<T: ::capnp::traits::SetPointerBuilder>(
     ]))
 }
 
-pub fn word_array_declaration(
+pub(crate) fn word_array_declaration(
     ctx: &GeneratorContext,
     name: &str,
     value: any_pointer::Reader,
@@ -84,7 +84,7 @@ pub fn word_array_declaration(
     word_array_declaration_aux(ctx, name, value, value.target_size()?, options)
 }
 
-pub fn node_word_array_declaration(
+pub(crate) fn node_word_array_declaration(
     ctx: &GeneratorContext,
     name: &str,
     value: capnp::schema_capnp::node::Reader,
@@ -93,7 +93,7 @@ pub fn node_word_array_declaration(
     word_array_declaration_aux(ctx, name, value, value.total_size()?, options)
 }
 
-pub fn generate_pointer_constant(
+pub(crate) fn generate_pointer_constant(
     ctx: &GeneratorContext,
     styled_name: &str,
     typ: type_::Reader,
@@ -111,14 +111,16 @@ pub fn generate_pointer_constant(
                 ctx,
                 "WORDS",
                 value,
-                WordArrayDeclarationOptions { public: false },
+                WordArrayDeclarationOptions { pub_crate: false },
             )?,
-            Line(fmt!(ctx, "{capnp}::constant::Reader {{")),
-            Indent(Box::new(Branch(vec![
-                Line("phantom: ::core::marker::PhantomData,".into()),
-                Line("words: &WORDS,".into()),
-            ]))),
-            Line("}".into()),
+            Line(fmt!(
+                ctx,
+                "static ARENA: {capnp}::private::arena::GeneratedCodeArena = {capnp}::private::arena::GeneratedCodeArena::new(&WORDS);"
+            )),
+            Line(fmt!(
+                ctx,
+                "{capnp}::constant::Reader::new(&ARENA)"
+            )),
         ]))),
         line("};"),
     ]))

@@ -1,3 +1,217 @@
+## v0.27.0
+- Use TypeId to implement precise equality for `RawBrandedStructSchema`. `StructSchema`,
+  `Field`, `EnumSchema` and `Enumerant`, and `Type`.
+- Deprecate `Type::loose_equals()`.
+- Add `Debug` impls for `StructSchema`, `Field`, `EnumSchema`, and `Enumerant`.
+- Clean up some internal API in `private/layout.rs`.
+- Add bounds checking in `impl PrimitiveElement for bool`.
+
+## v0.26.2
+- Avoid possible panic in `BufferSegments::new()`.
+- Avoid possible desyncing in `read_message_no_alloc()`.
+
+## v0.26.1
+- Fix case where zeroing missed 7 bytes.
+- Remove spurious bound from IntoInternalListReader impl for enum_list.
+- Add missing (Bool, Bool) case in introspect.rs.
+
+## v0.26.0
+- Use GeneratedCodeArena in construction of RawEnumSchema, avoiding need for an unsafe{}.
+- Update Allocator methods to use NonNull.
+
+## v0.25.6
+- Prevent some instances of possible undefined behavior relating to pointer::add().
+
+## v0.25.5
+- Add `impl<T: FromClientHook> FromTypelessPipeline for T`, to support pipelining
+  on generic capabilities.
+
+## v0.25.4
+- Fix clippy::cast_possible_truncation warnings.
+
+## v0.25.3
+- Fix iterator size_hint() so that it returns the remaining size, not the initial size.
+
+## v0.25.2
+- Prevent undefined behavior on zero-sized alloc in HeapAllocator.
+
+## v0.25.1
+- Prevent multiple potential integer overflows in message construction logic.
+
+## v0.25.0
+- Add GeneratedCodeArena, allowing `constant::Reader::new()` and `RawStructSchema::new()` to
+  no longer need an `unsafe` marker.
+
+## v0.24.1
+- Make primitive_list<bool> return None from `as_slice()`, to prevent undefined behavior.
+
+## v0.24.0
+- Add unsafe const constructor of `constant::Reader` and prevent direction construction.
+- Add unsafe const constructor of `RawStructSchema` and prevent direction construction.
+
+## v0.23.2
+- Add `#![allow(clippy::all)]` in `capnp::generated_code()`.
+
+## v0.23.1
+- Fix `ReaderArenaImpl::size_in_words()`, which had been returning the size in bytes.
+
+## v0.23.0
+- Update `capability::FromServer` trait for new `async fn` method signatures.
+
+## v0.22.0
+- Update `capability::Server` trait for new `async fn` support.
+- Update optional embedded-io dependency from 0.6.1 to 0.7.1.
+
+## v0.21.7
+- Resolve type on construction of `Field`. This is expected to improve performance of
+  certain usage patterns of the dynamic API.
+
+## v0.21.6
+- Fix buffer sizing in `flatten_segments()`. A bug was causing unnecessary allocations in
+  `write_message_to_words()` and `write_message_segments_to_words`().
+
+## v0.21.5
+- Implement Clone for capnp::capability::Client.
+
+## v0.21.4
+- Add `generated_code!()` macro to make it easier to import generated code.
+
+## v0.21.3
+- Add `capability::DynClientHook` to avoid warnings in generated code.
+
+## v0.21.2
+- Add `introspect::panic_invalid_field_index()` and `introspect::panic_invalid_annotation_indices()`
+  so that generated code can pass Clippy while still working on Rust 2015.
+- Add `impl<T, E> From<Result<T, E>> for Promise<T, E>`.
+
+## v0.21.1
+- Mark `wire_pointers::set_capability_pointer()` and `PointerBuilder::get_root()` as `unsafe`.
+  These functions live under the `private` module, so no downstreams users should be directly
+  using them.
+- Add `Into` impls for converting `EnumSchema` and `StructSchema` into their raw counterparts.
+
+## v0.21.0
+- Bump minimum required rustc version to 1.81.0.
+- Use `core::Error` trait, allowing no_std mode to include `Error` impls.
+- Generalize `ReaderSegments` implementations.
+- Remove equality impls for `introspect::Type` in favor of new `loose_equals()` method.
+
+## v0.20.6
+- Restore the "unpredictable function pointer comparison" in
+  `impl PartialEq for RawBrandedStructSchema` and suppress the rustc warning.
+  Downstream users are advised to avoid using depending on type equality.
+  A future capnp release may remove this impl.
+
+## v0.20.5
+- Avoid function pointer comparison in `impl PartialEq for RawBrandedStructSchema`,
+  as advised by a rustc warning. The new implementation is more expensive.
+- Weaken some assertions in `DynamicStruct` and `DynamicList` accessors, to avoid
+  the now-more-expensive equality method.
+
+## v0.20.4
+- Fix compilation on 16-bit architectures by setting smaller traveral limit.
+- Add a `?Sized` bound to a ReaderSegments blanket impl.
+
+## v0.20.3
+- Add `message::Reader::get_segments()` method.
+
+## v0.20.2
+- Fix bug where `ptr::copy_nonoverlapping()` was potentially being called
+  on invalid pointers (with length = 0).
+
+## v0.20.1
+- Add support for downcasting dynamic values to fully concrete list and
+  struct types.
+
+## v0.20.0
+- Add trait hook support for streaming RPC methods.
+- Add `unsafe impl Sync` to BuilderArenaImpl.
+- Move `unsafe impl Send` from message::Builder to BuilderArenaImpl.
+- Fix misspelled error variant: UnexepectedFarPointer -> UnexpectedFarPointer.
+
+## v0.19.7
+- Add `Results::set_pipeline()` and `ResultsHook::set_pipeline()`.
+
+## v0.19.6
+- Fix ExactSizeIterator implementations so that they return the number of
+  remaining elements instead of the total length of the underlying list.
+
+## v0.19.5
+- Fix bug in dynamic reflection where `get_named()` and `has_named()` could
+  panic on a field that is not present in the schema.
+
+## v0.19.4
+- Fix possible undefined behavior in primitive_list::as_slice() on empty lists.
+- Disable primitive_list::as_slice() when T is larger than one byte and the
+  `unaligned` feature is enabled.
+- Enable primitive_list::as_slice() for big-endian targets when T is at most
+  one byte.
+
+## v0.19.3
+- Rename ReadSegmentTableResult to NoAllocSegmentTableInfo and make it public.
+- Rename NoAllocBufferSegments::from_segment_table() to
+  NoAllocBufferSegments::from_segment_table_info() and make it public.
+
+## v0.19.2
+- Revert SingleSegmentAllocator generalization because it was unsound.
+
+## v0.19.1
+- Implement SetterInput<text::Owned> for all T : AsRef<str>.
+
+## v0.19.0
+- Use binary search instead of linear scan in DynamicStruct::get_named().
+- Rename SetPointerBuilder to SetterInput.
+- Add Receiver type parameter to SetterInput.
+- Support setting text fields by text::Reader or &str, via the SetterInput tactic.
+  This will break code that uses the into() to convert from str to text::Reader
+  in the arguments of such methods.
+- Also support setting primitive list fields by native Rust slices, and text list
+  fields by slices of AsRef<str>.
+- Update embedded-io dependency to version 0.6.1.
+- Use AsRef<[u8]> instead of Deref<Target=[u8]> in NoAllocBufferSegments.
+- Generalize SingleSegmentAllocator to take any type that implements AsMut<[u8]>.
+
+## v0.18.13
+- Add PartialEq impls for text::Reader <-> String.
+
+## v0.18.12
+- Regenerate schema_capnp.rs after fixing overly-restrictive lifetimes for struct lists.
+
+## v0.18.11
+- Add PartialOrd impls for text::Reader.
+
+## v0.18.10
+- Add Debug impl for primitive_list::Reader, struct_list::Reader, and others.
+
+## v0.18.9
+- Add support for List(Void) in primitive_list::as_slice().
+
+## v0.18.8
+- Deprecate StructBuilder::get_pointer_field_mut().
+- Improve docstring on dynamic_struct::Reader::has().
+
+## v0.18.7
+- Update try_push_segment() to avoid possible overflow panic in 32-bit mode.
+
+## v0.18.6
+- Add overflow checking during segment table reading, to prevent some potential denial
+  of service attacks on 32-bit targets.
+- Deprecate SegmentLengthsBuilder::push_segment() in favor of try_push_segment().
+
+## v0.18.5
+- Add read_message_no_alloc() and try_read_message_no_alloc() in serialize and serialize_packed.
+- Enable write_message() in no-alloc mode.
+
+## v0.18.4
+- Map std::io::ErrorKind::UnexpectedEof to capnp::ErrorKind::PrematureEndOfFile.
+
+## v0.18.3
+- Make BuilderArena usable in no-alloc contexts. Only single-segment messages
+  are supported.
+
+## v0.18.2
+- Add SingleSegmentAllocator, for use in no-alloc contexts.
+
 ## v0.18.1
 - Add #[inline] attribute to many text::Reader and text::Builder methods.
 

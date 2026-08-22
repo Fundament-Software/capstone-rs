@@ -49,6 +49,7 @@ impl crate::introspect::Introspect for Owned {
 pub struct Reader<'a>(pub &'a [u8]);
 
 impl<'a> core::cmp::PartialEq<&'a str> for Reader<'a> {
+    #[inline]
     fn eq(&self, other: &&'a str) -> bool {
         self.as_bytes() == other.as_bytes()
     }
@@ -155,7 +156,7 @@ impl<'a> Reader<'a> {
         d
     }
 
-    /// Converts to a `str`, returning a error if the data contains invalid utf-8.
+    /// Converts to a `str`, returning an error if the data contains invalid utf-8.
     #[inline]
     pub fn to_str(self) -> core::result::Result<&'a str, core::str::Utf8Error> {
         let Self(s) = self;
@@ -163,7 +164,7 @@ impl<'a> Reader<'a> {
     }
 
     #[cfg(feature = "alloc")]
-    /// Converts to a `String`, returning a error if the data contains invalid utf-8.
+    /// Converts to a `String`, returning an error if the data contains invalid utf-8.
     #[inline]
     pub fn to_string(self) -> core::result::Result<alloc::string::String, core::str::Utf8Error> {
         Ok(self.to_str()?.into())
@@ -223,14 +224,14 @@ impl<'a> Builder<'a> {
         self.bytes
     }
 
-    /// Converts to a `str`, returning a error if the data contains invalid utf-8.
+    /// Converts to a `str`, returning an error if the data contains invalid utf-8.
     #[inline]
     pub fn to_str(self) -> core::result::Result<&'a str, core::str::Utf8Error> {
         str::from_utf8(self.bytes)
     }
 
     #[cfg(feature = "alloc")]
-    /// Converts to a `String`, returning a error if the data contains invalid utf-8.
+    /// Converts to a `String`, returning an error if the data contains invalid utf-8.
     #[inline]
     pub fn to_string(self) -> core::result::Result<alloc::string::String, core::str::Utf8Error> {
         Ok(self.to_str()?.into())
@@ -305,7 +306,8 @@ impl<'a> crate::traits::FromPointerBuilder<'a> for Builder<'a> {
     }
 }
 
-impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+impl<'a> crate::traits::SetterInput<Owned> for Reader<'a> {
+    #[inline]
     fn set_pointer_builder<'b>(
         mut pointer: crate::private::layout::PointerBuilder<'b>,
         value: Reader<'a>,
@@ -316,15 +318,16 @@ impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
     }
 }
 
-// Extra impl to make any_pointer::Builder::set_as() and similar methods work
-// more smoothly.
-impl<'a> crate::traits::SetPointerBuilder for &'a str {
-    fn set_pointer_builder<'b>(
-        mut pointer: crate::private::layout::PointerBuilder<'b>,
-        value: &'a str,
+// Allow text fields to be set with &str or String or anything
+// else that implements `AsRef<str>`.
+impl<T: AsRef<str>> crate::traits::SetterInput<Owned> for T {
+    #[inline]
+    fn set_pointer_builder(
+        mut pointer: crate::private::layout::PointerBuilder<'_>,
+        value: T,
         _canonicalize: bool,
     ) -> Result<()> {
-        pointer.set_text(value.into());
+        pointer.set_text(value.as_ref().into());
         Ok(())
     }
 }

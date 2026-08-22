@@ -1,6 +1,7 @@
 //! Traits and types to support run-time type introspection, i.e. reflection.
 
 use crate::private::layout::ElementSize;
+use crate::schema::{EnumSchema, StructSchema};
 
 /// A type that supports reflection. All types that can appear in a Cap'n Proto message
 /// implement this trait.
@@ -13,7 +14,7 @@ pub trait Introspect {
 /// optimized to avoid heap allocation.
 ///
 /// To examine a `Type`, you should call the `which()` method.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Type {
     /// The type, minus any outer `List( )`.
     base: BaseType,
@@ -105,9 +106,50 @@ impl Type {
             )
         }
     }
+
+    /// Returns true if `self` is equal to `other` modulo
+    /// type parameters and interface types.
+    #[deprecated(
+        since = "0.27.0",
+        note = "Type now implements Eq. loose_equals ignores generics on structs, while Eq is more precise and most likely the one you want."
+    )]
+    pub fn loose_equals(&self, other: Self) -> bool {
+        match (self.which(), other.which()) {
+            (TypeVariant::Void, TypeVariant::Void) => true,
+            (TypeVariant::Bool, TypeVariant::Bool) => true,
+            (TypeVariant::UInt8, TypeVariant::UInt8) => true,
+            (TypeVariant::UInt16, TypeVariant::UInt16) => true,
+            (TypeVariant::UInt32, TypeVariant::UInt32) => true,
+            (TypeVariant::UInt64, TypeVariant::UInt64) => true,
+            (TypeVariant::Int8, TypeVariant::Int8) => true,
+            (TypeVariant::Int16, TypeVariant::Int16) => true,
+            (TypeVariant::Int32, TypeVariant::Int32) => true,
+            (TypeVariant::Int64, TypeVariant::Int64) => true,
+            (TypeVariant::Float32, TypeVariant::Float32) => true,
+            (TypeVariant::Float64, TypeVariant::Float64) => true,
+            (TypeVariant::Text, TypeVariant::Text) => true,
+            (TypeVariant::Data, TypeVariant::Data) => true,
+            (TypeVariant::Enum(es1), TypeVariant::Enum(es2)) => es1 == es2,
+            (TypeVariant::Struct(rbs1), TypeVariant::Struct(rbs2)) => {
+                // Ignore any type parameters. The original intent was that
+                // we would additionally check that the `field_types` fields
+                // were equal function pointers here. However, according to
+                // Miri's behavior at least, that check returns `false`
+                // more than we would like it to. So we settle for being
+                // a bit more accepting.
+                core::ptr::eq(rbs1.generic, rbs2.generic)
+            }
+            (TypeVariant::List(element1), TypeVariant::List(element2)) => {
+                element1.loose_equals(element2)
+            }
+            (TypeVariant::AnyPointer, TypeVariant::AnyPointer) => true,
+            (TypeVariant::Capability(_), TypeVariant::Capability(_)) => true,
+            _ => false,
+        }
+    }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 /// A `Type` unfolded one level. Suitable for pattern matching. Can be trivially
 /// converted to `Type` via the `From`/`Into` traits.
 pub enum TypeVariant {
@@ -159,7 +201,7 @@ impl From<TypeVariant> for Type {
 }
 
 /// A Cap'n Proto type, excluding `List`.
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 enum BaseType {
     Void,
     Bool,
@@ -207,16 +249,33 @@ primitive_introspect!(f64, Float64);
 #[derive(Copy, Clone)]
 pub struct RawStructSchema {
     /// The Node (as defined in schema.capnp), as a single segment message.
-    pub encoded_node: &'static [crate::Word],
+    pub(crate) arena: &'static crate::private::arena::GeneratedCodeArena,
 
     /// Indices (not ordinals) of fields that don't have a discriminant value.
-    pub nonunion_members: &'static [u16],
+    pub(crate) nonunion_members: &'static [u16],
 
     /// Map from discriminant value to field index.
     pub members_by_discriminant: &'static [u16],
-    // TODO: members_by_name, allowing fast field lookup by name.
-    // Indices of fields, sorted by their respective names.
-    //pub members_by_name: &'static [u16],
+
+    /// Indices of fields, sorted by their respective names.
+    pub(crate) members_by_name: &'static [u16],
+}
+
+impl RawStructSchema {
+    /// Constructs a new `RawStructSchema`.
+    pub const fn new(
+        arena: &'static crate::private::arena::GeneratedCodeArena,
+        nonunion_members: &'static [u16],
+        members_by_discriminant: &'static [u16],
+        members_by_name: &'static [u16],
+    ) -> Self {
+        Self {
+            arena,
+            nonunion_members,
+            members_by_discriminant,
+            members_by_name,
+        }
+    }
 }
 
 /// A RawStructSchema with branding information, i.e. resolution of type parameters.
@@ -234,20 +293,23 @@ pub struct RawBrandedStructSchema {
     /// of the value held by that annotation.
     pub annotation_types: fn(Option<u16>, u32) -> Type,
 
-    // If this comes from a dynamic schema, points to the node mapping, otherwise is null.
-    pub dynamic_schema: Option<crate::schema::DynamicSchemaToken>,
+    /// Used to compare schemas at runtime - the TypeId of the Owned struct that
+    /// this schema describes, including its branding.
+    /// If this comes from a dynamic schema, points to the node mapping instead.
+    pub type_id: ::core::result::Result<::core::any::TypeId, crate::schema::DynamicSchemaToken>,
 }
 
-impl core::cmp::PartialEq for RawBrandedStructSchema {
-    #[allow(unpredictable_function_pointer_comparisons)]
+impl ::core::cmp::PartialEq for RawBrandedStructSchema {
     fn eq(&self, other: &Self) -> bool {
-        core::ptr::eq(self.generic, other.generic) && self.field_types == other.field_types
-        // don't need to compare annotation_types.
-        // that field is equal iff field_types is.
+        self.type_id == other.type_id
     }
 }
-
-impl core::cmp::Eq for RawBrandedStructSchema {}
+impl ::core::cmp::Eq for RawBrandedStructSchema {}
+impl ::core::hash::Hash for RawBrandedStructSchema {
+    fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+        self.type_id.hash(state);
+    }
+}
 
 impl core::fmt::Debug for RawBrandedStructSchema {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
@@ -259,42 +321,64 @@ impl core::fmt::Debug for RawBrandedStructSchema {
     }
 }
 
+impl From<StructSchema> for RawBrandedStructSchema {
+    fn from(value: StructSchema) -> Self {
+        value.raw
+    }
+}
+
 /// Type information that gets included in the generated code for every
 /// user-defined Cap'n Proto enum.
-/// To use one of this, you will usually want to convert it to a `schema::EnumSchema`,
+///
+/// To use one of these, you will usually want to convert it to a `schema::EnumSchema`,
 /// which can be done via `into()`.
 #[derive(Clone, Copy)]
 pub struct RawEnumSchema {
     /// The Node (as defined in schema.capnp), as a single segment message.
-    pub encoded_node: &'static [crate::Word],
+    pub(crate) arena: &'static crate::private::arena::GeneratedCodeArena,
 
     /// Map from (maybe enumerant index, annotation index) to the Type
     /// of the value held by that annotation.
-    pub annotation_types: fn(Option<u16>, u32) -> Type,
+    pub(crate) annotation_types: fn(Option<u16>, u32) -> Type,
 }
 
 impl core::cmp::PartialEq for RawEnumSchema {
     fn eq(&self, other: &Self) -> bool {
-        ::core::ptr::eq(self.encoded_node, other.encoded_node)
+        ::core::ptr::eq(self.arena, other.arena)
     }
 }
 
 impl core::cmp::Eq for RawEnumSchema {}
+impl core::hash::Hash for RawEnumSchema {
+    fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+        (self.arena as *const crate::private::arena::GeneratedCodeArena).hash(state);
+    }
+}
 
 impl core::fmt::Debug for RawEnumSchema {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
-        write!(f, "RawEnumSchema({:?})", self.encoded_node as *const _)
+        write!(f, "RawEnumSchema({:?})", self.arena as *const _)
     }
 }
 
 /// To use one of this, you will usually want to convert it to a `schema::CapabilitySchema`,
 /// which can be done via `into()`.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Hash)]
 pub struct RawCapabilitySchema {
     /// The Node (as defined in schema.capnp), as a single segment message.
     pub encoded_node: &'static [crate::Word],
     pub params_types: fn(u16) -> Type,
     pub result_types: fn(u16) -> Type,
+}
+
+impl RawCapabilitySchema {
+    pub const fn empty() -> Self {
+        Self {
+            encoded_node: &[],
+            params_types: crate::schema::dynamic_struct_marker,
+            result_types: crate::schema::dynamic_struct_marker,
+        }
+    }
 }
 
 impl core::cmp::PartialEq for RawCapabilitySchema {
@@ -313,4 +397,42 @@ impl core::fmt::Debug for RawCapabilitySchema {
             self.encoded_node as *const _
         )
     }
+}
+impl RawEnumSchema {
+    /// Constructs a new `RawEnumSchema`.
+    pub const fn new(
+        arena: &'static crate::private::arena::GeneratedCodeArena,
+        annotation_types: fn(Option<u16>, u32) -> Type,
+    ) -> Self {
+        Self {
+            arena,
+            annotation_types,
+        }
+    }
+}
+
+impl From<EnumSchema> for RawEnumSchema {
+    fn from(value: EnumSchema) -> Self {
+        value.raw
+    }
+}
+
+/**
+Function intended to be called by generated `get_field_types()` methods.
+Defined here so that we can use inline format args syntax, which did
+not exist before Rust edition 2021. Not intended to be called directly by
+end users.
+ */
+pub fn panic_invalid_field_index(index: u16) -> ! {
+    panic!("invalid field index {index}")
+}
+
+/**
+Function intended to be called by generated `get_annotation_types()` methods.
+Defined here so that we can use inline format args syntax, which did
+not exist before Rust edition 2021. Not intended to be called directly by
+end users.
+ */
+pub fn panic_invalid_annotation_indices(child_index: Option<u16>, index: u32) -> ! {
+    panic!("invalid annotation indices ({child_index:?}, {index})")
 }

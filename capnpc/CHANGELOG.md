@@ -1,3 +1,79 @@
+## v0.27.0
+- Adjust generated code for updated base crate API.
+
+## v0.26.0
+- Adjust generated code for new RawEnumSchema constructor.
+
+## v0.25.3
+- Avoid unreachable_pub warnings in generated code.
+
+## v0.25.2
+- Use 4-space indents in generated code.
+- Prefer TryFrom over TryInto in generated code.
+
+## v0.25.1
+- Add version numbers in toplevel comment of generated code.
+
+## v0.25.0
+- Use new GeneratedCodeArena to avoid need for `unsafe` in generated code.
+
+## v0.24.1
+- Add local `#[allow(unsafe_code)]` annotations to generated code.
+
+## v0.24.0
+- Adjust generated code to use new constructors for constants and RawStructSchema.
+
+## v0.23.3
+- Adjust generated dispatch code to properly disambiguate when an 'extends' interface method
+  conflicts with another method.
+
+## v0.23.2
+- Remove `async` block in generated code for streaming methods.
+
+## v0.23.1
+- Use `f64::INFINITY` instead of `::core::f64::INFINITY` in generated code.
+
+## v0.23.0
+- Update generated code of `Server` trait methods to take `self` as `Rc<Self>`.
+
+## v0.22.0
+- Update generated code of `Server` traits to support `async fn` methods.
+  What previously was a `&mut self` parameter is now `&self`. Therefore
+  RPC objects must now add their own interior mutability as needed.
+  `Cell` or `RefCell` should suffice in most cases.
+- Remove support for rustc editions older than 2021 (when `await` was added).
+
+## v0.21.4
+- Update minimum required version of capnp base crate, to account for new
+  usage of impl Clone for capnp:: capability::Client.
+
+## v0.21.3
+- Fix code generation for non-finite float point constants.
+
+## v0.21.2
+- Use new `capability::DynClientHook` alias to avoid warnings in generated code.
+
+## v0.21.1
+- Use new  `introspect::panic_invalid_field_index()` and
+  `introspect::panic_invalid_annotation_indices()` functions so that
+  generated code can pass Clippy while still working on Rust 2015.
+
+## v0.21.0
+- Follow v0.21.0 release of other capnp crates.
+
+## v0.20.1
+- Elide more lifetimes in generated code to make Clippy happy.
+
+## v0.20.0
+- Add support for `stream` keyword.
+
+## v0.19.0
+- Include new members_by_name field of RawStructSchema.
+- Generalize text, primitive_list, and enum_list setters using impl SetterInput.
+
+## v0.18.1
+- Fix overly-restrictive lifetimes in setters of certain list fields.
+
 ## v0.18.0
 - Update for lazier utf-8 validation.
 

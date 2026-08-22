@@ -21,6 +21,11 @@ tokio = { workspace = true, features = ["io-util"] }
 tokio-stream.workspace = true
 futures-util.workspace = true
 
+[dependencies.futures-channel]
+version = "0.3.0"
+default-features = false
+features = ["std"]
+
 [dev-dependencies]
 capstone = { workspace = true, features = ["proptest"] }
 tokio = { workspace = true, features = ["io-util", "rt"] }

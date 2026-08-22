@@ -1,4 +1,4 @@
-use crate::test_capnp::test_all_types;
+use crate::test_capnp::{test_all_types, test_defaults};
 use crate::test_util::{self};
 use capnp::message::{self};
 use capnp::{dynamic_list, dynamic_struct, dynamic_value};
@@ -57,7 +57,7 @@ fn test_unions() {
     let mut message = message::Builder::new_default();
     let mut root: test_union::Builder<'_> = message.init_root();
     root.reborrow().get_union0().set_u0f1s32(1234567);
-    root.reborrow().get_union1().set_u1f1sp("foo".into());
+    root.reborrow().get_union1().set_u1f1sp("foo");
     root.reborrow().get_union2().set_u2f0s1(true);
     root.reborrow()
         .get_union3()
@@ -67,6 +67,8 @@ fn test_unions() {
     let dynamic: dynamic_struct::Reader<'_> = dynamic.downcast();
     {
         let u: dynamic_struct::Reader<'_> = dynamic.get_named("union0").unwrap().downcast();
+        assert!(u.has_named("u0f1s32").unwrap());
+        assert!(!u.has_named("u0f1s16").unwrap());
         assert_eq!(
             "u0f1s32",
             u.which().unwrap().unwrap().get_proto().get_name().unwrap()
@@ -101,6 +103,8 @@ fn test_unions() {
     {
         let mut u: dynamic_struct::Builder<'_> =
             dynamic.reborrow().get_named("union0").unwrap().downcast();
+        assert!(u.has_named("u0f1s32").unwrap());
+        assert!(!u.has_named("u0f1s16").unwrap());
         assert_eq!(
             "u0f1s32",
             u.reborrow()
@@ -152,6 +156,7 @@ fn test_generics() {
     let root: dynamic_value::Builder<'_> = root.into();
     let mut root: dynamic_struct::Builder<'_> = root.downcast();
 
+    #[allow(clippy::disallowed_names)]
     let foo = root.reborrow().get_named("foo").unwrap();
     test_util::dynamic_init_test_message(foo.downcast());
 
@@ -236,7 +241,7 @@ fn test_stringify() {
     let mut root: test_all_types::Builder<'_> = message.init_root();
     root.set_int8_field(3);
     root.set_enum_field(TestEnum::Bar);
-    root.set_text_field("hello world".into());
+    root.set_text_field("hello world");
     root.set_data_field(&[1, 2, 3, 4, 5, 127, 255]);
     let mut bool_list = root.reborrow().init_bool_list(2);
     bool_list.set(0, false);
@@ -248,4 +253,336 @@ fn test_stringify() {
         stringified,
         "(voidField = (), boolField = false, int8Field = 3, int16Field = 0, int32Field = 0, int64Field = 0, uInt8Field = 0, uInt16Field = 0, uInt32Field = 0, uInt64Field = 0, float32Field = 0, float64Field = 0, textField = \"hello world\", dataField = 0x\"01020304057fff\", structField = (voidField = (), boolField = false, int8Field = 0, int16Field = 0, int32Field = 0, int64Field = 0, uInt8Field = 0, uInt16Field = 0, uInt32Field = 123456, uInt64Field = 0, float32Field = 0, float64Field = 0, enumField = foo), enumField = bar, boolList = [false, true])"
     );
+}
+
+#[test]
+fn test_stringify_union_list() {
+    use crate::test_capnp::test_union;
+    use capnp::struct_list;
+    let mut message = message::Builder::new_default();
+    let mut root: struct_list::Builder<'_, test_union::Owned> = message.initn_root(2);
+    {
+        let mut union0 = root.reborrow().get(0).get_union0();
+        union0.set_u0f0s8(10);
+    }
+    {
+        let mut union0 = root.reborrow().get(1).get_union0();
+        union0.set_u0f0s32(111111);
+    }
+
+    let stringified = format!("{:#?}", root.into_reader());
+    assert_eq!(
+        stringified,
+        r#"[
+  (
+    union0 = (
+      u0f0s8 = 10
+    ),
+    union1 = (
+      u1f0s0 = ()
+    ),
+    union2 = (
+      u2f0s1 = false
+    ),
+    union3 = (
+      u3f0s1 = false
+    ),
+    bit0 = false,
+    bit2 = false,
+    bit3 = false,
+    bit4 = false,
+    bit5 = false,
+    bit6 = false,
+    bit7 = false,
+    byte0 = 0
+  ),
+  (
+    union0 = (
+      u0f0s32 = 111111
+    ),
+    union1 = (
+      u1f0s0 = ()
+    ),
+    union2 = (
+      u2f0s1 = false
+    ),
+    union3 = (
+      u3f0s1 = false
+    ),
+    bit0 = false,
+    bit2 = false,
+    bit3 = false,
+    bit4 = false,
+    bit5 = false,
+    bit6 = false,
+    bit7 = false,
+    byte0 = 0
+  )
+]"#
+    );
+}
+
+#[test]
+fn test_stringify_prim_list() {
+    use capnp::primitive_list;
+    let mut message = message::Builder::new_default();
+    let mut root: primitive_list::Builder<'_, u16> = message.initn_root(3);
+    root.set(0, 5);
+    root.set(1, 6);
+    root.set(2, 7);
+
+    let stringified = format!("{:?}", root.into_reader());
+    assert_eq!(stringified, "[5, 6, 7]");
+}
+
+#[test]
+fn test_stringify_enum_list() {
+    use crate::test_capnp::TestEnum;
+    use capnp::enum_list;
+    let mut message = message::Builder::new_default();
+    let mut root: enum_list::Builder<'_, TestEnum> = message.initn_root(2);
+    root.set(0, TestEnum::Bar);
+    root.set(1, TestEnum::Garply);
+
+    let stringified = format!("{:?}", root.into_reader());
+    assert_eq!(stringified, "[bar, garply]");
+}
+
+#[test]
+fn test_stringify_text_list() {
+    use capnp::text_list;
+    let mut message = message::Builder::new_default();
+    message.set_root(&["abcd", "efgh", "ijkl", "mnop"]).unwrap();
+
+    let stringified = format!(
+        "{:?}",
+        message
+            .get_root_as_reader::<text_list::Reader<'_>>()
+            .unwrap()
+    );
+    assert_eq!(stringified, "[\"abcd\", \"efgh\", \"ijkl\", \"mnop\"]");
+}
+
+#[test]
+fn test_stringify_data_list() {
+    let mut message = message::Builder::new_default();
+    let mut root: capnp::data_list::Builder<'_> = message.initn_root(2);
+    root.set(0, &[11, 12]);
+    root.set(1, &[22, 23]);
+
+    let stringified = format!("{:?}", root.into_reader());
+    assert_eq!(stringified, "[0x\"0b0c\", 0x\"1617\"]");
+}
+
+#[test]
+fn test_stringify_list_list() {
+    use capnp::{list_list, primitive_list};
+    let mut message = message::Builder::new_default();
+    let mut root: list_list::Builder<'_, primitive_list::Owned<i32>> = message.initn_root(2);
+    {
+        let mut l0 = root.reborrow().init(0, 3);
+        l0.set(0, 1111);
+        l0.set(1, 2222);
+        l0.set(2, 3333);
+    }
+
+    {
+        let mut l1 = root.reborrow().init(1, 1);
+        l1.set(0, 123456);
+    }
+
+    let stringified = format!("{:?}", root.into_reader());
+    assert_eq!(stringified, "[[1111, 2222, 3333], [123456]]");
+}
+
+#[test]
+fn test_get_named_missing() {
+    let mut builder = message::Builder::new_default();
+    let root: test_all_types::Builder<'_> = builder.init_root();
+    let root: dynamic_value::Builder<'_> = root.into();
+    let mut root: dynamic_struct::Builder<'_> = root.downcast();
+    test_util::dynamic_init_test_message(root.reborrow());
+    let root = root.into_reader();
+    // try a bunch of fields that don't exist
+    assert!(root.get_named("AAAAAAA").is_err());
+    assert!(root.has_named("AAAAAAA").is_err());
+    assert!(root.get_named("abcdef").is_err());
+    assert!(root.has_named("abcdef").is_err());
+    assert!(root.get_named("zzzzzzz").is_err());
+    assert!(root.has_named("zzzzzzz").is_err());
+}
+
+#[test]
+fn test_downcasts() {
+    let mut builder = message::Builder::new_default();
+    let root: test_all_types::Builder<'_> = builder.init_root();
+    let mut root: dynamic_value::Builder<'_> = root.into();
+
+    test_util::dynamic_init_test_message(root.reborrow().downcast());
+
+    {
+        let root_typed = root.reborrow().downcast_struct::<test_all_types::Owned>();
+        assert_eq!(root_typed.get_int16_field(), -12345);
+
+        let root_typed_reader = root
+            .reborrow()
+            .into_reader()
+            .downcast_struct::<test_all_types::Owned>();
+        assert_eq!(root_typed_reader.get_int16_field(), -12345);
+    }
+    let mut root_struct: dynamic_struct::Builder<'_> = root.reborrow().downcast();
+    {
+        let int8_list: capnp::primitive_list::Builder<'_, i8> = root_struct
+            .reborrow()
+            .get_named("int8List")
+            .unwrap()
+            .downcast();
+        assert_eq!(int8_list.len(), 2);
+    }
+
+    {
+        let struct_list: capnp::struct_list::Builder<'_, test_all_types::Owned> = root_struct
+            .reborrow()
+            .get_named("structList")
+            .unwrap()
+            .downcast();
+        assert_eq!(struct_list.len(), 3);
+    }
+
+    {
+        let enum_list: capnp::enum_list::Builder<'_, crate::test_capnp::TestEnum> = root_struct
+            .reborrow()
+            .get_named("enumList")
+            .unwrap()
+            .downcast();
+        assert_eq!(enum_list.len(), 2);
+    }
+
+    {
+        let text_list: capnp::text_list::Builder<'_> = root_struct
+            .reborrow()
+            .get_named("textList")
+            .unwrap()
+            .downcast();
+        assert_eq!(text_list.len(), 3);
+        assert_eq!(text_list.get(1).unwrap().to_str().unwrap(), "xyzzy");
+    }
+
+    {
+        let data_list: capnp::data_list::Builder<'_> = root_struct
+            .reborrow()
+            .get_named("dataList")
+            .unwrap()
+            .downcast();
+        assert_eq!(data_list.len(), 3);
+    }
+
+    let root_struct: dynamic_struct::Reader<'_> = root_struct.into_reader();
+    {
+        let int8_list: capnp::primitive_list::Reader<'_, i8> =
+            root_struct.get_named("int8List").unwrap().downcast();
+        assert_eq!(int8_list.len(), 2);
+    }
+
+    {
+        let struct_list: capnp::struct_list::Reader<'_, test_all_types::Owned> =
+            root_struct.get_named("structList").unwrap().downcast();
+        assert_eq!(struct_list.len(), 3);
+    }
+
+    {
+        let enum_list: capnp::enum_list::Reader<'_, crate::test_capnp::TestEnum> =
+            root_struct.get_named("enumList").unwrap().downcast();
+        assert_eq!(enum_list.len(), 2);
+    }
+
+    {
+        let text_list: capnp::text_list::Reader<'_> =
+            root_struct.get_named("textList").unwrap().downcast();
+        assert_eq!(text_list.len(), 3);
+        assert_eq!(text_list.get(1).unwrap().to_str().unwrap(), "xyzzy");
+    }
+
+    {
+        let data_list: capnp::data_list::Reader<'_> =
+            root_struct.get_named("dataList").unwrap().downcast();
+        assert_eq!(data_list.len(), 3);
+    }
+}
+
+#[test]
+#[allow(deprecated)]
+fn introspect_loose_equals() {
+    use capnp::introspect::Introspect;
+
+    assert!(test_all_types::Owned::introspect().loose_equals(test_all_types::Owned::introspect()));
+
+    assert!(!test_all_types::Owned::introspect().loose_equals(test_defaults::Owned::introspect()))
+}
+
+#[test]
+fn introspect_equals() {
+    use capnp::introspect::Introspect;
+
+    assert_eq!(
+        test_all_types::Owned::introspect(),
+        test_all_types::Owned::introspect()
+    );
+
+    assert_ne!(
+        test_all_types::Owned::introspect(),
+        test_defaults::Owned::introspect()
+    )
+}
+
+#[test]
+#[should_panic(expected = "left == right")]
+fn field_from_wrong_schema_panics() {
+    use capnp::introspect::{Introspect, TypeVariant};
+
+    let mut builder = message::Builder::new_default();
+    builder.init_root::<test_all_types::Builder<'_>>();
+    let reader = builder
+        .get_root_as_reader::<test_all_types::Reader<'_>>()
+        .unwrap();
+    let dynamic: dynamic_value::Reader<'_> = reader.into();
+    let dynamic: dynamic_struct::Reader<'_> = dynamic.downcast();
+
+    // `test_defaults` has a field of the same name at the same index, but it
+    // belongs to a different schema.
+    let TypeVariant::Struct(raw) = test_defaults::Owned::introspect().which() else {
+        panic!("Expected a struct schema");
+    };
+    let wrong_schema = capnp::schema::StructSchema::new(raw);
+    let field = wrong_schema.get_field_by_name("boolField").unwrap();
+
+    let _ = dynamic.get(field);
+}
+
+#[test]
+#[should_panic(expected = "left == right")]
+fn field_from_differently_branded_schema_panics() {
+    use crate::test_capnp::test_generics;
+    use capnp::introspect::{Introspect, TypeVariant};
+    use capnp::{data, text};
+
+    let mut builder = message::Builder::new_default();
+    builder.init_root::<test_generics::Builder<'_, text::Owned, data::Owned>>();
+    let reader = builder
+        .get_root_as_reader::<test_generics::Reader<'_, text::Owned, data::Owned>>()
+        .unwrap();
+    let dynamic: dynamic_value::Reader<'_> = reader.into();
+    let dynamic: dynamic_struct::Reader<'_> = dynamic.downcast();
+
+    // Same generic struct, but with different type parameters. A field from
+    // this schema would report the wrong types for our reader.
+    let TypeVariant::Struct(raw) =
+        test_generics::Owned::<data::Owned, text::Owned>::introspect().which()
+    else {
+        panic!("Expected a struct schema");
+    };
+    let differently_branded = capnp::schema::StructSchema::new(raw);
+    let field = differently_branded.get_field_by_name("foo").unwrap();
+
+    let _ = dynamic.get(field);
 }

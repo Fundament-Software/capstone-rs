@@ -121,10 +121,7 @@ impl<T: TryFrom<u16, Error = NotInSchema>> Reader<'_, T> {
     }
 }
 
-impl<'a, T> crate::traits::IntoInternalListReader<'a> for Reader<'a, T>
-where
-    T: PrimitiveElement,
-{
+impl<'a, T> crate::traits::IntoInternalListReader<'a> for Reader<'a, T> {
     fn into_internal_list_reader(self) -> ListReader<'a> {
         self.reader
     }
@@ -203,13 +200,46 @@ impl<T: Into<u16> + TryFrom<u16, Error = NotInSchema>> Builder<'_, T> {
     }
 }
 
-impl<'a, T> crate::traits::SetPointerBuilder for Reader<'a, T> {
+impl<'a, T> crate::traits::SetterInput<Owned<T>> for Reader<'a, T> {
+    #[inline]
     fn set_pointer_builder<'b>(
         mut pointer: crate::private::layout::PointerBuilder<'b>,
         value: Reader<'a, T>,
         canonicalize: bool,
     ) -> Result<()> {
         pointer.set_list(&value.reader, canonicalize)
+    }
+}
+
+impl<'a, T: Copy + Into<u16>> crate::traits::SetterInput<Owned<T>> for &'a [T] {
+    #[inline]
+    fn set_pointer_builder<'b>(
+        pointer: crate::private::layout::PointerBuilder<'b>,
+        value: &'a [T],
+        _canonicalize: bool,
+    ) -> Result<()> {
+        let builder = pointer.init_list(
+            crate::private::layout::ElementSize::TwoBytes,
+            value
+                .len()
+                .try_into()
+                .expect("list len too big to fit in u32"),
+        );
+        for (idx, v) in value.iter().enumerate() {
+            <u16 as PrimitiveElement>::set(&builder, idx.try_into().unwrap(), (*v).into())
+        }
+        Ok(())
+    }
+}
+
+impl<'a, T: Copy + Into<u16>, const N: usize> crate::traits::SetterInput<Owned<T>> for &'a [T; N] {
+    #[inline]
+    fn set_pointer_builder<'b>(
+        pointer: crate::private::layout::PointerBuilder<'b>,
+        value: &'a [T; N],
+        canonicalize: bool,
+    ) -> Result<()> {
+        crate::traits::SetterInput::set_pointer_builder(pointer, &value[..], canonicalize)
     }
 }
 
@@ -233,6 +263,19 @@ impl<'a, T: TryFrom<u16, Error = NotInSchema> + crate::introspect::Introspect> F
     }
 }
 
+impl<'a, T: TryFrom<u16, Error = NotInSchema> + crate::introspect::Introspect>
+    crate::dynamic_value::DowncastReader<'a> for Reader<'a, T>
+{
+    fn downcast_reader(v: crate::dynamic_value::Reader<'a>) -> Self {
+        let dl: crate::dynamic_list::Reader = v.downcast();
+        assert!(dl.element_type() == T::introspect());
+        Reader {
+            reader: dl.reader,
+            marker: PhantomData,
+        }
+    }
+}
+
 impl<'a, T: TryFrom<u16, Error = NotInSchema> + crate::introspect::Introspect> From<Builder<'a, T>>
     for crate::dynamic_value::Builder<'a>
 {
@@ -244,13 +287,23 @@ impl<'a, T: TryFrom<u16, Error = NotInSchema> + crate::introspect::Introspect> F
     }
 }
 
+impl<'a, T: TryFrom<u16, Error = NotInSchema> + crate::introspect::Introspect>
+    crate::dynamic_value::DowncastBuilder<'a> for Builder<'a, T>
+{
+    fn downcast_builder(v: crate::dynamic_value::Builder<'a>) -> Self {
+        let dl: crate::dynamic_list::Builder = v.downcast();
+        assert!(dl.element_type() == T::introspect());
+        Builder {
+            builder: dl.builder,
+            marker: PhantomData,
+        }
+    }
+}
+
 impl<T: Copy + TryFrom<u16, Error = NotInSchema> + crate::introspect::Introspect> core::fmt::Debug
     for Reader<'_, T>
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::fmt::Debug::fmt(
-            &::core::convert::Into::<crate::dynamic_value::Reader<'_>>::into(*self),
-            f,
-        )
+        core::fmt::Debug::fmt(&crate::dynamic_value::Reader::from(*self), f)
     }
 }

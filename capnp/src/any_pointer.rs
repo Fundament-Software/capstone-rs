@@ -30,7 +30,7 @@ use crate::capability::FromClientHook;
 #[cfg(feature = "alloc")]
 use crate::private::capability::{ClientHook, PipelineHook, PipelineOp};
 use crate::private::layout::{PointerBuilder, PointerReader};
-use crate::traits::{FromPointerBuilder, FromPointerReader, SetPointerBuilder};
+use crate::traits::{FromPointerBuilder, FromPointerReader, SetterInput};
 
 #[derive(Copy, Clone)]
 pub struct Owned(());
@@ -83,7 +83,10 @@ impl<'a> Reader<'a> {
     //# Used by RPC system to implement pipelining. Applications
     //# generally shouldn't use this directly.
     #[cfg(feature = "alloc")]
-    pub fn get_pipelined_cap(&self, ops: &[PipelineOp]) -> Result<Box<dyn ClientHook>> {
+    pub fn get_pipelined_cap(
+        &self,
+        ops: &[PipelineOp],
+    ) -> Result<alloc::boxed::Box<dyn ClientHook>> {
         let mut pointer = self.reader;
 
         for op in ops {
@@ -117,7 +120,8 @@ impl<'a> FromPointerReader<'a> for Reader<'a> {
     }
 }
 
-impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+impl<'a> crate::traits::SetterInput<Owned> for Reader<'a> {
+    #[inline]
     fn set_pointer_builder<'b>(
         mut pointer: crate::private::layout::PointerBuilder<'b>,
         value: Reader<'a>,
@@ -131,7 +135,7 @@ impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
 impl<'a> crate::traits::Imbue<'a> for Reader<'a> {
     fn imbue(&mut self, cap_table: &'a crate::private::layout::CapTable) {
         self.reader
-            .imbue(crate::private::layout::CapTableReader::Plain(cap_table));
+            .imbue(crate::private::layout::CapTableReader::from_ref(cap_table));
     }
 }
 
@@ -191,13 +195,13 @@ impl<'a> Builder<'a> {
         }
     }
 
-    pub fn set_as<From: SetPointerBuilder>(&mut self, value: From) -> Result<()> {
-        SetPointerBuilder::set_pointer_builder(self.builder.reborrow(), value, false)
+    pub fn set_as<T: crate::traits::Owned>(&mut self, value: impl SetterInput<T>) -> Result<()> {
+        SetterInput::set_pointer_builder(self.builder.reborrow(), value, false)
     }
 
     // XXX value should be a user client.
     #[cfg(feature = "alloc")]
-    pub fn set_as_capability(&mut self, value: Box<dyn ClientHook>) {
+    pub fn set_as_capability(&mut self, value: alloc::boxed::Box<dyn ClientHook>) {
         self.builder.set_capability(value);
     }
 
@@ -235,25 +239,25 @@ impl<'a> FromPointerBuilder<'a> for Builder<'a> {
 impl<'a> crate::traits::ImbueMut<'a> for Builder<'a> {
     fn imbue_mut(&mut self, cap_table: &'a mut crate::private::layout::CapTable) {
         self.builder
-            .imbue(crate::private::layout::CapTableBuilder::Plain(cap_table));
+            .imbue(crate::private::layout::CapTableBuilder::from_ref(cap_table));
     }
 }
 
 pub struct Pipeline {
     // XXX this should not be public
     #[cfg(feature = "alloc")]
-    pub hook: Box<dyn PipelineHook>,
+    pub hook: alloc::boxed::Box<dyn PipelineHook>,
 
     #[cfg(feature = "alloc")]
-    ops: Vec<PipelineOp>,
+    ops: alloc::vec::Vec<PipelineOp>,
 }
 
 impl Pipeline {
     #[cfg(feature = "alloc")]
-    pub fn new(hook: Box<dyn PipelineHook>) -> Self {
+    pub fn new(hook: alloc::boxed::Box<dyn PipelineHook>) -> Self {
         Self {
             hook,
-            ops: Vec::new(),
+            ops: alloc::vec::Vec::new(),
         }
     }
 
@@ -272,7 +276,7 @@ impl Pipeline {
 
     #[cfg(feature = "alloc")]
     pub fn get_pointer_field(&self, pointer_index: u16) -> Self {
-        let mut new_ops = Vec::with_capacity(self.ops.len() + 1);
+        let mut new_ops = alloc::vec::Vec::with_capacity(self.ops.len() + 1);
         for op in &self.ops {
             new_ops.push(*op)
         }
@@ -289,7 +293,7 @@ impl Pipeline {
     }
 
     #[cfg(feature = "alloc")]
-    pub fn as_cap(&self) -> Box<dyn ClientHook> {
+    pub fn as_cap(&self) -> alloc::boxed::Box<dyn ClientHook> {
         self.hook.get_pipelined_cap(&self.ops)
     }
 }
@@ -329,7 +333,7 @@ fn init_clears_value() {
         assert!(root.is_null());
     }
 
-    let mut output: Vec<u8> = Vec::new();
+    let mut output: alloc::vec::Vec<u8> = alloc::vec::Vec::new();
     crate::serialize::write_message(&mut output, &message).unwrap();
     assert_eq!(output.len(), 40);
     for byte in &output[8..] {

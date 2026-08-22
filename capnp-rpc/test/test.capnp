@@ -79,6 +79,7 @@ interface Bootstrap {
   testCallOrder @4 () -> (cap: TestCallOrder);
   testMoreStuff @5 () -> (cap: TestMoreStuff);
   testCapabilityServerSet @6 () -> (cap: TestCapabilityServerSet);
+  testPromiseResolve @7 () -> (cap: TestPromiseResolve);
 }
 
 interface TestInterface {
@@ -99,6 +100,9 @@ interface TestPipeline {
   getCap @0 (n: UInt32, inCap :TestInterface) -> (s: Text, outBox :Box);
   getNullCap @1 () -> (cap :TestInterface);
   testPointers @2 (cap :TestInterface, obj :AnyPointer, list :List(TestInterface)) -> ();
+
+  getCapPipelineOnly @3 () -> (outBox :Box);
+  # Never returns, but uses setPipeline() to make the pipeline work.
 
   struct Box {
     cap @0 :TestInterface;
@@ -128,6 +132,13 @@ interface TestTailCallee {
 
 interface TestTailCaller {
   foo @0 (i :Int32, callee :TestTailCallee) -> TestTailCallee.TailResult;
+}
+
+interface TestStreaming {
+  doStreamI @0 (i :UInt32, throwError :Bool) -> stream;
+  doStreamJ @1 (j :UInt32, throwError :Bool) -> stream;
+  finishStream @2 () -> (totalI :UInt32, totalJ :UInt32);
+  # Test streaming. finishStream() returns the totals of the values streamed to the other calls.
 }
 
 interface TestHandle {}
@@ -176,7 +187,15 @@ interface TestMoreStuff extends(TestCallOrder) {
   callEachCapability @13 (caps :List(TestInterface)) -> ();
   # Calls TestInterface::foo(123, true) on each cap.
 
-  getRemoteCap @14 () -> (remote :TestCallOrder);
+  getRemoteCap @17 () -> (remote :TestCallOrder);
+  getTestStreaming @14 () -> (cap :TestStreaming);
+
+  getTestSelf @15 () -> (cap :TestSelf);
+
+  getDelayingTestStreaming @16 () -> (cap :TestStreaming);
+  # Like getTestStreaming(), but the returned cap's doStreamI() waits before
+  # recording its argument, so a following non-streaming call can race ahead
+  # of pending streaming calls if the runtime fails to order them.
 }
 
 interface TestCapabilityServerSet {
@@ -184,4 +203,20 @@ interface TestCapabilityServerSet {
 
   createHandle @0 () -> (handle :Handle);
   checkHandle @1 (handle: Handle) -> (isOurs :Bool);
+}
+
+interface TestPromiseResolve {
+  interface Resolver {
+    resolveToAnotherPromise @0 ();
+    resolveToCap @1 ();
+  }
+
+  foo @0 () -> (cap: TestInterface, resolver: Resolver);
+  # Teturns a promise capability whose resolution can
+  # be triggered by a `resolver` capability.
+}
+
+interface TestSelf {
+  foo @0 () -> (x :UInt32);
+  getSelf @1 () -> (cap: TestSelf);
 }

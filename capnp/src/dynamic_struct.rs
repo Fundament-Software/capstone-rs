@@ -29,7 +29,7 @@ pub(crate) fn struct_size_from_schema(schema: StructSchema) -> Result<layout::St
 #[derive(Clone, Copy)]
 pub struct Reader<'a> {
     pub(crate) reader: layout::StructReader<'a>,
-    schema: StructSchema,
+    pub(crate) schema: StructSchema,
 }
 
 impl<'a> From<Reader<'a>> for dynamic_value::Reader<'a> {
@@ -52,7 +52,7 @@ impl<'a> Reader<'a> {
     }
 
     pub fn get(self, field: Field) -> Result<dynamic_value::Reader<'a>> {
-        assert_eq!(self.schema.raw, field.parent.raw);
+        assert_eq!(self.schema, field.parent);
         let ty = field.get_type();
         match field.get_proto().which()? {
             field::Slot(slot) => {
@@ -226,7 +226,7 @@ impl<'a> Reader<'a> {
     /// is active in the union and is not a null pointer. On non-union fields,
     /// returns `true` if the field is not a null pointer.
     pub fn has(&self, field: Field) -> Result<bool> {
-        assert_eq!(self.schema.raw, field.parent.raw);
+        assert_eq!(self.schema, field.parent);
         let proto = field.get_proto();
         if has_discriminant_value(proto) {
             let node::Struct(st) = self.schema.get_proto().which()? else {
@@ -260,12 +260,22 @@ impl<'a> Reader<'a> {
         let field = self.schema.get_field_by_name(field_name)?;
         self.has(field)
     }
+
+    /// Downcasts the `Reader` into a specific struct type. Panics if the
+    /// expected type does not match the value.
+    pub fn downcast<T: crate::traits::OwnedStruct>(self) -> T::Reader<'a> {
+        assert!(
+            crate::introspect::Type::from(crate::introspect::TypeVariant::Struct(self.schema.raw))
+                == T::introspect()
+        );
+        self.reader.into()
+    }
 }
 
 /// A mutable dynamically-typed struct.
 pub struct Builder<'a> {
-    builder: layout::StructBuilder<'a>,
-    schema: StructSchema,
+    pub(crate) builder: layout::StructBuilder<'a>,
+    pub(crate) schema: StructSchema,
 }
 
 impl<'a> From<Builder<'a>> for dynamic_value::Builder<'a> {
@@ -304,19 +314,8 @@ impl<'a> Builder<'a> {
         self.schema
     }
 
-    pub fn downcast<
-        T: crate::traits::HasTypeId + ::core::convert::From<crate::private::layout::StructBuilder<'a>>,
-    >(
-        self,
-    ) -> Result<T> {
-        if self.get_schema().get_proto().get_id() == T::TYPE_ID {
-            return Ok(self.builder.into());
-        }
-        Err(Error::from_kind(ErrorKind::TypeMismatch))
-    }
-
     pub fn get(self, field: Field) -> Result<dynamic_value::Builder<'a>> {
-        assert_eq!(self.schema.raw, field.parent.raw);
+        assert_eq!(self.schema, field.parent);
         let ty = field.get_type();
         match field.get_proto().which()? {
             field::Slot(slot) => {
@@ -504,7 +503,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn set(&mut self, field: Field, value: dynamic_value::Reader<'_>) -> Result<()> {
-        assert_eq!(self.schema.raw, field.parent.raw);
+        assert_eq!(self.schema, field.parent);
         self.set_in_union(field)?;
         let ty = field.get_type();
         match field.get_proto().which()? {
@@ -596,7 +595,9 @@ impl<'a> Builder<'a> {
                         );
                         match value {
                             dynamic_value::Reader::Text(t) => target.set_as(t),
-                            dynamic_value::Reader::Data(t) => target.set_as(t),
+                            dynamic_value::Reader::Data(t) => {
+                                target.set_as::<crate::data::Owned>(t)
+                            }
                             dynamic_value::Reader::Struct(s) => target.set_as(s),
                             dynamic_value::Reader::List(l) => target.set_as(l),
                             dynamic_value::Reader::Capability(_) => Err(Error::from_kind(
@@ -642,7 +643,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn init(mut self, field: Field) -> Result<dynamic_value::Builder<'a>> {
-        assert_eq!(self.schema.raw, field.parent.raw);
+        assert_eq!(self.schema, field.parent);
         self.set_in_union(field)?;
         let ty = field.get_type();
         match field.get_proto().which()? {
@@ -683,7 +684,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn initn(mut self, field: Field, size: u32) -> Result<dynamic_value::Builder<'a>> {
-        assert_eq!(self.schema.raw, field.parent.raw);
+        assert_eq!(self.schema, field.parent);
         self.set_in_union(field)?;
         let ty = field.get_type();
         match field.get_proto().which()? {
@@ -736,7 +737,7 @@ impl<'a> Builder<'a> {
     /// Clears a field, setting it to its default value. For pointer fields,
     /// this makes the field null.
     pub fn clear(&mut self, field: Field) -> Result<()> {
-        assert_eq!(self.schema.raw, field.parent.raw);
+        assert_eq!(self.schema, field.parent);
         self.set_in_union(field)?;
         let ty = field.get_type();
         match field.get_proto().which()? {
@@ -841,9 +842,19 @@ impl<'a> Builder<'a> {
         }
         Ok(())
     }
+
+    /// Downcasts the `Builder` into a specific struct type. Panics if the
+    /// expected type does not match the value.
+    pub fn downcast<T: crate::traits::OwnedStruct>(self) -> T::Builder<'a> {
+        assert!(
+            crate::introspect::Type::from(crate::introspect::TypeVariant::Struct(self.schema.raw))
+                == T::introspect()
+        );
+        self.builder.into()
+    }
 }
 
-impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+impl<'a> crate::traits::SetterInput<crate::any_pointer::Owned> for Reader<'a> {
     fn set_pointer_builder<'b>(
         mut pointer: crate::private::layout::PointerBuilder<'b>,
         value: Reader<'a>,
@@ -855,9 +866,6 @@ impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
 
 impl core::fmt::Debug for Reader<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::fmt::Debug::fmt(
-            &::core::convert::Into::<crate::dynamic_value::Reader<'_>>::into(*self),
-            f,
-        )
+        core::fmt::Debug::fmt(&crate::dynamic_value::Reader::from(*self), f)
     }
 }
