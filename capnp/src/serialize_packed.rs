@@ -119,7 +119,7 @@ where
                     //# slowly, doing a bounds check on each byte.
 
                     tag = *in_ptr;
-                    in_ptr = in_ptr.offset(1);
+                    in_ptr = in_ptr.add(1);
 
                     for i in 0..8 {
                         if (tag & (1u8 << i)) != 0 {
@@ -135,11 +135,11 @@ where
                                 );
                             }
                             *out = *in_ptr;
-                            out = out.offset(1);
-                            in_ptr = in_ptr.offset(1);
+                            out = out.add(1);
+                            in_ptr = in_ptr.add(1);
                         } else {
                             *out = 0;
-                            out = out.offset(1);
+                            out = out.add(1);
                         }
                     }
 
@@ -148,13 +148,13 @@ where
                     }
                 } else {
                     tag = *in_ptr;
-                    in_ptr = in_ptr.offset(1);
+                    in_ptr = in_ptr.add(1);
 
                     for n in 0..8 {
                         let is_nonzero = (tag & (1u8 << n)) != 0;
                         *out = (*in_ptr) & ((-i8::from(is_nonzero)) as u8);
-                        out = out.offset(1);
-                        in_ptr = in_ptr.offset(isize::from(is_nonzero));
+                        out = out.add(1);
+                        in_ptr = in_ptr.add(is_nonzero as usize);
                     }
                 }
                 if tag == 0 {
@@ -164,7 +164,7 @@ where
                     );
 
                     let run_length: usize = (*in_ptr) as usize * 8;
-                    in_ptr = in_ptr.offset(1);
+                    in_ptr = in_ptr.add(1);
 
                     if run_length > ptr_sub(out_end, out) {
                         return Err(Error::from_kind(
@@ -181,7 +181,7 @@ where
                     );
 
                     let mut run_length: usize = (*in_ptr) as usize * 8;
-                    in_ptr = in_ptr.offset(1);
+                    in_ptr = in_ptr.add(1);
 
                     if run_length > ptr_sub(out_end, out) {
                         return Err(Error::from_kind(
@@ -258,6 +258,7 @@ where
 }
 
 /// Like read_message(), but does not allocate.
+///
 /// Stores the message in `buffer`. Returns a `BufferNotLargeEnough`
 /// error if the buffer is not large enough.
 /// ALIGNMENT: If the "unaligned" feature is enabled, then there are no alignment requirements on `buffer`.
@@ -275,6 +276,7 @@ where
 }
 
 /// Like try_read_message(), but does not allocate.
+///
 /// Stores the message in `buffer`. Returns a `BufferNotLargeEnough`
 /// error if the buffer is not large enough.
 /// ALIGNMENT: If the "unaligned" feature is enabled, then there are no alignment requirements on `buffer`.
@@ -325,42 +327,42 @@ where
                 let bit0 = u8::from(*in_ptr != 0);
                 *buf.get_unchecked_mut(buf_idx) = *in_ptr;
                 buf_idx += bit0 as usize;
-                in_ptr = in_ptr.offset(1);
+                in_ptr = in_ptr.add(1);
 
                 let bit1 = u8::from(*in_ptr != 0);
                 *buf.get_unchecked_mut(buf_idx) = *in_ptr;
                 buf_idx += bit1 as usize;
-                in_ptr = in_ptr.offset(1);
+                in_ptr = in_ptr.add(1);
 
                 let bit2 = u8::from(*in_ptr != 0);
                 *buf.get_unchecked_mut(buf_idx) = *in_ptr;
                 buf_idx += bit2 as usize;
-                in_ptr = in_ptr.offset(1);
+                in_ptr = in_ptr.add(1);
 
                 let bit3 = u8::from(*in_ptr != 0);
                 *buf.get_unchecked_mut(buf_idx) = *in_ptr;
                 buf_idx += bit3 as usize;
-                in_ptr = in_ptr.offset(1);
+                in_ptr = in_ptr.add(1);
 
                 let bit4 = u8::from(*in_ptr != 0);
                 *buf.get_unchecked_mut(buf_idx) = *in_ptr;
                 buf_idx += bit4 as usize;
-                in_ptr = in_ptr.offset(1);
+                in_ptr = in_ptr.add(1);
 
                 let bit5 = u8::from(*in_ptr != 0);
                 *buf.get_unchecked_mut(buf_idx) = *in_ptr;
                 buf_idx += bit5 as usize;
-                in_ptr = in_ptr.offset(1);
+                in_ptr = in_ptr.add(1);
 
                 let bit6 = u8::from(*in_ptr != 0);
                 *buf.get_unchecked_mut(buf_idx) = *in_ptr;
                 buf_idx += bit6 as usize;
-                in_ptr = in_ptr.offset(1);
+                in_ptr = in_ptr.add(1);
 
                 let bit7 = u8::from(*in_ptr != 0);
                 *buf.get_unchecked_mut(buf_idx) = *in_ptr;
                 buf_idx += bit7 as usize;
-                in_ptr = in_ptr.offset(1);
+                in_ptr = in_ptr.add(1);
 
                 let tag: u8 = bit0
                     | (bit1 << 1)
@@ -381,14 +383,15 @@ where
                     let mut in_word: *const [u8; 8] = in_ptr as *const [u8; 8];
                     let mut limit: *const [u8; 8] = in_end as *const [u8; 8];
                     if ptr_sub(limit, in_word) > 255 {
-                        limit = in_word.offset(255);
+                        limit = in_word.add(255);
                     }
                     while in_word < limit && *in_word == [0; 8] {
-                        in_word = in_word.offset(1);
+                        in_word = in_word.add(1);
                     }
 
-                    *buf.get_unchecked_mut(buf_idx) =
-                        ptr_sub(in_word, in_ptr as *const [u8; 8]) as u8;
+                    *buf.get_unchecked_mut(buf_idx) = ptr_sub(in_word, in_ptr as *const [u8; 8])
+                        .try_into()
+                        .unwrap();
                     buf_idx += 1;
                     in_ptr = in_word as *const u8;
                 } else if tag == 0xff {
@@ -403,7 +406,7 @@ where
                     let run_start = in_ptr;
                     let mut limit = in_end;
                     if ptr_sub(limit, in_ptr) > 255 * 8 {
-                        limit = in_ptr.offset(255 * 8);
+                        limit = in_ptr.add(255 * 8);
                     }
 
                     while in_ptr < limit {
@@ -411,19 +414,19 @@ where
 
                         for _ in 0..8 {
                             c += u8::from(*in_ptr == 0);
-                            in_ptr = in_ptr.offset(1);
+                            in_ptr = in_ptr.add(1);
                         }
 
                         if c >= 2 {
                             //# Un-read the word with multiple zeros, since
                             //# we'll want to compress that one.
-                            in_ptr = in_ptr.offset(-8);
+                            in_ptr = in_ptr.sub(8);
                             break;
                         }
                     }
 
                     let count: usize = ptr_sub(in_ptr, run_start);
-                    *buf.get_unchecked_mut(buf_idx) = (count / 8) as u8;
+                    *buf.get_unchecked_mut(buf_idx) = (count / 8).try_into().unwrap();
                     buf_idx += 1;
 
                     self.inner.write_all(&buf[..buf_idx])?;
@@ -455,8 +458,6 @@ where
 #[cfg(feature = "alloc")]
 #[cfg(test)]
 mod tests {
-    use alloc::vec::Vec;
-
     use crate::io::{Read, Write};
     use proptest::prelude::*;
 
@@ -467,29 +468,29 @@ mod tests {
     use crate::serialize_packed::{PackedRead, PackedWrite};
 
     #[test]
-    pub fn premature_eof() {
+    pub(crate) fn premature_eof() {
         let input_bytes: &[u8] = &[];
         let mut packed_read = PackedRead { inner: input_bytes };
 
-        let mut output_bytes: Vec<u8> = vec![0; 8];
+        let mut output_bytes: alloc::vec::Vec<u8> = vec![0; 8];
         assert!(packed_read.read_exact(&mut output_bytes[..]).is_err());
     }
 
-    pub fn check_unpacks_to(packed: &[u8], unpacked: &[u8]) {
+    pub(crate) fn check_unpacks_to(packed: &[u8], unpacked: &[u8]) {
         let mut packed_read = PackedRead { inner: packed };
 
-        let mut bytes: Vec<u8> = vec![0; unpacked.len()];
+        let mut bytes: alloc::vec::Vec<u8> = vec![0; unpacked.len()];
         packed_read.read_exact(&mut bytes[..]).unwrap();
 
         assert!(packed_read.inner.is_empty()); // nothing left to read
         assert_eq!(bytes, unpacked);
     }
 
-    pub fn check_packing(unpacked: &[u8], packed: &[u8]) {
+    pub(crate) fn check_packing(unpacked: &[u8], packed: &[u8]) {
         // --------
         // write
 
-        let mut bytes: Vec<u8> = vec![0; packed.len()];
+        let mut bytes: alloc::vec::Vec<u8> = vec![0; packed.len()];
         {
             let mut packed_write = PackedWrite {
                 inner: &mut bytes[..],
@@ -505,7 +506,7 @@ mod tests {
     }
 
     #[test]
-    pub fn simple_packing() {
+    pub(crate) fn simple_packing() {
         check_packing(&[], &[]);
         check_packing(&[0; 8], &[0, 0]);
         check_packing(&[0, 0, 12, 0, 0, 34, 0, 0], &[0x24, 12, 34]);
@@ -555,6 +556,7 @@ mod tests {
             &[0xed, 8, 100, 6, 1, 1, 2, 0, 2, 0xd4, 1, 2, 3, 1],
         );
 
+        check_packing(&[0; 8], &[0, 0]);
         check_packing(&[0; 16], &[0, 1]);
         check_packing(
             &[
@@ -562,12 +564,12 @@ mod tests {
             ],
             &[0, 2],
         );
+        check_packing(&[0; 258 * 8], &[0, 255, 0, 1]);
     }
 
     proptest! {
         #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
-        #[test]
-        fn test_round_trip(segments: Vec<Vec<crate::Word>>) {
+        fn test_round_trip(segments in any::<Vec<Vec<crate::Word>>>()) {
             use crate::message::ReaderSegments;
             if segments.is_empty() { return Ok(()); }
             let mut buf: Vec<u8> = Vec::new();
@@ -581,13 +583,12 @@ mod tests {
             }))
         }
 
-        #[cfg_attr(miri, ignore)] // miri takes a long time with proptest
-        #[test]
-        fn test_unpack(packed: Vec<u8>) {
+        #[cfg_attr(miri, ignore)] // miri takes a long time with quickcheck
+        fn test_unpack(packed in any::< alloc::vec::Vec<u8>>()) {
             let len = packed.len();
             let mut packed_read = PackedRead { inner: &packed[..] };
 
-            let mut out_buffer: Vec<u8> = vec![0; len * 8];
+            let mut out_buffer: alloc::vec::Vec<u8> = vec![0; len * 8];
 
             let _ = packed_read.read_exact(&mut out_buffer);
         }
@@ -598,7 +599,7 @@ mod tests {
         let packed = &[0xff, 1, 2, 3, 4, 5, 6, 7, 8, 37, 1, 2];
         let mut packed_read = PackedRead { inner: &packed[..] };
 
-        let mut bytes: Vec<u8> = vec![0; 200];
+        let mut bytes: alloc::vec::Vec<u8> = vec![0; 200];
         match packed_read.read_exact(&mut bytes[..]) {
             Ok(_) => panic!("should have been an error"),
             Err(e) => {
@@ -615,7 +616,7 @@ mod tests {
         fn helper(packed: &[u8]) {
             let mut packed_read = PackedRead { inner: packed };
 
-            let mut bytes: Vec<u8> = vec![0; 200];
+            let mut bytes: alloc::vec::Vec<u8> = vec![0; 200];
             match packed_read.read_exact(&mut bytes[..]) {
                 Ok(_) => panic!("should have been an error"),
                 Err(e) => {

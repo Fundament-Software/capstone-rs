@@ -1,4 +1,5 @@
 [workspace]
+rust-version = "1.94.0"
 resolver = "2"
 
 members = [
@@ -20,6 +21,9 @@ members = [
     "capnp-rpc/examples/hello-world",
     "capnp-rpc/examples/calculator",
     "capnp-rpc/examples/pubsub",
+    "capnp-rpc/examples/shared-secret-capability",
+    "capnp-rpc/examples/streaming",
+    "capnp-rpc/examples/reconnect",
     "capnp-rpc/test",
     "example/addressbook",
     "example/addressbook_send",
@@ -60,4 +64,13 @@ quote = "1.0"
 tempfile = "3.*"
 convert_case = "0.10"
 
-[workspace.lints]
+[workspace.lints.rust]
+unreachable_pub = "deny"
+
+[workspace.lints.clippy]
+type_complexity = "allow"
+missing_safety_doc = "allow"
+
+
+[patch."https://github.com/Fundament-Software/capstone"]
+capnp-sys = { path = "../capstone/c++/src/capnp" }

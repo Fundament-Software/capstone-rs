@@ -26,19 +26,16 @@ use capnp::{message, serialize, serialize_packed};
 
 pub mod common;
 
-pub mod carsales_capnp {
-    include!(concat!(env!("OUT_DIR"), "/carsales_capnp.rs"));
-}
+capnp::generated_code!(pub mod carsales_capnp);
+
 pub mod carsales;
 
-pub mod catrank_capnp {
-    include!(concat!(env!("OUT_DIR"), "/catrank_capnp.rs"));
-}
+capnp::generated_code!(pub mod catrank_capnp);
+
 pub mod catrank;
 
-pub mod eval_capnp {
-    include!(concat!(env!("OUT_DIR"), "/eval_capnp.rs"));
-}
+capnp::generated_code!(pub mod eval_capnp);
+
 pub mod eval;
 
 trait TestCase {
@@ -411,14 +408,11 @@ where
         Mode::Object => pass_by_object(testcase, reuse, iters),
         Mode::Bytes => pass_by_bytes(testcase, reuse, compression, iters),
         Mode::Client => sync_client(testcase, reuse, compression, iters),
-        Mode::Server => server(
-            testcase,
-            reuse,
-            compression,
-            iters,
-            std::io::stdin(),
-            std::io::stdout(),
-        ),
+        Mode::Server => {
+            let input: ::std::fs::File = unsafe { ::std::os::unix::io::FromRawFd::from_raw_fd(0) };
+            let output: ::std::fs::File = unsafe { ::std::os::unix::io::FromRawFd::from_raw_fd(1) };
+            server(testcase, reuse, compression, iters, input, output)
+        }
         Mode::Pipe => pass_by_pipe(testcase, reuse, compression, iters),
     }
 }

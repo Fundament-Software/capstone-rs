@@ -1,3 +1,59 @@
+## v0.27.0
+- Follow v0.27.0 release of other capnp crates.
+
+## v0.26.1
+- Fix some bugs in reading packed streams.
+
+## v0.26.0
+- Follow v0.26.0 release of other capnp crates.
+
+## v0.25.2
+- Fix bug in `PackedWrite` that incorrectly encoded long streams of zeroes or non-zeroes.
+
+## v0.25.1
+- Return `PrematureEndOfFile` instead of just `Failed` when `read_message()` hits end-of-stream
+  too soon.
+
+## v0.25.0
+- Follow v0.25.0 release of other capnp crates.
+
+## v0.24.0
+- Follow v0.24.0 release of other capnp crates.
+
+## v0.23.1
+- Fix capnp dependency to be capnp-v0.23.0 rather than capnp-v0.23.0-alpha.
+
+## v0.23.0
+- Follow v0.23.0 release of other capnp crates.
+
+## v0.22.0
+- Follow v0.22.0 release of other capnp crates.
+
+## v0.21.0
+- Follow v0.21.0 release of other capnp crates.
+
+## v0.20.1
+- Remove dependency on futures crate in favor of lighter-weight dependencies
+  on futures-channel and futures-util.
+
+## v0.20.0
+- write_queue objects should be Send now, when appropriate.
+- Follow v0.20.0 release of other capnp crates.
+
+## v0.19.1
+- Fix bug in `write_queue::len()`.
+
+## v0.19.0
+- Follow v0.19.0 release of other capnp crates.
+
+## v0.18.2
+- Fix overflow bug in read_message that could potentially lead to denial of service
+  attacks on 32-bit targets.
+
+## v0.18.1
+- Fix two bugs in serialize_packed::PackedRead where a premature end-of-file
+  could trigger an infinite loop.
+
 ## v0.18.0
 - Follow v0.18.0 release of other capnp crates.
 
@@ -8,7 +64,7 @@
 - Follow v0.16.0 release of other capnp crates.
 
 ## v0.15.1
-- Fill in unimiplemented len() method of write_queue::Sender.
+- Fill in unimplemented len() method of write_queue::Sender.
 - Add is_empty() method to write_queue::Sender.
 - Apply a bunch of formatting and style fixes that should have no observable effects.
 

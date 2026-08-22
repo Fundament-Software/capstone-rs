@@ -29,15 +29,14 @@ struct HelloWorldImpl;
 
 impl hello_world::Server for HelloWorldImpl {
     async fn say_hello(
-        self: Rc<Self>,
+        self: std::rc::Rc<Self>,
         params: hello_world::SayHelloParams,
         mut results: hello_world::SayHelloResults,
-    ) -> Result<(), capnp::Error> {
+    ) -> Result<(), ::capnp::Error> {
         let request = params.get()?.get_request()?;
         let name = request.get_name()?.to_str()?;
         let message = format!("Hello, {name}!");
-
-        results.get().init_reply().set_message(message[..].into());
+        results.get().init_reply().set_message(message);
 
         Ok(())
     }
@@ -65,8 +64,8 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 stream.set_nodelay(true)?;
                 let (reader, writer) = stream.into_split();
                 let network = twoparty::VatNetwork::new(
-                    reader,
-                    writer,
+                    futures::io::BufReader::new(reader),
+                    futures::io::BufWriter::new(writer),
                     rpc_twoparty_capnp::Side::Server,
                     Default::default(),
                 );

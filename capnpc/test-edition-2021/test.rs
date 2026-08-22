@@ -1,3 +1,3 @@
-pub mod test_capnp {
-    include!(concat!(env!("OUT_DIR"), "/test_capnp.rs"));
-}
+#![allow(clippy::approx_constant)]
+
+capnp::generated_code!(pub mod test_capnp);

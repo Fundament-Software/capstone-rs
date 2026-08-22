@@ -19,9 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-pub mod addressbook_capnp {
-    include!(concat!(env!("OUT_DIR"), "/addressbook_capnp.rs"));
-}
+capnp::generated_code!(pub mod addressbook_capnp);
 
 #[cfg(test)]
 mod tests {
@@ -34,32 +32,32 @@ mod tests {
         {
             let mut alice = people.reborrow().get(0);
             alice.set_id(123);
-            alice.set_name("Alice".into());
-            alice.set_email("alice@example.com".into());
+            alice.set_name("Alice");
+            alice.set_email("alice@example.com");
             {
                 let mut alice_phones = alice.reborrow().init_phones(1);
-                alice_phones.reborrow().get(0).set_number("555-1212".into());
+                alice_phones.reborrow().get(0).set_number("555-1212");
                 alice_phones
                     .reborrow()
                     .get(0)
                     .set_type(person::phone_number::Type::Mobile);
             }
-            alice.get_employment().set_school("MIT".into());
+            alice.get_employment().set_school("MIT");
         }
 
         {
             let mut bob = people.get(1);
             bob.set_id(456);
-            bob.set_name("Bob".into());
-            bob.set_email("bob@example.com".into());
+            bob.set_name("Bob");
+            bob.set_email("bob@example.com");
             {
                 let mut bob_phones = bob.reborrow().init_phones(2);
-                bob_phones.reborrow().get(0).set_number("555-4567".into());
+                bob_phones.reborrow().get(0).set_number("555-4567");
                 bob_phones
                     .reborrow()
                     .get(0)
                     .set_type(person::phone_number::Type::Home);
-                bob_phones.reborrow().get(1).set_number("555-7654".into());
+                bob_phones.reborrow().get(1).set_number("555-7654");
                 bob_phones
                     .reborrow()
                     .get(1)
@@ -83,7 +81,7 @@ mod tests {
     }
 
     #[test]
-    fn write_stream_and_read_queue() {
+    fn write_queue_and_read_stream() {
         use capnp;
         use capnp_futures;
         use futures_util::FutureExt;
@@ -96,12 +94,13 @@ mod tests {
 
         let (writer, reader) = async_byte_channel::channel();
         let (mut sender, write_queue) = capnp_futures::write_queue(writer);
+
         let read_stream = capnp_futures::ReadStream::new(reader, Default::default());
         let messages_read = Rc::new(Cell::new(0u32));
         let messages_read1 = messages_read.clone();
 
-        let done_reading = read_stream.for_each(|m| match m {
-            Err(e) => panic!("read error: {:?}", e),
+        let done_reading = read_stream.for_each(move |m| match m {
+            Err(e) => panic!("read error: {e:?}"),
             Ok(msg) => {
                 let address_book = msg.get_root::<address_book::Reader>().unwrap();
                 read_address_book(address_book);
@@ -115,11 +114,16 @@ mod tests {
         let mut m = capnp::message::Builder::new_default();
         populate_address_book(m.init_root());
 
-        pool.spawn_local(sender.send(m).map(|_| ()));
+        assert_eq!(sender.len(), 0);
+        let send_future = sender.send(m);
+        assert_eq!(sender.len(), 1);
+
+        pool.spawn_local(send_future.map(|_| ()));
         drop(sender);
         tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(pool.run_until(io));
+        //assert_eq!(sender.len(), 0);
         assert_eq!(messages_read1.get(), 1);
     }
 
@@ -135,7 +139,7 @@ mod tests {
         let pool = tokio::task::LocalSet::new();
         let (stream0, stream1) = async_byte_channel::channel();
         let f0 = serialize::write_message(stream0, message)
-            .map_err(|e| panic!("write error {:?}", e))
+            .map_err(|e| panic!("write error {e:?}"))
             .map(|_| ());
         let f1 = serialize::try_read_message(stream1, capnp::message::ReaderOptions::new())
             .and_then(|maybe_message_reader| match maybe_message_reader {

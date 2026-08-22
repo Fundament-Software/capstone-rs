@@ -20,3 +20,10 @@ futures-util.workspace = true
 
 [build-dependencies]
 capstone-gen.workspace = true
+
+[[test]]
+name = "overflow_test"
+path = "overflow_test.rs"
+
+[lints]
+workspace = true

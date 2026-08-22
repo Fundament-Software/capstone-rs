@@ -23,7 +23,7 @@
 
 use crate::Result;
 use crate::private::layout::{ListBuilder, ListReader, Pointer, PointerBuilder, PointerReader};
-use crate::traits::{FromPointerBuilder, FromPointerReader, IndexMove, ListIter};
+use crate::traits::{FromPointerBuilder, FromPointerReader, IndexMove, ListIter, SetterInput};
 
 #[derive(Copy, Clone)]
 pub struct Owned;
@@ -128,12 +128,17 @@ impl<'a> Builder<'a> {
         self.len() == 0
     }
 
-    pub fn set(&mut self, index: u32, value: crate::text::Reader) {
+    #[inline]
+    pub fn set(&mut self, index: u32, value: impl SetterInput<crate::text::Owned>) {
         assert!(index < self.len());
-        self.builder
-            .reborrow()
-            .get_pointer_element(index)
-            .set_text(value);
+        SetterInput::set_pointer_builder(
+            self.builder.reborrow().get_pointer_element(index),
+            value,
+            false,
+        )
+        .unwrap()
+        // The text impls of SetterInput never return an error, so
+        // the above unwrap() won't panic.
     }
 
     pub fn into_reader(self) -> Reader<'a> {
@@ -184,13 +189,49 @@ impl<'a> Builder<'a> {
     }
 }
 
-impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+impl<'a> crate::traits::SetterInput<Owned> for Reader<'a> {
+    #[inline]
     fn set_pointer_builder<'b>(
         mut pointer: crate::private::layout::PointerBuilder<'b>,
         value: Reader<'a>,
         canonicalize: bool,
     ) -> Result<()> {
         pointer.set_list(&value.reader, canonicalize)
+    }
+}
+
+impl<'a, T: AsRef<str>> crate::traits::SetterInput<Owned> for &'a [T] {
+    #[inline]
+    fn set_pointer_builder<'b>(
+        pointer: PointerBuilder<'b>,
+        value: &'a [T],
+        _canonicalize: bool,
+    ) -> Result<()> {
+        let mut builder = pointer.init_list(
+            crate::private::layout::ElementSize::Pointer,
+            value
+                .len()
+                .try_into()
+                .expect("list size too large to fit in u32"),
+        );
+        for (idx, v) in value.iter().enumerate() {
+            builder
+                .reborrow()
+                .get_pointer_element(idx.try_into().unwrap())
+                .set_text(v.as_ref().into());
+        }
+        Ok(())
+    }
+}
+
+impl<'a, T: AsRef<str>, const N: usize> crate::traits::SetterInput<Owned> for &'a [T; N] {
+    #[inline]
+    fn set_pointer_builder<'b>(
+        pointer: PointerBuilder<'b>,
+        value: &'a [T; N],
+        canonicalize: bool,
+    ) -> Result<()> {
+        crate::traits::SetterInput::set_pointer_builder(pointer, &value[..], canonicalize)
     }
 }
 
@@ -212,11 +253,35 @@ impl<'a> From<Reader<'a>> for crate::dynamic_value::Reader<'a> {
     }
 }
 
+impl<'a> crate::dynamic_value::DowncastReader<'a> for Reader<'a> {
+    fn downcast_reader(v: crate::dynamic_value::Reader<'a>) -> Self {
+        let dl: crate::dynamic_list::Reader = v.downcast();
+        assert!(dl.element_type() == crate::introspect::TypeVariant::Text.into());
+        Reader { reader: dl.reader }
+    }
+}
+
 impl<'a> From<Builder<'a>> for crate::dynamic_value::Builder<'a> {
     fn from(t: Builder<'a>) -> crate::dynamic_value::Builder<'a> {
         crate::dynamic_value::Builder::List(crate::dynamic_list::Builder {
             builder: t.builder,
             element_type: crate::introspect::TypeVariant::Text.into(),
         })
+    }
+}
+
+impl<'a> crate::dynamic_value::DowncastBuilder<'a> for Builder<'a> {
+    fn downcast_builder(v: crate::dynamic_value::Builder<'a>) -> Self {
+        let dl: crate::dynamic_list::Builder = v.downcast();
+        assert!(dl.element_type() == crate::introspect::TypeVariant::Text.into());
+        Builder {
+            builder: dl.builder,
+        }
+    }
+}
+
+impl core::fmt::Debug for Reader<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Debug::fmt(&crate::dynamic_value::Reader::from(*self), f)
     }
 }

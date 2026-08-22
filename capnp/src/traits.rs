@@ -59,13 +59,13 @@ pub trait FromPointerReader<'a>: Sized {
 /// nonetheless as a type parameter, e.g. for a generic container that owns a Cap'n Proto
 /// message of type `T: capnp::traits::Owned`.
 pub trait Owned: crate::introspect::Introspect {
-    type Reader<'a>: FromPointerReader<'a> + SetPointerBuilder + Clone;
+    type Reader<'a>: FromPointerReader<'a> + SetterInput<Self> + Clone;
     type Builder<'a>: FromPointerBuilder<'a>;
 }
 
 pub trait OwnedStruct: crate::introspect::Introspect {
     type Reader<'a>: From<StructReader<'a>>
-        + SetPointerBuilder
+        + SetterInput<Self>
         + IntoInternalStructReader<'a>
         + Copy;
     type Builder<'a>: From<StructBuilder<'a>> + HasStructSize;
@@ -83,15 +83,25 @@ pub trait FromPointerBuilder<'a>: Sized {
     ) -> Result<Self>;
 }
 
-pub trait SetPointerBuilder {
+/// A trait marking types that can be passed as inputs to setter methods.
+/// `Receiver` is intended to be an `Owned`, representing the destination type.
+///
+/// This trait allows setters to support multiple types of input. For example,
+/// a text field setter accepts values of type `&str` and of type `text::Reader`.
+pub trait SetterInput<Receiver: ?Sized> {
+    /// Copies the values from `input` into `builder`, where `builder`
+    /// represents the backing memory of a `<Receiver as Owned>::Builder`.
+    ///
+    /// End user code should never need to call this method directly.
     fn set_pointer_builder(
         builder: PointerBuilder<'_>,
-        from: Self,
+        input: Self,
         canonicalize: bool,
     ) -> Result<()>;
 }
 
 /// A trait for types that can be "imbued" with capabilities.
+///
 /// A newly-read message from the network might contain capability pointers
 /// but until the message has been imbued with the actual capabilities,
 /// those pointers will not be usable.
@@ -145,12 +155,21 @@ impl<U, T: IndexMove<u32, U>> ::core::iter::Iterator for ListIter<T, U> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.size as usize, Some(self.size as usize))
+        let remaining = self.size as usize - self.index as usize;
+        (remaining, Some(remaining))
     }
 
     fn nth(&mut self, p: usize) -> Option<U> {
-        if self.index + (p as u32) < self.size {
-            self.index += p as u32;
+        let Some(p) = p.try_into().ok() else {
+            self.index = self.size;
+            return None;
+        };
+        let Some(nth_index) = self.index.checked_add(p) else {
+            self.index = self.size;
+            return None;
+        };
+        if nth_index < self.size {
+            self.index = nth_index;
             let result = self.list.index_move(self.index);
             self.index += 1;
             Some(result)
@@ -210,12 +229,21 @@ impl<U, T: IndexMove<u16, U>> ::core::iter::Iterator for ShortListIter<T, U> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        (self.size as usize, Some(self.size as usize))
+        let remaining = self.size as usize - self.index as usize;
+        (remaining, Some(remaining))
     }
 
     fn nth(&mut self, p: usize) -> Option<U> {
-        if self.index + (p as u16) < self.size {
-            self.index += p as u16;
+        let Some(p) = p.try_into().ok() else {
+            self.index = self.size;
+            return None;
+        };
+        let Some(nth_index) = self.index.checked_add(p) else {
+            self.index = self.size;
+            return None;
+        };
+        if nth_index < self.size {
+            self.index = nth_index;
             let result = self.list.index_move(self.index);
             self.index += 1;
             Some(result)

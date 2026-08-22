@@ -18,10 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use core::slice;
-#[cfg(feature = "alloc")]
-use smallvec::SmallVec;
-
 use crate::OutputSegments;
 use crate::message;
 use crate::message::Allocator;
@@ -29,10 +25,11 @@ use crate::message::ReaderSegments;
 use crate::private::read_limiter::ReadLimiter;
 use crate::private::units::*;
 use crate::{Error, ErrorKind, Result};
+use core::slice;
 
 pub type SegmentId = u32;
 
-pub trait ReaderArena {
+pub unsafe trait ReaderArena {
     // return pointer to start of segment, and number of words in that segment
     fn get_segment(&self, id: u32) -> Result<(*const u8, u32)>;
 
@@ -41,11 +38,33 @@ pub trait ReaderArena {
         segment_id: u32,
         start: *const u8,
         offset_in_words: i32,
-    ) -> Result<*const u8>;
+    ) -> Result<*const u8> {
+        let (segment_start, segment_len) = self.get_segment(segment_id)?;
+        let this_start: usize = segment_start as usize;
+        let this_size: usize = segment_len as usize * BYTES_PER_WORD;
+        let offset: i64 = i64::from(offset_in_words) * i64::try_from(BYTES_PER_WORD).unwrap();
+        let start_idx = start as usize;
+        if start_idx < this_start {
+            return Err(Error::from_kind(
+                ErrorKind::MessageContainsOutOfBoundsPointer,
+            ));
+        }
+        let target_idx = i64::try_from(start_idx - this_start).unwrap() + offset;
+        if target_idx < 0 || usize::try_from(target_idx).unwrap() > this_size {
+            Err(Error::from_kind(
+                ErrorKind::MessageContainsOutOfBoundsPointer,
+            ))
+        } else {
+            unsafe { Ok(start.offset(isize::try_from(offset).unwrap())) }
+        }
+    }
+
     fn contains_interval(&self, segment_id: u32, start: *const u8, size: usize) -> Result<()>;
     fn amplified_read(&self, virtual_amount: u64) -> Result<()>;
 
     fn nesting_limit(&self) -> i32;
+
+    fn size_in_words(&self) -> usize;
 
     // TODO(apibump): Consider putting extract_cap(), inject_cap(), drop_cap() here
     //   and on message::Reader. Then we could get rid of Imbue and ImbueMut, and
@@ -93,9 +112,13 @@ where
     pub fn into_segments(self) -> S {
         self.segments
     }
+
+    pub(crate) fn get_segments(&self) -> &S {
+        &self.segments
+    }
 }
 
-impl<S> ReaderArena for ReaderArenaImpl<S>
+unsafe impl<S> ReaderArena for ReaderArenaImpl<S>
 where
     S: ReaderSegments,
 {
@@ -109,30 +132,12 @@ where
                     }
                 }
 
-                Ok((seg.as_ptr(), (seg.len() / BYTES_PER_WORD) as u32))
+                Ok((
+                    seg.as_ptr(),
+                    u32::try_from(seg.len() / BYTES_PER_WORD).unwrap(),
+                ))
             }
             None => Err(Error::from_kind(ErrorKind::InvalidSegmentId(id))),
-        }
-    }
-
-    unsafe fn check_offset(
-        &self,
-        segment_id: u32,
-        start: *const u8,
-        offset_in_words: i32,
-    ) -> Result<*const u8> {
-        let (segment_start, segment_len) = self.get_segment(segment_id)?;
-        let this_start: usize = segment_start as usize;
-        let this_size: usize = segment_len as usize * BYTES_PER_WORD;
-        let offset: i64 = i64::from(offset_in_words) * BYTES_PER_WORD as i64;
-        let start_idx = start as usize;
-        if start_idx < this_start || ((start_idx - this_start) as i64 + offset) as usize > this_size
-        {
-            Err(Error::from_kind(
-                ErrorKind::MessageContainsOutOfBoundsPointer,
-            ))
-        } else {
-            unsafe { Ok(start.offset(offset as isize)) }
         }
     }
 
@@ -153,15 +158,26 @@ where
     }
 
     fn amplified_read(&self, virtual_amount: u64) -> Result<()> {
-        self.read_limiter.can_read(virtual_amount as usize)
+        self.read_limiter
+            .can_read(usize::try_from(virtual_amount).unwrap())
     }
 
     fn nesting_limit(&self) -> i32 {
         self.nesting_limit
     }
+
+    fn size_in_words(&self) -> usize {
+        let mut result = 0;
+        for ii in 0..u32::try_from(self.segments.len()).unwrap() {
+            if let Some(seg) = self.segments.get_segment(ii) {
+                result += seg.len() / BYTES_PER_WORD;
+            }
+        }
+        result
+    }
 }
 
-pub trait BuilderArena: ReaderArena {
+pub unsafe trait BuilderArena: ReaderArena {
     fn allocate(&mut self, segment_id: u32, amount: WordCount32) -> Option<u32>;
     fn allocate_anywhere(&mut self, amount: u32) -> (SegmentId, u32);
     fn get_segment_mut(&mut self, id: u32) -> (*mut u8, u32);
@@ -172,7 +188,7 @@ pub trait BuilderArena: ReaderArena {
 /// A wrapper around a memory segment used in building a message.
 struct BuilderSegment {
     /// Pointer to the start of the segment.
-    ptr: *mut u8,
+    ptr: core::ptr::NonNull<u8>,
 
     /// Total number of words the segment could potentially use. That is, all
     /// bytes from `ptr` to `ptr + (capacity * 8)` may be used in the segment.
@@ -183,7 +199,7 @@ struct BuilderSegment {
 }
 
 #[cfg(feature = "alloc")]
-type BuilderSegmentArray = SmallVec<[BuilderSegment; 1]>;
+type BuilderSegmentArray = smallvec::SmallVec<[BuilderSegment; 1]>;
 
 #[cfg(not(feature = "alloc"))]
 #[derive(Default)]
@@ -237,8 +253,7 @@ pub struct BuilderArenaImplInner<A>
 where
     A: Allocator,
 {
-    allocator: Option<A>, // None if has already be deallocated.
-
+    allocator: Option<A>, // None if has already been deallocated.
     segments: BuilderSegmentArray,
 }
 
@@ -248,6 +263,11 @@ where
 {
     inner: BuilderArenaImplInner<A>,
 }
+
+// BuilderArenaImpl has no interior mutability. Adding these impls
+// allows message::Builder<A> to be Send and/or Sync when appropriate.
+unsafe impl<A> Send for BuilderArenaImpl<A> where A: Send + Allocator {}
+unsafe impl<A> Sync for BuilderArenaImpl<A> where A: Sync + Allocator {}
 
 impl<A> BuilderArenaImpl<A>
 where
@@ -276,7 +296,10 @@ where
             // No such borrow will be possible while `self` is still immutably borrowed from this method,
             // so returning this slice is safe.
             let slice = unsafe {
-                slice::from_raw_parts(seg.ptr as *const _, seg.allocated as usize * BYTES_PER_WORD)
+                slice::from_raw_parts(
+                    seg.ptr.as_ptr() as *const _,
+                    seg.allocated as usize * BYTES_PER_WORD,
+                )
             };
             OutputSegments::SingleSegment([slice])
         } else {
@@ -287,7 +310,7 @@ where
                     // See safety argument in above branch.
                     let slice = unsafe {
                         slice::from_raw_parts(
-                            seg.ptr as *const _,
+                            seg.ptr.as_ptr() as *const _,
                             seg.allocated as usize * BYTES_PER_WORD,
                         )
                     };
@@ -318,14 +341,14 @@ where
     }
 }
 
-impl<A> ReaderArena for BuilderArenaImpl<A>
+unsafe impl<A> ReaderArena for BuilderArenaImpl<A>
 where
     A: Allocator,
 {
     fn get_segment(&self, id: u32) -> Result<(*const u8, u32)> {
         if (id as usize) < self.inner.segments.len() {
             let seg = &self.inner.segments[id as usize];
-            Ok((seg.ptr, seg.allocated))
+            Ok((seg.ptr.as_ptr(), seg.allocated))
         } else {
             Err(Error::from_kind(ErrorKind::InvalidSegmentId(id)))
         }
@@ -337,7 +360,14 @@ where
         start: *const u8,
         offset_in_words: i32,
     ) -> Result<*const u8> {
-        unsafe { Ok(start.offset((i64::from(offset_in_words) * BYTES_PER_WORD as i64) as isize)) }
+        unsafe {
+            Ok(start.offset(
+                isize::try_from(
+                    i64::from(offset_in_words) * i64::try_from(BYTES_PER_WORD).unwrap(),
+                )
+                .unwrap(),
+            ))
+        }
     }
 
     fn contains_interval(&self, _id: u32, _start: *const u8, _size: usize) -> Result<()> {
@@ -350,6 +380,14 @@ where
 
     fn nesting_limit(&self) -> i32 {
         0x7fffffff
+    }
+
+    fn size_in_words(&self) -> usize {
+        let mut result = 0;
+        for ii in 0..self.inner.segments.len() {
+            result += self.inner.segments[ii].allocated as usize
+        }
+        result
     }
 }
 
@@ -384,7 +422,7 @@ where
 
     fn allocate_anywhere(&mut self, amount: u32) -> (SegmentId, u32) {
         // first try the existing segments, then try allocating a new segment.
-        let allocated_len = self.segments.len() as u32;
+        let allocated_len = u32::try_from(self.segments.len()).unwrap();
         for segment_id in 0..allocated_len {
             if let Some(idx) = self.allocate(segment_id, amount) {
                 return (segment_id, idx);
@@ -421,11 +459,11 @@ where
 
     fn get_segment_mut(&mut self, id: u32) -> (*mut u8, u32) {
         let seg = &self.segments[id as usize];
-        (seg.ptr, seg.capacity)
+        (seg.ptr.as_ptr(), seg.capacity)
     }
 }
 
-impl<A> BuilderArena for BuilderArenaImpl<A>
+unsafe impl<A> BuilderArena for BuilderArenaImpl<A>
 where
     A: Allocator,
 {
@@ -457,7 +495,7 @@ where
 
 pub struct NullArena;
 
-impl ReaderArena for NullArena {
+unsafe impl ReaderArena for NullArena {
     fn get_segment(&self, _id: u32) -> Result<(*const u8, u32)> {
         Err(Error::from_kind(ErrorKind::TriedToReadFromNullArena))
     }
@@ -468,7 +506,8 @@ impl ReaderArena for NullArena {
         start: *const u8,
         offset_in_words: i32,
     ) -> Result<*const u8> {
-        unsafe { Ok(start.add(offset_in_words as usize * BYTES_PER_WORD)) }
+        let offset_in_bytes = (offset_in_words as i64) * i64::try_from(BYTES_PER_WORD).unwrap();
+        unsafe { Ok(start.offset(isize::try_from(offset_in_bytes).unwrap())) }
     }
 
     fn contains_interval(&self, _id: u32, _start: *const u8, _size: usize) -> Result<()> {
@@ -481,5 +520,65 @@ impl ReaderArena for NullArena {
 
     fn nesting_limit(&self) -> i32 {
         0x7fffffff
+    }
+
+    fn size_in_words(&self) -> usize {
+        0
+    }
+}
+
+/// An arena designed for the specific case of reading messages from single-segment
+/// `Word` arrays in generated code, including constants and raw schema nodes. Performs
+/// bounds checking, so its constructor does not need to be marked `unsafe`. Does
+/// *not* enforce a read limit or a nesting limit.
+pub struct GeneratedCodeArena {
+    pub(crate) words: &'static [crate::Word],
+}
+
+impl GeneratedCodeArena {
+    pub const fn new(words: &'static [crate::Word]) -> Self {
+        assert!((words.len() as u64) < u32::MAX as u64);
+        Self { words }
+    }
+}
+
+unsafe impl ReaderArena for GeneratedCodeArena {
+    fn get_segment(&self, id: u32) -> Result<(*const u8, u32)> {
+        if id == 0 {
+            Ok((
+                self.words.as_ptr() as *const _,
+                u32::try_from(self.words.len()).unwrap(),
+            ))
+        } else {
+            Err(Error::from_kind(ErrorKind::InvalidSegmentId(id)))
+        }
+    }
+
+    fn contains_interval(&self, id: u32, start: *const u8, size_in_words: usize) -> Result<()> {
+        let (segment_start, segment_len) = self.get_segment(id)?;
+        let this_start: usize = segment_start as usize;
+        let this_size: usize = segment_len as usize * BYTES_PER_WORD;
+        let start = start as usize;
+        let size = size_in_words * BYTES_PER_WORD;
+
+        if !(start >= this_start && start - this_start + size <= this_size) {
+            Err(Error::from_kind(
+                ErrorKind::MessageContainsOutOfBoundsPointer,
+            ))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn amplified_read(&self, _virtual_amount: u64) -> Result<()> {
+        Ok(())
+    }
+
+    fn nesting_limit(&self) -> i32 {
+        0x7fffffff
+    }
+
+    fn size_in_words(&self) -> usize {
+        self.words.len()
     }
 }

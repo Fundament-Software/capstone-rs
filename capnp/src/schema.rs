@@ -164,9 +164,19 @@ fn dynamic_annotation_marker(_: Option<u16>, _: u32) -> crate::introspect::Type 
 
 #[cfg(all(feature = "std", feature = "alloc"))]
 impl DynamicSchema {
+    fn get_field_name(field: crate::schema_capnp::field::Reader<'_>) -> crate::Result<&str> {
+        Ok(field.get_name()?.to_str()?)
+    }
+
+    fn get_enumerant_name(
+        enumerant: crate::schema_capnp::enumerant::Reader<'_>,
+    ) -> crate::Result<&str> {
+        Ok(enumerant.get_name()?.to_str()?)
+    }
+
     fn get_indexes(
         st: crate::schema_capnp::node::struct_::Reader,
-    ) -> (&'static mut [u16], &'static mut [u16]) {
+    ) -> (&'static mut [u16], &'static mut [u16], &'static mut [u16]) {
         let mut union_member_indexes = vec![];
         let mut nonunion_member_indexes = vec![];
         for (index, field) in st.get_fields().unwrap().iter().enumerate() {
@@ -185,11 +195,26 @@ impl DynamicSchema {
         let members_by_discriminant: &'static mut [u16] =
             Box::leak(members_by_discriminant.into_boxed_slice());
 
-        (nonunion_member_indexes, members_by_discriminant)
+        let mut members_by_name = Vec::new();
+        for (index, field) in st.get_fields().unwrap().iter().enumerate() {
+            if let Ok(name) = Self::get_field_name(field) {
+                members_by_name.push((name, index as u16));
+            }
+        }
+        members_by_name.sort_by_key(|k| k.0);
+        let members_by_name: Vec<u16> = members_by_name.iter().map(|(_, d)| *d).collect();
+
+        let members_by_name: &'static mut [u16] = Box::leak(members_by_name.into_boxed_slice());
+
+        (
+            nonunion_member_indexes,
+            members_by_discriminant,
+            members_by_name,
+        )
     }
 
     // Capnproto-rust doesn't believe in lifetimes so we get to do manual memory management! IN RUST!
-    fn leak_chunk<T: crate::traits::SetPointerBuilder>(
+    fn leak_chunk<R: crate::traits::Owned, T: crate::traits::SetterInput<R>>(
         value: T,
         total_size: crate::MessageSize,
     ) -> Result<&'static mut [crate::Word]> {
@@ -236,19 +261,24 @@ impl DynamicSchema {
                 // Deliberately leak these, intended to be cleaned up in DynamicSchema's Drop
                 // if we encounter an error after creating these but before the DynamicSchema is created
                 // these leak forever :(
+
                 let leak = Self::leak_chunk(*node, node.total_size()?)?;
-                let (nonunion_member_indexes, members_by_discriminant) = Self::get_indexes(st);
+                let (nonunion_member_indexes, members_by_discriminant, members_by_name) =
+                    Self::get_indexes(st);
+
+                let arena = Box::new(crate::private::arena::GeneratedCodeArena::new(leak));
                 let raw = Box::leak(Box::new(introspect::RawStructSchema {
-                    encoded_node: leak,
+                    arena: Box::leak(arena),
                     nonunion_members: nonunion_member_indexes,
                     members_by_discriminant,
+                    members_by_name,
                 }));
 
                 let schema = crate::introspect::RawBrandedStructSchema {
                     generic: raw,
                     field_types: dynamic_field_marker,
                     annotation_types: dynamic_annotation_marker,
-                    dynamic_schema: Some(token),
+                    type_id: Err(token),
                 };
 
                 nodes.insert(id, TypeVariant::Struct(schema));
@@ -312,10 +342,11 @@ impl DynamicSchema {
             }
             node::Enum(_) => {
                 let leak = Self::leak_chunk(*node, node.total_size()?)?;
+                let arena = Box::new(crate::private::arena::GeneratedCodeArena::new(leak));
                 nodes.insert(
                     id,
                     TypeVariant::Enum(RawEnumSchema {
-                        encoded_node: leak,
+                        arena: Box::leak(arena),
                         annotation_types: dynamic_annotation_marker,
                     }),
                 );
@@ -496,13 +527,16 @@ impl std::ops::Drop for DynamicSchema {
         for v in nodes.values_mut() {
             match v {
                 TypeVariant::Struct(s) => {
-                    free_as_box(&mut &s.generic.encoded_node);
+                    free_as_box(&mut &s.generic.arena.words);
+                    free_as_box(&mut &s.generic.arena);
                     free_as_box(&mut &s.generic.members_by_discriminant);
+                    free_as_box(&mut &s.generic.members_by_name);
                     free_as_box(&mut &s.generic.nonunion_members);
                     free_as_box(&mut &s.generic);
                 }
                 TypeVariant::Enum(e) => {
-                    free_as_box(&mut &e.encoded_node);
+                    free_as_box(&mut &e.arena.words);
+                    free_as_box(&mut &e.arena);
                 }
                 TypeVariant::Capability(c) => {
                     free_as_box(&mut &c.encoded_node);
@@ -523,14 +557,11 @@ pub struct StructSchema {
 
 impl StructSchema {
     pub fn new(raw: RawBrandedStructSchema) -> Self {
-        let proto =
-            crate::any_pointer::Reader::new(unsafe {
-                layout::PointerReader::get_root_unchecked(
-                    raw.generic.encoded_node.as_ptr() as *const u8
-                )
-            })
-            .get_as()
-            .unwrap();
+        let proto = crate::any_pointer::Reader::new(
+            layout::PointerReader::get_root_from_arena(raw.generic.arena).unwrap(),
+        )
+        .get_as()
+        .unwrap();
         Self { raw, proto }
     }
 
@@ -561,11 +592,23 @@ impl StructSchema {
         }
     }
 
-    /// Looks up a field by name. Returns `None` if no matching field is found.
+    /// Looks up a field by name using binary search. Returns `None` if no matching field is found.
     pub fn find_field_by_name(&self, name: &str) -> Result<Option<Field>> {
-        for field in self.get_fields()? {
-            if field.get_proto().get_name()? == name {
-                return Ok(Some(field));
+        let fields = self.get_fields()?;
+        let mut lower: usize = 0;
+        let mut upper: usize = self.raw.generic.members_by_name.len();
+
+        while lower < upper {
+            let mid: usize = (lower + upper) / 2;
+            let candidate_index = self.raw.generic.members_by_name[mid];
+            let candidate_name = fields.get(candidate_index).get_proto().get_name()?;
+
+            use core::cmp::Ordering;
+            match (&name).partial_cmp(&candidate_name) {
+                Some(Ordering::Equal) => return Ok(Some(fields.get(candidate_index))),
+                Some(Ordering::Greater) => lower = mid + 1,
+                Some(Ordering::Less) => upper = mid,
+                None => unreachable!(),
             }
         }
         Ok(None)
@@ -621,11 +664,37 @@ impl From<RawBrandedStructSchema> for StructSchema {
     }
 }
 
+impl ::core::cmp::PartialEq for StructSchema {
+    fn eq(&self, other: &Self) -> bool {
+        self.raw == other.raw
+    }
+}
+
+impl ::core::cmp::Eq for StructSchema {}
+
+impl ::core::hash::Hash for StructSchema {
+    fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+        self.raw.hash(state);
+    }
+}
+
+impl ::core::fmt::Debug for StructSchema {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        // Two schemas with the same display name are unequal if their brandings
+        // differ, so also include the type id.
+        match self.proto.get_display_name().map(|n| n.to_str()) {
+            Ok(Ok(name)) => write!(f, "StructSchema({name}, {:?})", self.raw.type_id),
+            _ => write!(f, "StructSchema({:?})", self.raw),
+        }
+    }
+}
+
 /// A field of a struct, with generics applied.
 #[derive(Clone, Copy)]
 pub struct Field {
     proto: field::Reader<'static>,
     index: u16,
+    ty: introspect::Type,
     pub(crate) parent: StructSchema,
 }
 
@@ -672,34 +741,7 @@ impl Field {
     }
 
     pub fn get_type(&self) -> introspect::Type {
-        #[allow(unpredictable_function_pointer_comparisons)]
-        if self.parent.raw.field_types == dynamic_field_marker {
-            #[cfg(all(feature = "std", feature = "alloc"))]
-            for (index, field) in self.parent.get_fields().unwrap().iter().enumerate() {
-                if index as u16 == self.index {
-                    return match field.get_proto().which().unwrap() {
-                        field::Slot(slot) => Self::resolve_type_reader(
-                            &slot.get_type().unwrap(),
-                            self.parent.raw.dynamic_schema.unwrap(),
-                        )
-                        .unwrap(),
-                        field::Group(group) => {
-                            let token = self.parent.raw.dynamic_schema.unwrap();
-                            let variant = get_type_variant(&token, group.get_type_id()).unwrap();
-                            match variant {
-                                TypeVariant::Struct(s) => TypeVariant::Struct(s),
-                                _ => panic!("Found group type that wasn't a struct"),
-                            }
-                        }
-                    }
-                    .into();
-                }
-            }
-
-            panic!("Could not find type!");
-        } else {
-            (self.parent.raw.field_types)(self.index)
-        }
+        self.ty
     }
 
     pub fn get_index(&self) -> u16 {
@@ -715,6 +757,28 @@ impl Field {
     }
 }
 
+impl ::core::cmp::PartialEq for Field {
+    fn eq(&self, other: &Self) -> bool {
+        self.parent == other.parent && self.index == other.index
+    }
+}
+impl ::core::cmp::Eq for Field {}
+impl ::core::hash::Hash for Field {
+    fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+        self.parent.hash(state);
+        self.index.hash(state);
+    }
+}
+
+impl ::core::fmt::Debug for Field {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        match self.proto.get_name().map(|n| n.to_str()) {
+            Ok(Ok(name)) => write!(f, "Field({name}, {:?})", self.parent),
+            _ => write!(f, "Field(index {}, {:?})", self.index, self.parent),
+        }
+    }
+}
+
 /// A list of fields of a struct, with generics applied.
 #[derive(Clone, Copy)]
 pub struct FieldList {
@@ -724,7 +788,7 @@ pub struct FieldList {
 
 impl FieldList {
     pub fn len(&self) -> u16 {
-        self.fields.len() as u16
+        self.fields.len().try_into().unwrap()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -735,6 +799,7 @@ impl FieldList {
         Field {
             proto: self.fields.get(index as u32),
             index,
+            ty: (self.parent.raw.field_types)(index),
             parent: self.parent,
         }
     }
@@ -769,7 +834,7 @@ pub struct FieldSubset {
 
 impl FieldSubset {
     pub fn len(&self) -> u16 {
-        self.indices.len() as u16
+        self.indices.len().try_into().unwrap()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -781,6 +846,7 @@ impl FieldSubset {
         Field {
             proto: self.fields.get(index as u32),
             index,
+            ty: (self.parent.raw.field_types)(index),
             parent: self.parent,
         }
     }
@@ -814,9 +880,9 @@ pub struct EnumSchema {
 
 impl EnumSchema {
     pub fn new(raw: RawEnumSchema) -> Self {
-        let proto = crate::any_pointer::Reader::new(unsafe {
-            layout::PointerReader::get_root_unchecked(raw.encoded_node.as_ptr() as *const u8)
-        })
+        let proto = crate::any_pointer::Reader::new(
+            layout::PointerReader::get_root_from_arena(raw.arena).unwrap(),
+        )
         .get_as()
         .unwrap();
         Self { raw, proto }
@@ -852,6 +918,29 @@ impl From<RawEnumSchema> for EnumSchema {
     }
 }
 
+impl ::core::cmp::PartialEq for EnumSchema {
+    fn eq(&self, other: &Self) -> bool {
+        self.raw == other.raw
+    }
+}
+
+impl ::core::cmp::Eq for EnumSchema {}
+
+impl ::core::hash::Hash for EnumSchema {
+    fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+        self.raw.hash(state);
+    }
+}
+
+impl ::core::fmt::Debug for EnumSchema {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        match self.proto.get_display_name().map(|n| n.to_str()) {
+            Ok(Ok(name)) => write!(f, "EnumSchema({name})"),
+            _ => write!(f, "EnumSchema({:?})", self.raw),
+        }
+    }
+}
+
 /// An enumerant, with generics applied. (Generics may affect types of annotations.)
 #[derive(Clone, Copy)]
 pub struct Enumerant {
@@ -882,6 +971,28 @@ impl Enumerant {
     }
 }
 
+impl ::core::cmp::PartialEq for Enumerant {
+    fn eq(&self, other: &Self) -> bool {
+        self.parent == other.parent && self.ordinal == other.ordinal
+    }
+}
+impl ::core::cmp::Eq for Enumerant {}
+impl ::core::hash::Hash for Enumerant {
+    fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+        self.parent.hash(state);
+        self.ordinal.hash(state);
+    }
+}
+
+impl ::core::fmt::Debug for Enumerant {
+    fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
+        match self.proto.get_name().map(|n| n.to_str()) {
+            Ok(Ok(name)) => write!(f, "Enumerant({name}, {:?})", self.parent),
+            _ => write!(f, "Enumerant(ordinal {}, {:?})", self.ordinal, self.parent),
+        }
+    }
+}
+
 /// A list of enumerants.
 #[derive(Clone, Copy)]
 pub struct EnumerantList {
@@ -891,7 +1002,7 @@ pub struct EnumerantList {
 
 impl EnumerantList {
     pub fn len(&self) -> u16 {
-        self.enumerants.len() as u16
+        self.enumerants.len().try_into().unwrap()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -958,6 +1069,9 @@ pub struct AnnotationList {
     get_annotation_type: fn(Option<u16>, u32) -> introspect::Type,
 }
 
+pub const EMPTY_ARENA: crate::private::arena::GeneratedCodeArena =
+    crate::private::arena::GeneratedCodeArena::new(&[]);
+
 impl AnnotationList {
     pub fn len(&self) -> u32 {
         self.annotations.len()
@@ -992,18 +1106,14 @@ impl AnnotationList {
                     todo!();
                 }
                 crate::schema_capnp::value::Which::Enum(_) => TypeVariant::Enum(RawEnumSchema {
-                    encoded_node: &[],
+                    arena: &EMPTY_ARENA,
                     annotation_types: dynamic_annotation_marker,
                 }),
                 crate::schema_capnp::value::Which::Struct(_) => {
                     todo!();
                 }
                 crate::schema_capnp::value::Which::Interface(_) => {
-                    TypeVariant::Capability(RawCapabilitySchema {
-                        encoded_node: &[],
-                        params_types: dynamic_struct_marker,
-                        result_types: dynamic_struct_marker,
-                    })
+                    TypeVariant::Capability(RawCapabilitySchema::empty())
                 }
                 crate::schema_capnp::value::Which::AnyPointer(_) => TypeVariant::AnyPointer,
             }
@@ -1090,5 +1200,169 @@ impl CapabilitySchema {
 impl From<RawCapabilitySchema> for CapabilitySchema {
     fn from(re: RawCapabilitySchema) -> CapabilitySchema {
         CapabilitySchema::new(re)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::introspect::Introspect;
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn fields_can_be_hashed() {
+        let crate::introspect::TypeVariant::Struct(struct_schema) =
+            crate::schema_capnp::node::Owned::introspect().which()
+        else {
+            panic!("Expected a struct schema");
+        };
+
+        let struct_schema = crate::schema::StructSchema::new(struct_schema);
+
+        let display_name = struct_schema.get_field_by_name("displayName").unwrap();
+        let id = struct_schema.get_field_by_name("id").unwrap();
+
+        let mut map = std::collections::HashMap::new();
+        map.insert(display_name, 1);
+        map.insert(id, 2);
+
+        assert_eq!(map.get(&display_name), Some(&1));
+        assert_eq!(map.get(&id), Some(&2));
+        assert_eq!(
+            map.get(&struct_schema.get_field_by_name("displayName").unwrap()),
+            Some(&1)
+        );
+        assert_eq!(
+            map.get(&struct_schema.get_field_by_name("id").unwrap()),
+            Some(&2)
+        );
+    }
+
+    #[test]
+    fn fields_can_be_compared() {
+        let crate::introspect::TypeVariant::Struct(struct_schema) =
+            crate::schema_capnp::node::Owned::introspect().which()
+        else {
+            panic!("Expected a struct schema");
+        };
+
+        let struct_schema = crate::schema::StructSchema::new(struct_schema);
+
+        let display_name = struct_schema.get_field_by_name("displayName").unwrap();
+        let id = struct_schema.get_field_by_name("id").unwrap();
+
+        assert_eq!(display_name, display_name);
+        assert_eq!(
+            display_name,
+            struct_schema.get_field_by_name("displayName").unwrap()
+        );
+        assert_eq!(id, id);
+        assert_eq!(id, struct_schema.get_field_by_name("id").unwrap());
+
+        assert_ne!(display_name, id);
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn schemas_can_be_hashed() {
+        let node_schema = {
+            let crate::introspect::TypeVariant::Struct(schema) =
+                crate::schema_capnp::node::Owned::introspect().which()
+            else {
+                panic!("Expected a struct schema");
+            };
+
+            crate::schema::StructSchema::new(schema)
+        };
+        let cgr_schema = {
+            let crate::introspect::TypeVariant::Struct(schema) =
+                crate::schema_capnp::code_generator_request::Owned::introspect().which()
+            else {
+                panic!("Expected a struct schema");
+            };
+            crate::schema::StructSchema::new(schema)
+        };
+
+        let mut map = std::collections::HashMap::new();
+        map.insert(node_schema, 1);
+        map.insert(cgr_schema, 2);
+
+        assert_eq!(map.get(&node_schema), Some(&1));
+        assert_eq!(map.get(&cgr_schema), Some(&2));
+    }
+
+    #[test]
+    fn schemas_can_be_compared() {
+        let node_schema = {
+            let crate::introspect::TypeVariant::Struct(schema) =
+                crate::schema_capnp::node::Owned::introspect().which()
+            else {
+                panic!("Expected a struct schema");
+            };
+
+            crate::schema::StructSchema::new(schema)
+        };
+        let cgr_schema = {
+            let crate::introspect::TypeVariant::Struct(schema) =
+                crate::schema_capnp::code_generator_request::Owned::introspect().which()
+            else {
+                panic!("Expected a struct schema");
+            };
+            crate::schema::StructSchema::new(schema)
+        };
+
+        assert_eq!(node_schema, node_schema);
+        assert_eq!(cgr_schema, cgr_schema);
+        assert_ne!(node_schema, cgr_schema);
+    }
+
+    #[test]
+    fn enum_schemas_can_be_compared() {
+        let crate::introspect::TypeVariant::Enum(raw) =
+            crate::schema_capnp::ElementSize::introspect().which()
+        else {
+            panic!("Expected an enum schema");
+        };
+        let schema = crate::schema::EnumSchema::new(raw);
+
+        assert_eq!(schema, crate::schema::EnumSchema::new(raw));
+
+        let enumerants = schema.get_enumerants().unwrap();
+        assert_eq!(enumerants.get(0), enumerants.get(0));
+        assert_ne!(enumerants.get(0), enumerants.get(1));
+    }
+
+    #[cfg(feature = "std")]
+    #[test]
+    fn enumerants_can_be_hashed() {
+        let crate::introspect::TypeVariant::Enum(raw) =
+            crate::schema_capnp::ElementSize::introspect().which()
+        else {
+            panic!("Expected an enum schema");
+        };
+        let schema = crate::schema::EnumSchema::new(raw);
+        let enumerants = schema.get_enumerants().unwrap();
+
+        let mut map = std::collections::HashMap::new();
+        map.insert(enumerants.get(0), 0);
+        map.insert(enumerants.get(1), 1);
+
+        assert_eq!(map.get(&enumerants.get(0)), Some(&0));
+        assert_eq!(map.get(&enumerants.get(1)), Some(&1));
+    }
+
+    #[test]
+    fn type_variants_can_be_compared() {
+        use crate::introspect::TypeVariant;
+
+        assert_eq!(u32::introspect().which(), TypeVariant::UInt32);
+        assert_ne!(u32::introspect().which(), TypeVariant::Int32);
+        assert_eq!(
+            crate::schema_capnp::node::Owned::introspect().which(),
+            crate::schema_capnp::node::Owned::introspect().which()
+        );
+        assert_ne!(
+            crate::schema_capnp::node::Owned::introspect().which(),
+            crate::schema_capnp::code_generator_request::Owned::introspect().which()
+        );
     }
 }

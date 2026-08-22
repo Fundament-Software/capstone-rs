@@ -691,6 +691,19 @@ struct TestConstants {
 
 const globalInt :UInt32 = 12345;
 
+struct TestFloatConsts {
+  const a :Float32 = inf;
+  const b :Float32 = -inf;
+  const c :Float32 = nan;
+
+  const x :Float64 = inf;
+  const y :Float64 = -inf;
+  const z :Float64 = nan;
+
+  const pi32 : Float32 = 3.14159265358979323846264338327950288;
+  const pi64 : Float64 = 3.14159265358979323846264338327950288;
+}
+
 interface TestInterface {
    foo @0 (i :UInt32, j :Bool) -> (x : Text);
    bar @1 () -> ();
@@ -702,6 +715,10 @@ interface TestExtends extends(TestInterface) {
    qux @0 ();
    corge @1 TestBigStruct -> ();
    grault @2 () -> TestBigStruct;
+
+   # Two methods whose names deliberately clash with TestInterface methods.
+   bar @3 () -> ();
+   foo @4 (i :Text) -> (x : UInt32);
 }
 
 struct TestCapabilityList {
@@ -802,14 +819,13 @@ struct Map(Key, Value) {
   }
 }
 
-interface GenericBase(T) {
-  foo @0 (t :T) -> ();
-  baz @1 [V] (v: V) -> ();
-}
+interface GenericBase(T) {}
 interface GenericExtend extends(GenericBase(Data)) {
-  bar @0 () -> ();
+   foo @0 () -> ();
 }
-interface GenericExtend2 extends (GenericBase(GenericBase(Data))) {}
+interface GenericExtend2 extends (GenericBase(GenericBase(Data))) {
+   foo @0 () -> ();
+}
 
 struct TestNameAnnotation $Rust.name("RenamedStruct") {
   union {
@@ -852,4 +868,8 @@ struct Issue260(T, Q) {
     val1 @2 :Q;
     val2 @3 :Int8;
   }
+}
+
+interface TestStream {
+  send @0 (data : Data) -> stream;
 }

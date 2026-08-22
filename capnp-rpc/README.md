@@ -39,13 +39,17 @@ fn main() {
 }
 ```
 
-and you can include the generated code in your project like this:
+Such a command generates a `foo_capnp.rs` file in the `OUT_DIR`
+directory provided by `cargo`.
+
+To import the generated code, add a line like this at the root of your crate:
 
 ```rust
-pub mod foo_capnp {
-  include!(concat!(env!("OUT_DIR"), "/foo_capnp.rs"));
-}
+capnp::generated_code!(pub mod foo_capnp);
 ```
+
+(If you want to import the code at a non-toplevel module location, then you will
+need to use the `$Rust.parentModule` annotation, defined in `rust.capnp`.)
 
 ## Calling methods on an RPC object
 
@@ -79,15 +83,14 @@ To create an RPC-enabled object, you must implement that trait.
 struct MyBar {}
 
 impl ::foo_capnp::bar::Server for MyBar {
-     fn baz(&mut self,
+     async fn baz(
+            self: Rc<Self>,
             params: ::foo_capnp::bar::BazParams,
             mut results: ::foo_capnp::bar::BazResults)
-        -> Promise<(), ::capnp::Error>
+        -> Result<(), ::capnp::Error>
      {
-         // `pry!` is defined in capnp_rpc. It's analogous to `try!`.
-         results.get().set_y(pry!(params.get()).get_x() + 1);
-
-         Promise::ok(())
+         results.get().set_y(params.get()?.get_x() + 1);
+         Ok(())
      }
 }
 ```
@@ -105,37 +108,37 @@ and you can pass it in RPC method arguments and results.
 ## Async methods
 
 The methods of the generated `Server` traits return
-a value of type `Promise<(), ::capnp::Error>`.
-A `Promise` is either an immediate value, constructed by `Promise::ok()` or
-`Promise::err()`, or it is a wrapper of a `Future`, constructed by
-`Promise::from_future()`.
-The results will be sent back to the method's caller once two things have happened:
+a value of type `impl Future<Output = Result<(), ::capnp::Error>>`.
+As you have seen above,
+these can be implented as `async fn` methods returning `Result<(), ::capnp::Error>`.
+
+The RPC response will be sent back to the method's caller once two things have happened:
 
   1. The `Results` struct has been dropped.
-  2. The returned `Promise` has resolved.
+  2. The method's returned `Future` has resolved.
 
 Usually (1) happens before (2).
 
-Here's an example of a method implementation that does not return immediately:
+Here's an example of a method implementation that does not return immediately
+because it awaits another request:
 
 ```rust
 struct MyQux {}
 
 impl ::foo_capnp::qux::Server for MyQux {
-     fn quux(&mut self,
+     async fn quux(
+             self: Rc<Self>,
              params: ::foo_capnp::qux::QuuxParams,
              mut results: ::foo_capnp::wux::QuuxResults)
-        -> Promise<(), ::capnp::Error>
+        -> Result<(), ::capnp::Error>
      {
          // Call `baz()` on the passed-in client.
-
-         let bar_client = pry!(pry!(params.get()).get_bar());
+         let bar_client = params.get()?.get_bar()?;
          let mut req = bar_client.baz_request();
          req.get().set_x(42);
-         Promise::from_future(req.send().promise.and_then(move |response| {
-             results.get().set_y(response.get()?.get_y());
-             Ok(())
-         }))
+         let response = req.send().promise.await?; // <-- await
+         results.get().set_y(response.get()?.get_y());
+         Ok(())
      }
 }
 ```

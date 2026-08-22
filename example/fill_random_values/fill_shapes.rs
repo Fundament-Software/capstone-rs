@@ -1,13 +1,8 @@
 use capnp::dynamic_value;
 use fill_random_values::Filler;
 
-pub mod shapes_capnp {
-    include!(concat!(env!("OUT_DIR"), "/shapes_capnp.rs"));
-}
-
-pub mod fill_capnp {
-    include!(concat!(env!("OUT_DIR"), "/fill_capnp.rs"));
-}
+capnp::generated_code!(pub mod shapes_capnp);
+capnp::generated_code!(pub mod fill_capnp);
 
 #[derive(Clone, Copy, Debug)]
 struct Viewport {
@@ -42,7 +37,7 @@ impl Viewport {
         let (ulx, uly) = self.upper_left();
         Self {
             x: ulx + (x * self.width),
-            y: uly + (y * self.width),
+            y: uly + (y * self.height),
             width: w * self.width,
             height: h * self.height,
         }

@@ -1,5 +1,4 @@
 [package]
-
 name = "capstone"
 version.workspace = true
 authors = [
@@ -13,7 +12,6 @@ documentation.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 readme = "README.md"
-
 keywords = ["encoding", "protocol", "serialization"]
 
 [lib]
@@ -21,7 +19,6 @@ name = "capnp"
 
 [dependencies]
 proptest = { version = "1.11", optional = true }
-
 embedded-io = { version = "0.7", default-features = false, optional = true }
 smallvec = "1.13.1"
 papaya = "0.2"
@@ -48,11 +45,7 @@ std = ["embedded-io?/std"]
 # If enabled, ReadLimiter will use `AtomicUsize` instead of `Cell<usize>`, allowing
 # message readers to be `Sync`. Note that AtomicUsize is not supported by all
 # rustc targets.
-sync_reader = []
 
-#[lints]
-#workspace = true
+[lints]
 
-[lints.clippy]
-type_complexity = "allow"    # this should be removed in future
-missing_safety_doc = "allow" # this should be removed in future
+workspace = true

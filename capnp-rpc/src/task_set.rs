@@ -24,6 +24,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::oneshot;
 use tokio_stream::Stream;
 
 use std::cell::RefCell;
@@ -32,6 +33,7 @@ use std::rc::Rc;
 enum EnqueuedTask<E> {
     Task(Pin<Box<dyn Future<Output = Result<(), E>>>>),
     Terminate(Result<(), E>),
+    OnEmpty(oneshot::Sender<()>),
 }
 
 enum TaskInProgress<E> {
@@ -64,6 +66,7 @@ impl<E> Future for TaskInProgress<E> {
 pub struct TaskSet<E> {
     enqueued: Option<UnboundedReceiver<EnqueuedTask<E>>>,
     in_progress: FuturesUnordered<TaskInProgress<E>>,
+    on_empty_fulfillers: Vec<oneshot::Sender<()>>,
     reaper: Rc<RefCell<Box<dyn TaskReaper<E>>>>,
 }
 
@@ -81,6 +84,7 @@ where
         let set = Self {
             enqueued: Some(receiver),
             in_progress: FuturesUnordered::new(),
+            on_empty_fulfillers: vec![],
             reaper: Rc::new(RefCell::new(reaper)),
         };
 
@@ -92,6 +96,15 @@ where
         let handle = TaskSetHandle { sender };
 
         (handle, set)
+    }
+
+    fn update_on_empty_fulfillers(&mut self) {
+        // There is always the one pending() future that we added in `new()`.
+        if self.in_progress.len() <= 1 {
+            for f in std::mem::take(&mut self.on_empty_fulfillers) {
+                let _ = f.send(());
+            }
+        }
     }
 }
 
@@ -113,6 +126,14 @@ where
 
     pub fn terminate(&mut self, result: Result<(), E>) {
         let _ = self.sender.send(EnqueuedTask::Terminate(result));
+    }
+
+    /// Returns a future that finishes at the next time when the task set
+    /// is empty. If the task set is terminated, the oneshot will be canceled.
+    pub fn on_empty(&mut self) -> oneshot::Receiver<()> {
+        let (s, r) = oneshot::channel();
+        let _ = self.sender.send(EnqueuedTask::OnEmpty(s));
+        r
     }
 }
 
@@ -138,7 +159,7 @@ where
             enqueued: Some(enqueued),
             in_progress,
             reaper,
-            ..
+            on_empty_fulfillers,
         } = self.as_mut().get_mut()
         {
             loop {
@@ -163,6 +184,9 @@ where
                             }
                         }))));
                     }
+                    Poll::Ready(Some(EnqueuedTask::OnEmpty(f))) => {
+                        on_empty_fulfillers.push(f);
+                    }
                 }
             }
         }
@@ -175,9 +199,15 @@ where
                 Poll::Pending => return Poll::Pending,
                 Poll::Ready(v) => match v {
                     None => return Poll::Ready(Ok(())),
-                    Some(TaskDone::Continue) => (),
-                    Some(TaskDone::Terminate(Ok(()))) => return Poll::Ready(Ok(())),
-                    Some(TaskDone::Terminate(Err(e))) => return Poll::Ready(Err(e)),
+                    Some(TaskDone::Continue) => self.update_on_empty_fulfillers(),
+                    Some(TaskDone::Terminate(Ok(()))) => {
+                        self.on_empty_fulfillers.clear();
+                        return Poll::Ready(Ok(()));
+                    }
+                    Some(TaskDone::Terminate(Err(e))) => {
+                        self.on_empty_fulfillers.clear();
+                        return Poll::Ready(Err(e));
+                    }
                 },
             }
         }

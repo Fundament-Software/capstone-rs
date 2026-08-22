@@ -185,7 +185,8 @@ impl<'a> Builder<'a> {
     }
 }
 
-impl<'a> crate::traits::SetPointerBuilder for Reader<'a> {
+impl<'a> crate::traits::SetterInput<Owned> for Reader<'a> {
+    #[inline]
     fn set_pointer_builder<'b>(
         mut pointer: crate::private::layout::PointerBuilder<'b>,
         value: Reader<'a>,
@@ -214,6 +215,14 @@ impl<'a> From<Reader<'a>> for crate::dynamic_value::Reader<'a> {
     }
 }
 
+impl<'a> crate::dynamic_value::DowncastReader<'a> for Reader<'a> {
+    fn downcast_reader(v: crate::dynamic_value::Reader<'a>) -> Self {
+        let dl: crate::dynamic_list::Reader = v.downcast();
+        assert!(dl.element_type() == crate::introspect::TypeVariant::Data.into());
+        Reader { reader: dl.reader }
+    }
+}
+
 impl<'a> From<Builder<'a>> for crate::dynamic_value::Builder<'a> {
     fn from(t: Builder<'a>) -> crate::dynamic_value::Builder<'a> {
         crate::dynamic_value::Builder::List(crate::dynamic_list::Builder {
@@ -223,11 +232,18 @@ impl<'a> From<Builder<'a>> for crate::dynamic_value::Builder<'a> {
     }
 }
 
+impl<'a> crate::dynamic_value::DowncastBuilder<'a> for Builder<'a> {
+    fn downcast_builder(v: crate::dynamic_value::Builder<'a>) -> Self {
+        let dl: crate::dynamic_list::Builder = v.downcast();
+        assert!(dl.element_type() == crate::introspect::TypeVariant::Data.into());
+        Builder {
+            builder: dl.builder,
+        }
+    }
+}
+
 impl core::fmt::Debug for Reader<'_> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::fmt::Debug::fmt(
-            &::core::convert::Into::<crate::dynamic_value::Reader<'_>>::into(*self),
-            f,
-        )
+        core::fmt::Debug::fmt(&crate::dynamic_value::Reader::from(*self), f)
     }
 }

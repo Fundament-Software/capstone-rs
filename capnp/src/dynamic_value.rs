@@ -70,6 +70,18 @@ impl<'a> Reader<'a> {
     pub fn downcast<T: DowncastReader<'a>>(self) -> T {
         T::downcast_reader(self)
     }
+
+    /// Downcasts the `Reader` into a specific struct type. Panics if the
+    /// expected type does not match the value.
+    ///
+    /// Design note: instead of this method, it would be better to add a blanket impl
+    /// of the `DowncastBuilder` trait that covered every struct type. Unfortunately,
+    /// the current way the `Introspect` and `OwnedStruct` traits are set up does not
+    /// seem to allow this.
+    pub fn downcast_struct<T: crate::traits::OwnedStruct>(self) -> T::Reader<'a> {
+        let sr: dynamic_struct::Reader = self.downcast();
+        sr.downcast::<T>()
+    }
 }
 
 impl<'a> From<()> for Reader<'a> {
@@ -213,10 +225,22 @@ impl<'a> Builder<'a> {
         }
     }
 
-    /// Downcasts the `Reader` into a more specific type. Panics if the
+    /// Downcasts the `Builder` into a more specific type. Panics if the
     /// expected type does not match the value.
     pub fn downcast<T: DowncastBuilder<'a>>(self) -> T {
         T::downcast_builder(self)
+    }
+
+    /// Downcasts the `Builder` into a specific struct type. Panics if the
+    /// expected type does not match the value.
+    ///
+    /// Design note: instead of this method, it would be better to add a blanket impl
+    /// of the `DowncastBuilder` trait that covered every struct type. Unfortunately,
+    /// the current way the `Introspect` and `OwnedStruct` traits are set up does not
+    /// seem to allow this.
+    pub fn downcast_struct<T: crate::traits::OwnedStruct>(self) -> T::Builder<'a> {
+        let sb: dynamic_struct::Builder = self.downcast();
+        sb.downcast::<T>()
     }
 }
 

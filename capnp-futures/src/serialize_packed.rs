@@ -56,6 +56,9 @@ where
     // number of bytes that we actually want to read into the buffer
     buf_size: usize,
 
+    // bit position within the tag byte, used by the DrainingBuffer stage
+    bitnum: usize,
+
     num_run_bytes_remaining: usize,
 }
 
@@ -72,6 +75,7 @@ where
             buf: [0; 10],
             buf_pos: 0,
             buf_size: 10,
+            bitnum: 0,
             num_run_bytes_remaining: 0,
         }
     }
@@ -93,6 +97,7 @@ where
             buf_pos,
             num_run_bytes_remaining,
             buf_size,
+            bitnum,
             ..
         } = &mut *self;
         loop {
@@ -104,6 +109,12 @@ where
                         Poll::Pending => return Poll::Pending,
                         Poll::Ready(()) => {
                             if prev == reader.remaining() {
+                                if *buf_pos > 0 {
+                                    // We are mid-way through reading the tag word.
+                                    return Poll::Ready(Err(std::io::Error::from(
+                                        std::io::ErrorKind::UnexpectedEof,
+                                    )));
+                                }
                                 return Poll::Ready(Ok(()));
                             }
                             *buf_pos += reader.capacity() - reader.remaining();
@@ -125,6 +136,7 @@ where
                                         // there is nothing left to buffer.
                                         *stage = PackedReadStage::DrainingBuffer;
                                         *buf_pos = 1;
+                                        *bitnum = 0;
                                     }
                                 }
                             }
@@ -134,9 +146,7 @@ where
                 PackedReadStage::WritingZeroes => {
                     let num_zeroes = std::cmp::min(outbuf.remaining(), *num_run_bytes_remaining);
 
-                    for value in unsafe { outbuf.unfilled_mut().iter_mut().take(num_zeroes) } {
-                        *value = MaybeUninit::new(0_u8);
-                    }
+                    outbuf.initialize_unfilled_to(num_zeroes).fill(0);
                     outbuf.advance(num_zeroes);
                     if num_zeroes >= *num_run_bytes_remaining {
                         *buf_pos = 0;
@@ -161,23 +171,20 @@ where
                             if *buf_pos >= *buf_size {
                                 *stage = PackedReadStage::DrainingBuffer;
                                 *buf_pos = 1;
+                                *bitnum = 0;
                             }
                         }
                     }
                 }
                 PackedReadStage::DrainingBuffer => {
-                    let mut bitnum = *buf_pos - 1;
-                    while outbuf.remaining() > 0 && bitnum < 8 {
-                        let is_nonzero = (buf[0] & (1u8 << bitnum)) != 0;
-                        unsafe {
-                            outbuf.unfilled_mut()[0] =
-                                MaybeUninit::new(buf[*buf_pos] & ((-i8::from(is_nonzero)) as u8));
-                        }
-                        outbuf.advance(1);
+                    while outbuf.remaining() > 0 && *bitnum < 8 {
+                        let is_nonzero = (buf[0] & (1u8 << *bitnum)) != 0;
+                        let byte = buf[*buf_pos] & ((-i8::from(is_nonzero)) as u8);
+                        outbuf.put_slice(&[byte]);
                         *buf_pos += usize::from(is_nonzero);
-                        bitnum += 1;
+                        *bitnum += 1;
                     }
-                    if bitnum == 8 {
+                    if *bitnum == 8 {
                         // We finished the word.
                         if *buf_pos == *buf_size {
                             // There are no passthrough words.
@@ -206,12 +213,19 @@ where
                             Poll::Ready(()) => {
                                 let n = prev_bound - reader.remaining();
                                 if n == 0 {
-                                    return Poll::Ready(Ok(()));
+                                    // We are mid-way through a pass-through run.
+                                    return Poll::Ready(Err(std::io::Error::from(
+                                        std::io::ErrorKind::UnexpectedEof,
+                                    )));
                                 }
                                 if n >= *num_run_bytes_remaining {
                                     *stage = PackedReadStage::Start;
                                 }
                                 *num_run_bytes_remaining -= n;
+                                unsafe {
+                                    // Safety: we know that the inner poll_read just wrote n bytes into this buffer
+                                    outbuf.assume_init(n);
+                                }
                                 outbuf.advance(n);
                                 return Poll::Ready(Ok(()));
                             }
@@ -223,10 +237,11 @@ where
     }
 }
 
-/// Asynchronously reads a packed message from `read`. Returns `None` if `read`
-/// has zero bytes left (i.e. is at end-of-file). To read a stream
-/// containing an unknown number of messages, you could call this function
-/// repeatedly until it returns `None`.
+/// Asynchronously reads a packed message from `read`.
+///
+/// Returns `None` if `read` has zero bytes left (i.e. is at end-of-file).
+/// To read a stream containing an unknown number of messages, you could call
+/// this function repeatedly until it returns `None`.
 pub async fn try_read_message<R>(
     read: R,
     options: message::ReaderOptions,
@@ -248,7 +263,9 @@ where
 {
     match try_read_message(reader, options).await? {
         Some(s) => Ok(s),
-        None => Err(capnp::Error::failed("Premature end of file".to_string())),
+        None => Err(capnp::Error::from_kind(
+            capnp::ErrorKind::PrematureEndOfFile,
+        )),
     }
 }
 
@@ -405,8 +422,8 @@ where
                     if *buf_pos == *packed_buf_size {
                         if packed_buf[0] == 0 {
                             // see how long of a run we can make
-                            let mut words_in_run = inbuf.len() / 8;
-                            for (idx, inb) in inbuf.iter().enumerate() {
+                            let mut words_in_run = (inbuf.len() / 8).min(u8::MAX.into());
+                            for (idx, inb) in inbuf[..words_in_run * 8].iter().enumerate() {
                                 if *inb != 0 {
                                     words_in_run = idx / 8;
                                     break;
@@ -418,10 +435,9 @@ where
                             // See how long of a run we can make.
                             // We look for at least two zeros because that's the point
                             // where our compression scheme becomes a net win.
-                            let mut words_in_run = inbuf.len() / 8;
-
+                            let mut words_in_run = (inbuf.len() / 8).min(u8::MAX.into());
                             let mut zero_bytes_in_word = 0;
-                            for (idx, inb) in inbuf.iter().enumerate() {
+                            for (idx, inb) in inbuf[..words_in_run * 8].iter().enumerate() {
                                 if idx % 8 == 0 {
                                     zero_bytes_in_word = 0;
                                 }
@@ -442,9 +458,12 @@ where
                     }
                 }
                 PackedWriteStage::WriteRunWordCount => {
-                    match Pin::new(&mut *inner)
-                        .poll_write(cx, &[(*run_bytes_remaining / 8) as u8])?
-                    {
+                    match Pin::new(&mut *inner).poll_write(
+                        cx,
+                        &[(*run_bytes_remaining / 8)
+                            .try_into()
+                            .expect("overflow writing run word count")],
+                    )? {
                         Poll::Pending => {
                             if inbuf_bytes_consumed == 0 {
                                 return Poll::Pending;
@@ -661,6 +680,7 @@ pub mod test {
             ],
             &[0xed, 8, 100, 6, 1, 1, 2, 0, 2, 0xd4, 1, 2, 3, 1],
         );
+        check_packing(&[0; 8], &[0, 0]);
         check_packing(&[0; 16], &[0, 1]);
         check_packing(
             &[
@@ -668,6 +688,7 @@ pub mod test {
             ],
             &[0, 2],
         );
+        check_packing(&[0; 258 * 8], &[0, 255, 0, 1]);
     }
 
     fn round_trip(
@@ -738,11 +759,82 @@ pub mod test {
         }
     }
 
+    /// Like `check_unpacks_to()`, but reads through an output buffer of `read_size` bytes,
+    /// so that a single word may take several reads to unpack.
+    fn check_unpacks_with_read_size(read_size: usize, packed: &[u8], unpacked: &[u8]) {
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(Box::pin(async {
+                let mut packed_read = PackedRead::new(packed);
+                let mut bytes: Vec<u8> = Vec::new();
+                let mut chunk = vec![0u8; read_size];
+                while bytes.len() < unpacked.len() {
+                    let n = packed_read.read(&mut chunk[..]).await.expect("reading");
+                    assert!(n > 0, "premature end of stream");
+                    bytes.extend_from_slice(&chunk[..n]);
+                }
+                assert_eq!(bytes, unpacked);
+
+                // Nothing left to read.
+                assert_eq!(packed_read.read(&mut chunk[..]).await.expect("reading"), 0);
+            }));
+    }
+
+    #[test]
+    fn unpacks_across_partial_output_buffers() {
+        // Regression test: the DrainingBuffer stage used to reconstruct its position in
+        // the tag byte from the number of nonzero bytes consumed, so an output buffer
+        // boundary in a run of zero bits (forced here by the one-byte output buffer)
+        // would cause it to emit extra zero bytes and never terminate.
+        check_unpacks_with_read_size(1, &[0x81, 42, 99], &[42, 0, 0, 0, 0, 0, 0, 99]);
+
+        // An output buffer boundary in a run of nonzero bits.
+        check_unpacks_with_read_size(
+            3,
+            &[0xff, 1, 3, 2, 4, 5, 7, 6, 8, 1, 8, 6, 7, 4, 5, 2, 3, 1],
+            &[1, 3, 2, 4, 5, 7, 6, 8, 8, 6, 7, 4, 5, 2, 3, 1],
+        );
+    }
+
+    #[test]
+    fn eof_mid_tag_word() {
+        // The stream ends after the first byte of a tag word. This used to be
+        // treated as a clean end-of-file, silently dropping the byte.
+        let words = [0x81];
+        let result = tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(Box::pin(try_read_message(&words[..], Default::default())));
+
+        match result {
+            Ok(_) => panic!("expected error"),
+            Err(e) => assert_eq!(e.kind, capnp::ErrorKind::PrematureEndOfFile),
+        }
+    }
+
+    #[test]
+    fn eof_mid_passthrough_run() {
+        tokio::runtime::Runtime::new()
+            .unwrap()
+            .block_on(Box::pin(async {
+                // The tag promises two pass-through words (16 bytes), but the stream
+                // ends after four bytes. This used to be treated as a clean end-of-file.
+                let packed = [0xff, 1, 2, 3, 4, 5, 6, 7, 8, 2, 10, 11, 12, 13];
+                let mut packed_read = PackedRead::new(&packed[..]);
+                let mut bytes: Vec<u8> = Vec::new();
+                let error = packed_read
+                    .read_to_end(&mut bytes)
+                    .await
+                    .expect_err("expected error");
+                assert_eq!(error.kind(), std::io::ErrorKind::UnexpectedEof);
+            }));
+    }
+
     #[test]
     fn read_empty() {
         let words = [];
         // Before https://github.com/capnproto/capnproto-rust/pull/446
         // this would loop forever.
+
         let message = tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(Box::pin(try_read_message(&words[..], Default::default())))
@@ -753,6 +845,7 @@ pub mod test {
     #[test]
     fn eof_mid_message() {
         let words = [0xfe, 0x3, 0x3];
+
         let result = tokio::runtime::Runtime::new()
             .unwrap()
             .block_on(Box::pin(try_read_message(&words[..], Default::default())));

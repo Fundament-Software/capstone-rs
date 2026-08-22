@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
@@ -66,16 +66,16 @@ impl Drop for SubscriptionImpl {
 impl subscription::Server for SubscriptionImpl {}
 
 struct PublisherImpl {
-    next_id: RefCell<u64>,
+    next_id: Cell<u64>,
     subscribers: Rc<RefCell<SubscriberMap>>,
 }
 
 impl PublisherImpl {
-    pub fn new() -> (Self, Rc<RefCell<SubscriberMap>>) {
+    pub(crate) fn new() -> (Self, Rc<RefCell<SubscriberMap>>) {
         let subscribers = Rc::new(RefCell::new(SubscriberMap::new()));
         (
             Self {
-                next_id: 0.into(),
+                next_id: Cell::new(0),
                 subscribers: subscribers.clone(),
             },
             subscribers,
@@ -88,10 +88,10 @@ impl publisher::Server<::capnp::text::Owned> for PublisherImpl {
         self: Rc<Self>,
         params: publisher::SubscribeParams<::capnp::text::Owned>,
         mut results: publisher::SubscribeResults<::capnp::text::Owned>,
-    ) -> Result<(), capnp::Error> {
+    ) -> Result<(), ::capnp::Error> {
         println!("subscribe");
         self.subscribers.borrow_mut().subscribers.insert(
-            *self.next_id.borrow(),
+            self.next_id.get(),
             SubscriberHandle {
                 client: params.get()?.get_subscriber()?,
                 requests_in_flight: 0,
@@ -101,11 +101,11 @@ impl publisher::Server<::capnp::text::Owned> for PublisherImpl {
         results
             .get()
             .set_subscription(capnp_rpc::new_client(SubscriptionImpl::new(
-                *self.next_id.borrow(),
+                self.next_id.get(),
                 self.subscribers.clone(),
             )));
 
-        *self.next_id.borrow_mut() += 1;
+        self.next_id.set(self.next_id.get() + 1);
         Ok(())
     }
 }
@@ -135,8 +135,8 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     stream.set_nodelay(true)?;
                     let (reader, writer) = stream.into_split();
                     let network = twoparty::VatNetwork::new(
-                        reader,
-                        writer,
+                        futures::io::BufReader::new(reader),
+                        futures::io::BufWriter::new(writer),
                         rpc_twoparty_capnp::Side::Server,
                         Default::default(),
                     );
@@ -164,10 +164,10 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if subscriber.requests_in_flight < 5 {
                             subscriber.requests_in_flight += 1;
                             let mut request = subscriber.client.push_message_request();
-                            request.get().set_message(
-                                format!("system time is: {:?}", ::std::time::SystemTime::now())[..]
-                                    .into(),
-                            )?;
+                            request.get().set_message(format!(
+                                "system time is: {:?}",
+                                ::std::time::SystemTime::now()
+                            ))?;
                             let subscribers2 = subscribers1.clone();
                             tokio::task::spawn_local(request.send().promise.map(
                                 move |r| match r {

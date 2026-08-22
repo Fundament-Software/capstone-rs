@@ -19,18 +19,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-//! Hooks for for the RPC system.
+//! Hooks for the RPC system.
 //!
 //! Roughly corresponds to capability.h in the C++ implementation.
 
 #[cfg(feature = "alloc")]
 use alloc::boxed::Box;
 #[cfg(feature = "alloc")]
-use alloc::rc::Rc;
-#[cfg(feature = "alloc")]
 use core::future::Future;
 #[cfg(feature = "alloc")]
-use core::marker::{PhantomData, Unpin};
+use core::marker::PhantomData;
 #[cfg(feature = "rpc_try")]
 use core::ops::Try;
 #[cfg(feature = "alloc")]
@@ -39,12 +37,19 @@ use core::pin::Pin;
 use core::task::Poll;
 
 use crate::any_pointer;
+use crate::introspect::RawCapabilitySchema;
 #[cfg(feature = "alloc")]
 use crate::private::capability::{ClientHook, ParamsHook, RequestHook, ResponseHook, ResultsHook};
 #[cfg(feature = "alloc")]
 use crate::traits::{Owned, Pipelined};
 #[cfg(feature = "alloc")]
 use crate::{Error, MessageSize};
+
+/// Type alias for `dyn ClientHook`. We define this here because so that generated code
+/// can avoid needing to refer to `dyn` types directly; in Rust 2015 the syntax for
+/// `dyn` types requires extra parentheses that trigger warnings in newer editions.
+#[cfg(feature = "alloc")]
+pub type DynClientHook = dyn ClientHook;
 
 /// A computation that might eventually resolve to a value of type `T` or to an error
 ///  of type `E`. Dropping the promise cancels the computation.
@@ -57,7 +62,7 @@ pub struct Promise<T, E> {
 #[cfg(feature = "alloc")]
 enum PromiseInner<T, E> {
     Immediate(Result<T, E>),
-    Deferred(Pin<Box<dyn Future<Output = core::result::Result<T, E>> + 'static>>),
+    Deferred(Pin<alloc::boxed::Box<dyn Future<Output = core::result::Result<T, E>> + 'static>>),
     Empty,
 }
 
@@ -84,7 +89,7 @@ impl<T, E> Promise<T, E> {
         F: Future<Output = core::result::Result<T, E>> + 'static,
     {
         Self {
-            inner: PromiseInner::Deferred(Box::pin(f)),
+            inner: PromiseInner::Deferred(alloc::boxed::Box::pin(f)),
         }
     }
 }
@@ -141,6 +146,15 @@ impl<A, B> Either<A, B> {
 }
 
 #[cfg(feature = "alloc")]
+impl<T, E> From<Result<T, E>> for Promise<T, E> {
+    fn from(value: Result<T, E>) -> Self {
+        Self {
+            inner: PromiseInner::Immediate(value),
+        }
+    }
+}
+
+#[cfg(feature = "alloc")]
 #[cfg(feature = "rpc_try")]
 impl<T> core::ops::Try for Promise<T, crate::Error> {
     type Output = Self;
@@ -181,7 +195,7 @@ where
 #[cfg(feature = "alloc")]
 pub struct Response<Results> {
     pub marker: PhantomData<Results>,
-    pub hook: Box<dyn ResponseHook>,
+    pub hook: alloc::boxed::Box<dyn ResponseHook>,
 }
 
 #[cfg(feature = "alloc")]
@@ -189,7 +203,7 @@ impl<Results> Response<Results>
 where
     Results: Pipelined + Owned,
 {
-    pub fn new(hook: Box<dyn ResponseHook>) -> Self {
+    pub fn new(hook: alloc::boxed::Box<dyn ResponseHook>) -> Self {
         Self {
             marker: PhantomData,
             hook,
@@ -204,7 +218,7 @@ where
 #[cfg(feature = "alloc")]
 pub struct Request<Params, Results> {
     pub marker: PhantomData<(Params, Results)>,
-    pub hook: Box<dyn RequestHook>,
+    pub hook: alloc::boxed::Box<dyn RequestHook>,
 }
 
 #[cfg(feature = "alloc")]
@@ -212,7 +226,7 @@ impl<Params, Results> Request<Params, Results>
 where
     Params: Owned,
 {
-    pub fn new(hook: Box<dyn RequestHook>) -> Self {
+    pub fn new(hook: alloc::boxed::Box<dyn RequestHook>) -> Self {
         Self {
             hook,
             marker: PhantomData,
@@ -251,16 +265,37 @@ where
     }
 }
 
+/// A method call that has not been sent yet.
+#[cfg(feature = "alloc")]
+pub struct StreamingRequest<Params> {
+    pub marker: PhantomData<Params>,
+    pub hook: alloc::boxed::Box<dyn RequestHook>,
+}
+
+#[cfg(feature = "alloc")]
+impl<Params> StreamingRequest<Params>
+where
+    Params: Owned,
+{
+    pub fn get(&mut self) -> Params::Builder<'_> {
+        self.hook.get().get_as().unwrap()
+    }
+
+    pub fn send(self) -> Promise<(), Error> {
+        self.hook.send_streaming()
+    }
+}
+
 /// The values of the parameters passed to a method call, as seen by the server.
 #[cfg(feature = "alloc")]
 pub struct Params<T> {
     pub marker: PhantomData<T>,
-    pub hook: Box<dyn ParamsHook>,
+    pub hook: alloc::boxed::Box<dyn ParamsHook>,
 }
 
 #[cfg(feature = "alloc")]
 impl<T> Params<T> {
-    pub fn new(hook: Box<dyn ParamsHook>) -> Self {
+    pub fn new(hook: alloc::boxed::Box<dyn ParamsHook>) -> Self {
         Self {
             marker: PhantomData,
             hook,
@@ -278,7 +313,7 @@ impl<T> Params<T> {
 #[cfg(feature = "alloc")]
 pub struct Results<T> {
     pub marker: PhantomData<T>,
-    pub hook: Box<dyn ResultsHook>,
+    pub hook: alloc::boxed::Box<dyn ResultsHook>,
 }
 
 #[cfg(feature = "alloc")]
@@ -286,7 +321,7 @@ impl<T> Results<T>
 where
     T: Owned,
 {
-    pub fn new(hook: Box<dyn ResultsHook>) -> Self {
+    pub fn new(hook: alloc::boxed::Box<dyn ResultsHook>) -> Self {
         Self {
             marker: PhantomData,
             hook,
@@ -300,20 +335,34 @@ where
     pub fn set(&mut self, other: T::Reader<'_>) -> crate::Result<()> {
         self.hook.get().unwrap().set_as(other)
     }
+
+    /// Call this method to signal that all of the capabilities have been filled in for this
+    /// `Results` and that pipelined calls should be allowed to start using those capabilities.
+    /// (Usually pipelined calls are enqueued until the initial call completes.)
+    pub fn set_pipeline(&mut self) -> crate::Result<()> {
+        self.hook.set_pipeline()
+    }
 }
 
 pub trait FromTypelessPipeline {
     fn new(typeless: any_pointer::Pipeline) -> Self;
 }
 
+#[cfg(feature = "alloc")]
+impl<T: FromClientHook> FromTypelessPipeline for T {
+    fn new(typeless: any_pointer::Pipeline) -> Self {
+        Self::new(typeless.as_cap())
+    }
+}
+
 /// Trait implemented (via codegen) by all user-defined capability client types.
 #[cfg(feature = "alloc")]
 pub trait FromClientHook: crate::introspect::Introspect {
     /// Wraps a client hook to create a new client.
-    fn new(hook: Box<dyn ClientHook>) -> Self;
+    fn new(hook: alloc::boxed::Box<dyn ClientHook>) -> Self;
 
     /// Unwraps client to get the underlying client hook.
-    fn into_client_hook(self) -> Box<dyn ClientHook>;
+    fn into_client_hook(self) -> alloc::boxed::Box<dyn ClientHook>;
 
     /// Gets a reference to the underlying client hook.
     fn as_client_hook(&self) -> &dyn ClientHook;
@@ -329,16 +378,38 @@ pub trait FromClientHook: crate::introspect::Introspect {
     }
 }
 
+#[cfg(feature = "alloc")]
+impl FromClientHook for alloc::boxed::Box<dyn ClientHook> {
+    fn new(hook: alloc::boxed::Box<dyn ClientHook>) -> Self {
+        hook
+    }
+
+    fn into_client_hook(self) -> alloc::boxed::Box<dyn ClientHook> {
+        self
+    }
+
+    fn as_client_hook(&self) -> &dyn ClientHook {
+        self.as_ref()
+    }
+}
+
+impl crate::introspect::Introspect for alloc::boxed::Box<dyn ClientHook> {
+    fn introspect() -> crate::introspect::Type {
+        crate::introspect::TypeVariant::Capability(crate::introspect::RawCapabilitySchema::empty())
+            .into()
+    }
+}
+
 /// An untyped client.
 #[cfg(feature = "alloc")]
 #[derive(Clone)]
 pub struct Client {
-    pub hook: Box<dyn ClientHook>,
+    pub hook: alloc::boxed::Box<dyn ClientHook>,
 }
 
 #[cfg(feature = "alloc")]
 impl Client {
-    pub fn new(hook: Box<dyn ClientHook>) -> Self {
+    pub fn new(hook: alloc::boxed::Box<dyn ClientHook>) -> Self {
         Self { hook }
     }
 
@@ -350,6 +421,19 @@ impl Client {
     ) -> Request<Params, Results> {
         let typeless = self.hook.new_call(interface_id, method_id, size_hint);
         Request {
+            hook: typeless.hook,
+            marker: PhantomData,
+        }
+    }
+
+    pub fn new_streaming_call<Params>(
+        &self,
+        interface_id: u64,
+        method_id: u16,
+        size_hint: Option<MessageSize>,
+    ) -> StreamingRequest<Params> {
+        let typeless = self.hook.new_call(interface_id, method_id, size_hint);
+        StreamingRequest {
             hook: typeless.hook,
             marker: PhantomData,
         }
@@ -368,7 +452,7 @@ impl Client {
 #[cfg(feature = "alloc")]
 // This is an untyped dispatch for an untyped server, which forwards calls directly to dispatch_call
 pub struct UntypedDispatch<_T> {
-    pub server: Rc<_T>,
+    pub server: alloc::rc::Rc<_T>,
 }
 
 #[cfg(feature = "alloc")]
@@ -394,56 +478,58 @@ impl<_T: Server + Clone> crate::capability::Server for UntypedDispatch<_T> {
         self,
         interface_id: u64,
         method_id: u16,
-        params: crate::capability::Params<any_pointer::Owned>,
-        results: crate::capability::Results<any_pointer::Owned>,
+        params: Params<any_pointer::Owned>,
+        results: Results<any_pointer::Owned>,
     ) -> Result<(), crate::Error> {
         <_T as Clone>::clone(&self.server)
             .dispatch_call(interface_id, method_id, params, results)
             .await
     }
-    fn get_ptr(&self) -> usize {
-        Rc::<_T>::as_ptr(&self.server) as usize
+    fn is_streaming(&self, interface_id: u64, method_id: u16) -> bool {
+        self.server.is_streaming(interface_id, method_id)
+    }
+    fn as_ptr(&self) -> usize {
+        alloc::rc::Rc::<_T>::as_ptr(&self.server) as usize
     }
 }
 
 #[cfg(feature = "alloc")]
 impl crate::introspect::Introspect for Client {
     fn introspect() -> crate::introspect::Type {
-        crate::introspect::TypeVariant::Capability(crate::introspect::RawCapabilitySchema {
-            encoded_node: &[],
-            params_types: crate::schema::dynamic_struct_marker,
-            result_types: crate::schema::dynamic_struct_marker,
-        })
-        .into()
+        crate::introspect::TypeVariant::Capability(crate::introspect::RawCapabilitySchema::empty())
+            .into()
     }
 }
 
 #[cfg(feature = "alloc")]
 impl<_S: Server + 'static + Clone> crate::capability::FromServer<_S> for Client {
     type Dispatch = UntypedDispatch<_S>;
-    fn from_server(s: _S) -> UntypedDispatch<_S> {
-        UntypedDispatch { server: Rc::new(s) }
-    }
-    fn from_rc(s: Rc<_S>) -> UntypedDispatch<_S> {
+    fn from_server(s: Rc<_S>) -> UntypedDispatch<_S> {
         UntypedDispatch { server: s }
     }
 }
 
 #[cfg(feature = "alloc")]
-impl crate::capability::FromClientHook for Client {
-    fn new(hook: Box<dyn ClientHook>) -> Self {
-        Self { hook }
+impl FromClientHook for Client {
+    fn new(hook: alloc::boxed::Box<dyn ClientHook>) -> Self {
+        Client::new(hook)
     }
-    fn into_client_hook(self) -> Box<dyn ClientHook> {
+
+    fn into_client_hook(self) -> alloc::boxed::Box<dyn ClientHook> {
         self.hook
     }
+
     fn as_client_hook(&self) -> &dyn ClientHook {
-        &*self.hook
+        self.hook.as_ref()
     }
 }
 
+/// Type alias that allows us to avoid using `alloc` directly in generated code,
+/// which would require an `extern crate alloc` in the crate root.
+#[cfg(feature = "alloc")]
+pub type Rc<T> = alloc::rc::Rc<T>;
+
 /// An untyped server.
-#[allow(async_fn_in_trait)]
 #[cfg(feature = "alloc")]
 pub trait Server {
     async fn dispatch_call(
@@ -452,18 +538,19 @@ pub trait Server {
         method_id: u16,
         params: Params<any_pointer::Owned>,
         results: Results<any_pointer::Owned>,
-    ) -> Result<(), Error>;
-    fn get_ptr(&self) -> usize;
+    ) -> Result<(), crate::Error>;
+
+    fn is_streaming(&self, interface_id: u64, method_id: u16) -> bool;
+    fn as_ptr(&self) -> usize;
 }
 
 /// Trait to track the relationship between generated Server traits and Client structs.
 #[cfg(feature = "alloc")]
 pub trait FromServer<S>: FromClientHook {
     // Implemented by the generated ServerDispatch struct.
-    type Dispatch: Server + 'static + Clone;
+    type Dispatch: Server + 'static + core::ops::Deref<Target = S> + Clone;
 
-    fn from_server(s: S) -> Self::Dispatch;
-    fn from_rc(s: Rc<S>) -> Self::Dispatch;
+    fn from_server(s: Rc<S>) -> Self::Dispatch;
 }
 
 /// Gets the "resolved" version of a capability. One place this is useful is for pre-resolving
