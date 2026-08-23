@@ -6,7 +6,7 @@ use syn::{
 };
 
 // {field1, field2, ...}
-pub struct CapnpAnonStruct<FieldPattern: Parse> {
+pub(crate) struct CapnpAnonStruct<FieldPattern: Parse> {
     pub _brace_token: Brace,
     pub fields: Punctuated<FieldPattern, Token![,]>,
 }

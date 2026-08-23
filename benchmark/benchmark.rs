@@ -404,6 +404,7 @@ where
     S: for<'a> Scratch<'a>,
     T: TestCase,
 {
+    #[cfg(unix)]
     match mode {
         Mode::Object => pass_by_object(testcase, reuse, iters),
         Mode::Bytes => pass_by_bytes(testcase, reuse, compression, iters),
@@ -415,6 +416,9 @@ where
         }
         Mode::Pipe => pass_by_pipe(testcase, reuse, compression, iters),
     }
+
+    #[cfg(not(unix))]
+    panic!("windows not supported")
 }
 
 fn do_testcase1<C, S>(

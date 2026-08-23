@@ -77,7 +77,7 @@ fn evaluate_impl(
 
         calculator::expression::Call(call) => {
             let func = call.get_function()?;
-            let eval_params = future::try_join_all(
+            let eval_params = futures_util::future::try_join_all(
                 call.get_params()?
                     .iter()
                     .map(|p| evaluate_impl(p, params))
@@ -234,8 +234,8 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 stream.set_nodelay(true)?;
                 let (reader, writer) = stream.into_split();
                 let network = twoparty::VatNetwork::new(
-                    futures::io::BufReader::new(reader),
-                    futures::io::BufWriter::new(writer),
+                    reader,
+                    writer,
                     rpc_twoparty_capnp::Side::Server,
                     Default::default(),
                 );

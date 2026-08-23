@@ -21,11 +21,11 @@
 use std::cell::RefCell;
 
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
-use futures::channel::oneshot;
+use tokio::sync::oneshot;
 
 use crate::foo_capnp::foo;
 
-use futures::{AsyncReadExt, TryFutureExt};
+use futures_util::future::TryFutureExt;
 
 // Rust server defining an implementation of Foo.
 struct FooImpl {
@@ -85,10 +85,10 @@ async fn try_main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     loop {
         let (stream, _) = listener.accept().await?;
         stream.set_nodelay(true)?;
-        let (reader, writer) = tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
+        let (reader, writer) = stream.into_split();
         let network = twoparty::VatNetwork::new(
-            futures::io::BufReader::new(reader),
-            futures::io::BufWriter::new(writer),
+            reader,
+            writer,
             rpc_twoparty_capnp::Side::Server,
             Default::default(),
         );

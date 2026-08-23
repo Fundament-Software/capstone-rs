@@ -18,6 +18,3 @@ path = "../../capnp"
 
 [build-dependencies.capstone-gen]
 path = "../../capnpc"
-
-[lints]
-workspace = true

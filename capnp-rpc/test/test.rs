@@ -241,7 +241,8 @@ async fn disconnector_disconnects_2() {
             Err(ref e) if e.kind == ::capnp::ErrorKind::Disconnected => (),
             _ => panic!("Should have gotten a 'disconnected' error."),
         }
-    });
+    })
+    .await;
 }
 
 /// Sets up a test_capnp::bootstrap capability on the remote side of a
@@ -366,7 +367,7 @@ async fn basic_rpc_calls() {
 
 #[tokio::test]
 async fn test_is_local() {
-    rpc_and_local_top_level(|client| async move {
+    rpc_top_level(|client| async move {
         let local: test_capnp::test_call_order::Client =
             capnp_rpc::new_client(impls::TestCallOrder::new());
         assert!(local.as_client_hook().is_local_client());
@@ -519,6 +520,7 @@ impl Future for WaitNTicks {
 async fn set_pipeline() {
     use std::cell::Cell;
     use std::rc::Rc;
+
     rpc_and_local_top_level(|client| async move {
         let response = client.test_pipeline_request().send().promise.await?;
         let client = response.get()?.get_cap()?;
@@ -1261,8 +1263,8 @@ async fn capability_server_set_rpc() {
     .await
 }
 
-#[test]
-fn basic_streaming() {
+#[tokio::test]
+async fn basic_streaming() {
     rpc_and_local_top_level(|client| async move {
         let response = client.test_more_stuff_request().send().promise.await?;
         let client = response.get()?.get_cap()?;
@@ -1281,11 +1283,12 @@ fn basic_streaming() {
         let results = r.get()?;
         assert_eq!(results.get_total_i(), ITERS * EACH);
         Ok(())
-    });
+    })
+    .await;
 }
 
-#[test]
-fn finish_stream_observes_all_streaming_writes() {
+#[tokio::test]
+async fn finish_stream_observes_all_streaming_writes() {
     rpc_top_level(|client| async move {
         let response = client.test_more_stuff_request().send().promise.await?;
         let client = response.get()?.get_cap()?;
@@ -1316,11 +1319,12 @@ fn finish_stream_observes_all_streaming_writes() {
             ITERS * EACH
         );
         Ok(())
-    });
+    })
+    .await;
 }
 
-#[test]
-fn basic_streaming_on_pipeline() {
+#[tokio::test]
+async fn basic_streaming_on_pipeline() {
     rpc_and_local_top_level(|client| async move {
         let response = client.test_more_stuff_request().send().pipeline;
         let client = response.get_cap();
@@ -1339,11 +1343,12 @@ fn basic_streaming_on_pipeline() {
         let results = r.get()?;
         assert_eq!(results.get_total_i(), ITERS * EACH);
         Ok(())
-    });
+    })
+    .await;
 }
 
-#[test]
-fn stream_error_gets_reported() {
+#[tokio::test]
+async fn stream_error_gets_reported() {
     rpc_and_local_top_level(|client| async move {
         let response = client.test_more_stuff_request().send().promise.await?;
         let client = response.get()?.get_cap()?;
@@ -1361,11 +1366,12 @@ fn stream_error_gets_reported() {
         };
         assert!(e.to_string().contains("throw requested"));
         Ok(())
-    });
+    })
+    .await;
 }
 
-#[test]
-fn promise_resolve_twice() {
+#[tokio::test]
+async fn promise_resolve_twice() {
     rpc_top_level(|client| async move {
         let response1 = client.test_promise_resolve_request().send().promise.await?;
         let client1 = response1.get()?.get_cap()?;
@@ -1389,7 +1395,8 @@ fn promise_resolve_twice() {
         let x = response2.get()?.get_x()?.to_str()?;
         assert_eq!(x, "foo");
         Ok(())
-    });
+    })
+    .await;
 }
 
 #[test]
@@ -1419,8 +1426,8 @@ fn get_self() {
     });
 }
 
-#[tokio::test]
-async fn broken_cap_returns_supplied_error() {
+#[test]
+fn broken_cap_returns_supplied_error() {
     let error = Error::failed("membrane denied access".to_string());
 
     let _ = tokio::runtime::Runtime::new()
@@ -1452,8 +1459,8 @@ async fn broken_cap_returns_supplied_error() {
         });
 }
 
-#[test]
-fn reimport_then_resend_does_not_poison_downcast_map() {
+#[tokio::test]
+async fn reimport_then_resend_does_not_poison_downcast_map() {
     // Regression test: receiving a senderHosted descriptor for an import we
     // already hold used to construct a second wrapper `Client`, overwriting
     // the client_downcast_map entry keyed by the shared inner ImportClient.
@@ -1480,5 +1487,6 @@ fn reimport_then_resend_does_not_poison_downcast_map() {
         echo.get().set_cap(more_stuff.clone().cast_to());
         echo.send().promise.await?;
         Ok(())
-    });
+    })
+    .await;
 }

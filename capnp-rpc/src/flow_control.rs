@@ -1,10 +1,10 @@
-use capnp::capability::Promise;
 use capnp::Error;
+use capnp::capability::Promise;
 
-use futures::channel::oneshot;
-use futures::TryFutureExt;
+use futures_util::future::TryFutureExt;
 use std::cell::RefCell;
 use std::rc::Rc;
+use tokio::sync::oneshot;
 
 use crate::task_set::{TaskReaper, TaskSet, TaskSetHandle};
 
@@ -46,7 +46,7 @@ struct Reaper {
 impl TaskReaper<Error> for Reaper {
     fn task_failed(&mut self, error: Error) {
         let mut inner = self.inner.borrow_mut();
-        if let State::Running(ref mut blocked_sends) = &mut inner.state {
+        if let State::Running(blocked_sends) = &mut inner.state {
             for s in std::mem::take(blocked_sends) {
                 let _ = s.send(Err(error.clone()));
             }

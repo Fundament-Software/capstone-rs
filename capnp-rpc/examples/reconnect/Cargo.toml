@@ -2,7 +2,7 @@
 
 name = "reconnect"
 version = "0.0.0"
-authors = [ "David Renshaw <dwrenshaw@sandstorm.io>"  ]
+authors = ["David Renshaw <dwrenshaw@sandstorm.io>"]
 build = "build.rs"
 edition = "2021"
 
@@ -11,16 +11,14 @@ name = "reconnect"
 path = "main.rs"
 
 [build-dependencies]
-capnpc = { path = "../../../capnpc" }
+capstone-gen.workspace = true
 
 [dependencies]
-capnp = { path = "../../../capnp" }
-futures = "0.3.0"
-tokio = { version = "1.0.0", features = ["net", "rt", "macros"]}
+capstone.workspace = true
+capstone-rpc.workspace = true
+tokio = { version = "1.0.0", features = ["net", "rt", "macros"] }
 tokio-util = { version = "0.7.4", features = ["compat"] }
-
-[dependencies.capnp-rpc]
-path = "../.."
+futures-util.workspace = true
 
 [lints]
 workspace = true

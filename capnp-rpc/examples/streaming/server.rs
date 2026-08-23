@@ -8,9 +8,8 @@ use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 
 use capnp::Error;
 
-use futures::channel::oneshot;
-use futures::AsyncReadExt;
 use sha2::{Digest, Sha256};
+use tokio::sync::oneshot;
 
 struct ByteStreamImpl {
     hasher: RefCell<Sha256>,
@@ -105,11 +104,10 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
             loop {
                 let (stream, _) = listener.accept().await?;
                 stream.set_nodelay(true)?;
-                let (reader, writer) =
-                    tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
+                let (reader, writer) = stream.into_split();
                 let network = twoparty::VatNetwork::new(
-                    futures::io::BufReader::new(reader),
-                    futures::io::BufWriter::new(writer),
+                    reader,
+                    writer,
                     rpc_twoparty_capnp::Side::Server,
                     Default::default(),
                 );

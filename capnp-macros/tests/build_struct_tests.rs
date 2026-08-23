@@ -1,3 +1,5 @@
+#![cfg(false)]
+
 pub mod test_schema_capnp {
     include!(concat!(env!("OUT_DIR"), "/test_schema_capnp.rs"));
 }

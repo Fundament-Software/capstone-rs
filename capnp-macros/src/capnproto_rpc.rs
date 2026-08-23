@@ -3,7 +3,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{ToTokens, format_ident};
 use syn::{Block, Signature, punctuated::Punctuated};
 
-pub fn process_capnproto_rpc(namespace: TokenStream2, item: syn::ItemImpl) -> TokenStream2 {
+pub(crate) fn process_capnproto_rpc(namespace: TokenStream2, item: syn::ItemImpl) -> TokenStream2 {
     let syn::ItemImpl { items, trait_, .. } = item;
 
     let generics = extract_generics_from_trait(trait_.clone());

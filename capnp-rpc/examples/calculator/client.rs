@@ -64,8 +64,8 @@ async fn try_main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
     let (reader, writer) = stream.into_split();
 
     let network = Box::new(twoparty::VatNetwork::new(
-        futures::io::BufReader::new(reader),
-        futures::io::BufWriter::new(writer),
+        reader,
+        writer,
         rpc_twoparty_capnp::Side::Client,
         Default::default(),
     ));

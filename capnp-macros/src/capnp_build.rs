@@ -6,7 +6,7 @@ use crate::parse_capnp_build::{
     CapnpBuildFieldPattern, CapnpBuildPattern, CapnpBuildStruct, ListElementPattern, ListPattern,
 };
 
-pub fn process_build_pry(builder: Ident, build_pattern: CapnpBuildPattern) -> TokenStream2 {
+pub(crate) fn process_build_pry(builder: Ident, build_pattern: CapnpBuildPattern) -> TokenStream2 {
     match build_pattern {
         // capnp_build!(struct_builder, {..});
         CapnpBuildPattern::StructPattern(struct_pattern) => {
