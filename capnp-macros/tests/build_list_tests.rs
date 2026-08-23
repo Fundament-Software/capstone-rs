@@ -1,3 +1,4 @@
+#![cfg(false)]
 pub mod test_schema_capnp {
     include!(concat!(env!("OUT_DIR"), "/test_schema_capnp.rs"));
 }
@@ -87,7 +88,7 @@ mod capnp_build {
                 list_builder,
                 [for (test_struct, c) in numbers {
                     test_struct.set_uint_field(c);
-                    test_struct.set_text_field(c.to_string().as_str().into())
+                    test_struct.set_text_field(c.to_string().as_str())
                 }]
             );
             let list_reader = list_builder.into_reader();

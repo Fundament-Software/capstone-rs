@@ -6,33 +6,33 @@ use syn::{
     token::{Brace, Bracket},
 };
 
-pub type CapnpBuildStruct = CapnpAnonStruct<CapnpBuildFieldPattern>;
+pub(crate) type CapnpBuildStruct = CapnpAnonStruct<CapnpBuildFieldPattern>;
 
 // capnp_build!(person_builder, build_pattern)
-pub struct CapnpBuild {
+pub(crate) struct CapnpBuild {
     pub subject: Ident,
     pub _comma_token: Token![,],
     pub build_pattern: CapnpBuildPattern,
 }
 
-pub enum CapnpBuildPattern {
+pub(crate) enum CapnpBuildPattern {
     StructPattern(CapnpBuildStruct), // {...}
     ListPattern(ListPattern),        // [...]
 }
 
-pub enum CapnpBuildFieldPattern {
+pub(crate) enum CapnpBuildFieldPattern {
     Name(Ident),                                 // name
     ExpressionAssignment(Ident, syn::Expr),      // name = expr
     PatternAssignment(Ident, CapnpBuildPattern), // name : pat
     BuilderExtraction(Ident, syn::ExprClosure),  // name => closure
 }
 
-pub enum ListPattern {
+pub(crate) enum ListPattern {
     ListComprehension(syn::ExprForLoop), // for RustPattern in IteratorExpression {BlockExpression}
     ListElements(Punctuated<ListElementPattern, Token![,]>), // [= 13, [...], {...}]
 }
 
-pub enum ListElementPattern {
+pub(crate) enum ListElementPattern {
     SimpleExpression(syn::Expr),     // = value
     StructPattern(CapnpBuildStruct), // {...}
     ListPattern(ListPattern),        // [...]

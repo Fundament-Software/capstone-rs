@@ -295,8 +295,8 @@ where
 ///     let (reader, writer) = tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
 ///
 ///     let network = Box::new(twoparty::VatNetwork::new(
-///         futures::io::BufReader::new(reader),
-///         futures::io::BufWriter::new(writer),
+///         reader,
+///         writer,
 ///         rpc_twoparty_capnp::Side::Client,
 ///         Default::default(),
 ///     ));

@@ -2,7 +2,7 @@
 
 name = "shared-secret-capability"
 version = "0.0.0"
-authors = [ "Adam Schwab <aschwab@cloudflare.com>"  ]
+authors = ["Adam Schwab <aschwab@cloudflare.com>"]
 edition = "2021"
 
 build = "build.rs"
@@ -12,16 +12,14 @@ name = "shared-secret-capability"
 path = "main.rs"
 
 [build-dependencies]
-capnpc = { path = "../../../capnpc" }
+capstone-gen.workspace = true
 
 [dependencies]
-capnp = { path = "../../../capnp" }
-futures = "0.3.0"
-tokio = { version = "1.0.0", features = ["net", "rt", "macros"]}
+capstone.workspace = true
+capstone-rpc.workspace = true
+tokio = { version = "1.0.0", features = ["net", "rt", "macros"] }
 tokio-util = { version = "0.7.4", features = ["compat"] }
-
-[dependencies.capnp-rpc]
-path = "../.."
+futures-util.workspace = true
 
 [lints]
 workspace = true

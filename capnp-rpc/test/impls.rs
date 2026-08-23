@@ -538,6 +538,17 @@ impl test_more_stuff::Server for TestMoreStuff {
         Ok(())
     }
 
+    async fn get_remote_cap(
+        self: Rc<Self>,
+        _params: test_more_stuff::GetRemoteCapParams,
+        mut _results: test_more_stuff::GetRemoteCapResults,
+    ) -> Result<(), Error> {
+        _results
+            .get()
+            .set(capnp_rpc::new_client(TestCallOrder::new()));
+        Ok(())
+    }
+
     async fn get_test_streaming(
         self: Rc<Self>,
         _params: test_more_stuff::GetTestStreamingParams,

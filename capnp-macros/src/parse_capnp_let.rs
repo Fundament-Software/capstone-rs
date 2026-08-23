@@ -5,16 +5,16 @@ use syn::{
     token::Brace,
 };
 
-pub type CapnpLetStruct = CapnpAnonStruct<CapnpLetFieldPattern>;
+pub(crate) type CapnpLetStruct = CapnpAnonStruct<CapnpLetFieldPattern>;
 
 // capnp_let!(struct_pattern = subject)
-pub struct CapnpLet {
+pub(crate) struct CapnpLet {
     pub struct_pattern: CapnpLetStruct,
     pub _equal_token: Token![=],
     pub ident: Ident,
 }
 
-pub enum CapnpLetFieldPattern {
+pub(crate) enum CapnpLetFieldPattern {
     Name(Ident),                               // name
     ExtractToSymbol(Ident, Ident),             // name: name
     ExtractWithPattern(Ident, CapnpLetStruct), // name: struct_pattern

@@ -64,8 +64,8 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 stream.set_nodelay(true)?;
                 let (reader, writer) = stream.into_split();
                 let network = twoparty::VatNetwork::new(
-                    futures::io::BufReader::new(reader),
-                    futures::io::BufWriter::new(writer),
+                    reader,
+                    writer,
                     rpc_twoparty_capnp::Side::Server,
                     Default::default(),
                 );

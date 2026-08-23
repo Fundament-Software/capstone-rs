@@ -261,8 +261,6 @@ impl RequestHook for Request {
         let results = Results::new(results_done_fulfiller, pipeline_sender.weak_clone());
         let promise = client.call(interface_id, method_id, Box::new(params), Box::new(results));
 
-        let (pipeline_sender, mut pipeline) = crate::queued::Pipeline::new();
-
         let p = futures_util::future::try_join(promise, results_done_promise).and_then(
             move |((), results_done_hook)| {
                 pipeline_sender

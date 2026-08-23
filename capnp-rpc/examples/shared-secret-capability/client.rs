@@ -22,8 +22,6 @@
 use crate::{echo_capnp::echo, shared_secret_capnp::shared_secret_authenticated};
 use capnp_rpc::{rpc_twoparty_capnp, twoparty, RpcSystem};
 
-use futures::AsyncReadExt;
-
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use std::net::ToSocketAddrs;
     let args: Vec<String> = ::std::env::args().collect();
@@ -44,11 +42,10 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .run_until(async move {
             let stream = tokio::net::TcpStream::connect(&addr).await?;
             stream.set_nodelay(true)?;
-            let (reader, writer) =
-                tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
+            let (reader, writer) = stream.into_split();
             let rpc_network = Box::new(twoparty::VatNetwork::new(
-                futures::io::BufReader::new(reader),
-                futures::io::BufWriter::new(writer),
+                reader,
+                writer,
                 rpc_twoparty_capnp::Side::Client,
                 Default::default(),
             ));

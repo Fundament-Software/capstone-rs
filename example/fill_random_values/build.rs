@@ -4,7 +4,6 @@ fn main() {
         .file("corpora.capnp")
         .file("addressbook.capnp")
         .file("shapes.capnp")
-        .import_path("../..")
         .run()
         .expect("compiling schema");
 }

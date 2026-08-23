@@ -1,5 +1,4 @@
 use capnp_rpc::{auto_reconnect, new_future_client, rpc_twoparty_capnp, twoparty, RpcSystem};
-use futures::AsyncReadExt as _;
 use tokio::net::ToSocketAddrs;
 
 use crate::foo_capnp::foo;
@@ -66,11 +65,11 @@ async fn try_main(args: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
 async fn connect<A: ToSocketAddrs>(addr: A, manual: bool) -> capnp::Result<foo::Client> {
     let stream = tokio::net::TcpStream::connect(addr).await?;
     stream.set_nodelay(true)?;
-    let (reader, writer) = tokio_util::compat::TokioAsyncReadCompatExt::compat(stream).split();
+    let (reader, writer) = stream.into_split();
 
     let network = Box::new(twoparty::VatNetwork::new(
-        futures::io::BufReader::new(reader),
-        futures::io::BufWriter::new(writer),
+        reader,
+        writer,
         rpc_twoparty_capnp::Side::Client,
         Default::default(),
     ));

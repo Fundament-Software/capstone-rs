@@ -6,7 +6,7 @@ use syn::Ident;
 /// Takes `expr` as an identifier of a capnproto Reader type of some struct and extracts fields specified in `pat`.
 /// `pat` is of the form `{capnpfield1, capnpfield2, ...}`. Each `capnpfield` is a pair `lhs: rhs`.
 /// Returns token stream of assignments for variables specified recursively in `rhs`.
-pub fn process_let_pry(pat: CapnpLetStruct, expr: Ident) -> TokenStream2 {
+pub(crate) fn process_let_pry(pat: CapnpLetStruct, expr: Ident) -> TokenStream2 {
     let mut res = TokenStream2::new();
     for field_pattern in pat.fields.into_iter() {
         let to_append = match field_pattern {
