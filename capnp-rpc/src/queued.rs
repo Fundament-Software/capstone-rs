@@ -33,7 +33,7 @@ use crate::attach::Attach;
 use crate::sender_queue::SenderQueue;
 use crate::{broken, local};
 
-pub(crate) struct PipelineInner {
+pub struct PipelineInner {
     // Once the promise resolves, this will become non-null and point to the underlying object.
     redirect: Option<Box<dyn PipelineHook>>,
 
@@ -179,7 +179,7 @@ impl PipelineHook for Pipeline {
     }
 }
 
-pub(crate) struct ClientInner {
+pub struct ClientInner {
     // Once the promise resolves, this will become non-null and point to the underlying object.
     redirect: Option<Box<dyn ClientHook>>,
 
@@ -205,7 +205,7 @@ pub(crate) struct ClientInner {
 }
 
 impl ClientInner {
-    pub(crate) fn resolve(state: &Rc<RefCell<Self>>, result: Result<Box<dyn ClientHook>, Error>) {
+    pub fn resolve(state: &Rc<RefCell<Self>>, result: Result<Box<dyn ClientHook>, Error>) {
         assert!(state.borrow().redirect.is_none());
         let client = match result {
             Ok(clienthook) => clienthook,
@@ -226,12 +226,12 @@ impl ClientInner {
     }
 }
 
-pub(crate) struct Client {
-    pub(crate) inner: Rc<RefCell<ClientInner>>,
+pub struct Client {
+    pub inner: Rc<RefCell<ClientInner>>,
 }
 
 impl Client {
-    pub(crate) fn new(pipeline_inner: Option<Rc<RefCell<PipelineInner>>>) -> Self {
+    pub fn new(pipeline_inner: Option<Rc<RefCell<PipelineInner>>>) -> Self {
         let inner = Rc::new(RefCell::new(ClientInner {
             promise_to_drive: None,
             pipeline_inner,

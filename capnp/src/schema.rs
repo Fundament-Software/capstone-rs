@@ -601,7 +601,7 @@ impl StructSchema {
         while lower < upper {
             let mid: usize = (lower + upper) / 2;
             let candidate_index = self.raw.generic.members_by_name[mid];
-            let candidate_name = fields.get(candidate_index).get_proto().get_name()?;
+            let candidate_name = fields.fields.get(candidate_index as u32).get_name()?;
 
             use core::cmp::Ordering;
             match (&name).partial_cmp(&candidate_name) {
@@ -655,6 +655,79 @@ impl StructSchema {
             child_index: None,
             get_annotation_type: self.raw.annotation_types,
         })
+    }
+
+    #[cfg(all(feature = "std", feature = "alloc"))]
+    fn resolve_type_reader(
+        reader: &crate::schema_capnp::type_::Reader,
+        token: DynamicSchemaToken,
+    ) -> Result<TypeVariant> {
+        Ok(match reader.which()? {
+            crate::schema_capnp::type_::Which::Void(_) => TypeVariant::Void,
+            crate::schema_capnp::type_::Which::Bool(_) => TypeVariant::Bool,
+            crate::schema_capnp::type_::Which::Int8(_) => TypeVariant::Int8,
+            crate::schema_capnp::type_::Which::Int16(_) => TypeVariant::Int16,
+            crate::schema_capnp::type_::Which::Int32(_) => TypeVariant::Int32,
+            crate::schema_capnp::type_::Which::Int64(_) => TypeVariant::Int64,
+            crate::schema_capnp::type_::Which::Uint8(_) => TypeVariant::UInt8,
+            crate::schema_capnp::type_::Which::Uint16(_) => TypeVariant::UInt16,
+            crate::schema_capnp::type_::Which::Uint32(_) => TypeVariant::UInt32,
+            crate::schema_capnp::type_::Which::Uint64(_) => TypeVariant::UInt64,
+            crate::schema_capnp::type_::Which::Float32(_) => TypeVariant::Float32,
+            crate::schema_capnp::type_::Which::Float64(_) => TypeVariant::Float64,
+            crate::schema_capnp::type_::Which::Text(_) => TypeVariant::Text,
+            crate::schema_capnp::type_::Which::Data(_) => TypeVariant::Data,
+            crate::schema_capnp::type_::Which::AnyPointer(_) => TypeVariant::AnyPointer,
+            crate::schema_capnp::type_::Which::List(r) => {
+                TypeVariant::List(Self::resolve_type_reader(&r.get_element_type()?, token)?.into())
+            }
+            crate::schema_capnp::type_::Which::Enum(r) => get_type_variant(&token, r.get_type_id())
+                .map_err(|e| crate::Error::failed(e.to_string()))?,
+            crate::schema_capnp::type_::Which::Struct(r) => {
+                get_type_variant(&token, r.get_type_id())
+                    .map_err(|e| crate::Error::failed(e.to_string()))?
+            }
+            crate::schema_capnp::type_::Which::Interface(r) => {
+                get_type_variant(&token, r.get_type_id())
+                    .map_err(|e| crate::Error::failed(e.to_string()))?
+            }
+        })
+    }
+
+    fn get_field_type(&self, idx: u16) -> crate::introspect::Type {
+        #[allow(unpredictable_function_pointer_comparisons)]
+        if self.raw.field_types == dynamic_field_marker {
+            #[cfg(all(feature = "std", feature = "alloc"))]
+            for (index, field) in self.get_fields().unwrap().fields.iter().enumerate() {
+                if index as u16 == idx {
+                    return match field.which().unwrap() {
+                        field::Slot(slot) => Self::resolve_type_reader(
+                            &slot.get_type().unwrap(),
+                            self.raw
+                                .type_id
+                                .expect_err("Non-dynamic schema had dynamic_field_marker set!"),
+                        )
+                        .unwrap(),
+                        field::Group(group) => {
+                            let token = self
+                                .raw
+                                .type_id
+                                .expect_err("Non-dynamic schema had dynamic_field_marker set!");
+                            let variant = get_type_variant(&token, group.get_type_id()).unwrap();
+                            match variant {
+                                TypeVariant::Struct(s) => TypeVariant::Struct(s),
+                                _ => panic!("Found group type that wasn't a struct"),
+                            }
+                        }
+                    }
+                    .into();
+                }
+            }
+
+            panic!("Could not find type!");
+        } else {
+            (self.raw.field_types)(idx)
+        }
     }
 }
 
@@ -799,7 +872,7 @@ impl FieldList {
         Field {
             proto: self.fields.get(index as u32),
             index,
-            ty: (self.parent.raw.field_types)(index),
+            ty: self.parent.get_field_type(index),
             parent: self.parent,
         }
     }
@@ -846,7 +919,7 @@ impl FieldSubset {
         Field {
             proto: self.fields.get(index as u32),
             index,
-            ty: (self.parent.raw.field_types)(index),
+            ty: self.parent.get_field_type(index),
             parent: self.parent,
         }
     }

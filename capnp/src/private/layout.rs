@@ -113,7 +113,7 @@ pub enum PointerType {
     Null,
     Struct,
     List,
-    Capability,
+    Capability(u32),
     OtherPointer(u64),
 }
 
@@ -2836,7 +2836,7 @@ impl CapTableReader {
     }
 
     #[cfg(feature = "alloc")]
-    pub(crate) fn extract_cap(&self, index: usize) -> Option<alloc::boxed::Box<dyn ClientHook>> {
+    pub fn extract_cap(&self, index: usize) -> Option<alloc::boxed::Box<dyn ClientHook>> {
         match *self {
             Self::Dummy => None,
             Self::Plain(hooks) => {
@@ -3136,7 +3136,7 @@ impl<'a> PointerReader<'a> {
                 WirePointerKind::List => Ok(PointerType::List),
                 WirePointerKind::Other => {
                     if unsafe { (*reff).is_capability() } {
-                        Ok(PointerType::Capability)
+                        unsafe { Ok(PointerType::Capability((*reff).cap_index())) }
                     } else {
                         unsafe {
                             Ok(PointerType::OtherPointer(
@@ -3173,7 +3173,7 @@ impl<'a> PointerReader<'a> {
                 self.get_list_any_size(ptr::null())?
                     .is_canonical(read_head, self.pointer)
             },
-            PointerType::Capability => Ok(false),
+            PointerType::Capability(_) => Ok(false),
             PointerType::OtherPointer(_) => Ok(false),
         }
     }
@@ -3423,7 +3423,7 @@ impl<'a> PointerBuilder<'a> {
         (*self.pointer).set_other_pointer(index);
     }
 
-    pub(crate) fn copy_from(&mut self, other: PointerReader, canonicalize: bool) -> Result<()> {
+    pub fn copy_from(&mut self, other: PointerReader, canonicalize: bool) -> Result<()> {
         if other.pointer.is_null() {
             if !self.pointer.is_null() {
                 unsafe {
@@ -3508,7 +3508,7 @@ impl<'a> StructReader<'a> {
         self.data_size
     }
 
-    pub(crate) fn get_pointer_section_size(&self) -> WirePointerCount16 {
+    pub fn get_pointer_section_size(&self) -> WirePointerCount16 {
         self.pointer_count
     }
 
@@ -3621,6 +3621,13 @@ impl<'a> StructReader<'a> {
         // TODO when we have read limiting: segment->unread()
 
         Ok(result)
+    }
+
+    pub fn struct_size(&self) -> StructSize {
+        StructSize {
+            data: (self.data_size / BITS_PER_WORD as u32) as u16,
+            pointers: self.pointer_count,
+        }
     }
 
     fn get_location(&self) -> *const u8 {
@@ -3788,6 +3795,16 @@ impl<'a> StructBuilder<'a> {
 
     #[inline]
     pub fn get_pointer_field(self, ptr_index: WirePointerCount) -> PointerBuilder<'a> {
+        PointerBuilder {
+            arena: self.arena,
+            segment_id: self.segment_id,
+            cap_table: self.cap_table,
+            pointer: unsafe { self.pointers.add(ptr_index) },
+        }
+    }
+
+    #[inline]
+    pub fn get_pointer_field_mut(&mut self, ptr_index: WirePointerCount) -> PointerBuilder<'_> {
         PointerBuilder {
             arena: self.arena,
             segment_id: self.segment_id,
@@ -3969,7 +3986,7 @@ impl<'a> ListReader<'a> {
         self.step
     }
 
-    pub(crate) fn get_element_size(&self) -> ElementSize {
+    pub fn get_element_size(&self) -> ElementSize {
         self.element_size
     }
 
@@ -3994,7 +4011,7 @@ impl<'a> ListReader<'a> {
     }
 
     #[inline]
-    pub(crate) fn get_struct_element(&self, index: ElementCount32) -> StructReader<'a> {
+    pub fn get_struct_element(&self, index: ElementCount32) -> StructReader<'a> {
         assert!(index < self.element_count);
         let index_byte =
             usize::try_from((u64::from(index) * u64::from(self.step)) / BITS_PER_BYTE as u64)
@@ -4018,7 +4035,7 @@ impl<'a> ListReader<'a> {
     }
 
     #[inline]
-    pub(crate) fn get_pointer_element(self, index: ElementCount32) -> PointerReader<'a> {
+    pub fn get_pointer_element(self, index: ElementCount32) -> PointerReader<'a> {
         assert!(index < self.element_count);
         let offset = usize::try_from(
             self.struct_data_size as u64 / BITS_PER_BYTE as u64
@@ -4209,7 +4226,7 @@ impl<'a> ListBuilder<'a> {
     }
 
     #[inline]
-    pub(crate) fn get_struct_element(self, index: ElementCount32) -> StructBuilder<'a> {
+    pub fn get_struct_element(self, index: ElementCount32) -> StructBuilder<'a> {
         assert!(index < self.element_count);
         let index_byte =
             usize::try_from((u64::from(index) * u64::from(self.step)) / BITS_PER_BYTE as u64)
