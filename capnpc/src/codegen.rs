@@ -3998,6 +3998,8 @@ fn generate_node(
             let mut dispatch_arms = Vec::new();
             let mut stream_arms = Vec::new();
             let mut private_mod_interior = Vec::new();
+            let mut call_name_set = std::collections::HashSet::new();
+
             let client_implicit = get_params(ctx, node_id)?;
 
             let bracketed_params = if params.params.is_empty() {
@@ -4027,10 +4029,10 @@ fn generate_node(
 
             mod_interior.push(BlankLine);
             let methods = interface.get_methods()?;
-            let mut method_count = 0;
+            //let mut method_count = 0;
             for (ordinal, method) in methods.into_iter().enumerate() {
                 let name = method.get_name()?.to_str()?;
-                method_count += 1;
+                //method_count += 1;
 
                 let param_id = method.get_param_struct_type();
                 let param_node = &ctx.node_map[&param_id];
@@ -4135,6 +4137,7 @@ fn generate_node(
                         param_type,
                         result_type
                     )));
+                    call_name_set.insert(name);
 
                     client_impl_interior.push(indent(Line(format!(
                         "self.client.new_call(_private::TYPE_ID, {ordinal}, ::core::option::Option::None)"
@@ -4202,12 +4205,15 @@ fn generate_node(
                                   capitalize_first_letter(name), params_ty_params,
                                   node_name, module_name(name)
                         )));
+                    call_name_set.insert(name);
+
                     client_impl_interior.push(Line(fmt!(
                         ctx,
                         "pub fn {}_request(&self) -> {capnp}::capability::StreamingRequest<{}> {{",
                         camel_to_snake_case(name),
                         param_type
                     )));
+
                     client_impl_interior.push(indent(Line(format!(
                         "self.client.new_streaming_call(_private::TYPE_ID, {ordinal}, ::core::option::Option::None)"
                     ))));
@@ -4265,7 +4271,7 @@ fn generate_node(
                     };
                     let names = &ctx.scope_map[&node_reader.get_id()];
                     let methods = ext.get_methods()?;
-                    for method in methods.into_iter() {
+                    for (ordinal, method) in methods.into_iter().enumerate() {
                         let name = method.get_name()?.to_str()?;
                         let mut builder_params_string = String::new();
                         let mut builder_params_impl_string = String::new();
@@ -4557,21 +4563,41 @@ fn generate_node(
                             extra_params.push(fmt!(ctx, "{par}: {capnp}::traits::Owned"));
                         }
 
+                        // Interfaces can shadow their parent function names, so we simply don't emit extra handlers for
+                        // any names that have already been taken.
+                        if call_name_set.insert(name) {
+                            if result_id != STREAM_RESULT_ID {
+                                client_impl_interior.push(Line(fmt!(
+                                    ctx,
+                                    "pub fn {}_request<'a,{}>(&'a self) -> {capnp}::capability::Request<{},{}> {{",
+                                    camel_to_snake_case(name),
+                                    extra_params.join(","),
+                                    param_type,
+                                    result_type
+                                )));
+
+                                client_impl_interior.push(indent(Line(format!(
+                                    "self.client.new_call(0x{type_id:x}, {ordinal}, ::core::option::Option::None)"
+                                ))));
+                                client_impl_interior.push(line("}"));
+                            } else {
+                                // Streaming method
+                                client_impl_interior.push(Line(fmt!(
+                                    ctx,
+                                    "pub fn {}_request(&self) -> {capnp}::capability::StreamingRequest<{}> {{",
+                                    camel_to_snake_case(name),
+                                    param_type
+                                )));
+
+                                client_impl_interior.push(indent(Line(format!(
+                                    "self.client.new_streaming_call(0x{type_id:x}, {ordinal}, ::core::option::Option::None)"
+                                ))));
+
+                                client_impl_interior.push(line("}"));
+                            }
+                        }
+
                         // TODO restore this logic
-                        /*client_impl_interior.push(Line(fmt!(
-                            ctx,
-                            "pub fn {}_request<'a,{}>(&'a self) -> {capnp}::capability::Request<{},{}> {{",
-                            camel_to_snake_case(name),
-                            extra_params.join(","),
-                            param_type,
-                            result_type
-                        )));
-
-                        client_impl_interior.push(indent(Line(format!(
-                            "self.client.new_call(_private::TYPE_ID, {method_count}, ::core::option::Option::None)"
-                        ))));
-                        client_impl_interior.push(line("}"));*/
-
                         /*client_impl_interior.push(Line(fmt!(ctx,
                             "pub fn build_{}_request<'a,{}>(&'a self, {}) -> {capnp}::capability::Request<{},{}> {} {{",
                             camel_to_snake_case(name),
@@ -4583,7 +4609,7 @@ fn generate_node(
                         )));
 
                         client_impl_interior.push(indent(Line(fmt!(ctx,
-                            "let mut req: {capnp}::capability::Request<{},{}> = self.client.new_call(_private::TYPE_ID, {method_count}, ::core::option::Option::None);\n      let mut _builder = req.get();\n      {}\n      req",
+                            "let mut req: {capnp}::capability::Request<{},{}> = self.client.new_call(0x{type_id:x}, {ordinal}, ::core::option::Option::None);\n      let mut _builder = req.get();\n      {}\n      req",
                             param_type,
                             result_type,
                             builder_params_impl_string
@@ -4608,22 +4634,21 @@ fn generate_node(
                             //shared_client_match_arms.push_str(fmt!(ctx, "\n       {method_count} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
                         }
 
-                        // TODO: Restore this logic
-                        /*dispatch_arms.push(
-                        Line(fmt!(ctx,
-                                "{method_count} => {capnp}::capability::DispatchCallResult::new({capnp}::capability::Promise::from_future(<_T as Server{bracketed_params}>::{}(this, {capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results))), false),",
-                                module_name(name))));
-                                */
-                        method_count += 1;
+                        //dispatch_arms.push(
+                        //Line(fmt!(ctx,
+                        //        "{method_count} => <_T as Server{bracketed_params}>::{}(this, {capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,",
+                        //        module_name(name))));
+                                
+                        //method_count += 1;
                     }
                 }
 
                 // Defining that the server itself should always be 'static makes
                 // bounds easier down the line.
                 if !extends.is_empty() {
-                    format!(": {} + 'static", base_traits.join(" + "))
+                    format!(": {}", base_traits.join(" + "))
                 } else {
-                    ": 'static".to_string()
+                    "".to_string()
                 }
             };
 

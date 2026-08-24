@@ -339,7 +339,7 @@ impl PipelineHook for Pipeline {
     }
 }
 
-pub(crate) struct Client<S>
+pub struct Client<S>
 where
     S: capability::Server + Clone,
 {
@@ -531,7 +531,7 @@ impl<S> Client<S>
 where
     S: capability::Server + Clone,
 {
-    pub(crate) fn new(server: S) -> Self {
+    pub fn new(server: S) -> Self {
         Self {
             state: Rc::new(RefCell::new(ClientState {
                 inner: server,
