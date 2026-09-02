@@ -1490,3 +1490,26 @@ async fn reimport_then_resend_does_not_poison_downcast_map() {
     })
     .await;
 }
+
+#[tokio::test]
+async fn test_dynamic_introspection() {
+    rpc_top_level(|client| async move {
+        let response = client.test_more_stuff_request().send().promise.await?;
+        let more_stuff = response.get()?.get_cap()?;
+
+        let response = more_stuff.client.hook.introspect().send().promise.await?;
+        let result = response.get()?.get_schemas()?;
+        let schemas = result.as_slice().unwrap();
+
+        assert_eq!(
+            schemas[0],
+            <crate::test_capnp::test_more_stuff::Client as capnp::traits::HasTypeId>::TYPE_ID
+        );
+        assert_eq!(
+            schemas[1],
+            <crate::test_capnp::test_call_order::Client as capnp::traits::HasTypeId>::TYPE_ID
+        );
+        Ok(())
+    })
+    .await;
+}
