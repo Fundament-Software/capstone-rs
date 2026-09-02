@@ -531,6 +531,7 @@ unsafe impl ReaderArena for NullArena {
 /// `Word` arrays in generated code, including constants and raw schema nodes. Performs
 /// bounds checking, so its constructor does not need to be marked `unsafe`. Does
 /// *not* enforce a read limit or a nesting limit.
+#[derive(Hash)]
 pub struct GeneratedCodeArena {
     pub(crate) words: &'static [crate::Word],
 }

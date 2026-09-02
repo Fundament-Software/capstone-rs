@@ -317,7 +317,10 @@ impl ClientHook for Client {
     }
 
     fn get_brand(&self) -> usize {
-        0
+        match &self.inner.borrow().redirect {
+            Some(inner) => inner.get_brand(),
+            None => 0,
+        }
     }
 
     fn get_resolved(&self) -> Option<Box<dyn ClientHook>> {

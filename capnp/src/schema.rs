@@ -353,10 +353,11 @@ impl DynamicSchema {
             }
             node::Interface(_) => {
                 let leak = Self::leak_chunk(*node, node.total_size()?)?;
+                let arena = Box::new(crate::private::arena::GeneratedCodeArena::new(leak));
                 nodes.insert(
                     id,
                     TypeVariant::Capability(RawCapabilitySchema {
-                        encoded_node: leak,
+                        arena: Box::leak(arena),
                         params_types: dynamic_struct_marker,
                         result_types: dynamic_struct_marker,
                     }),
@@ -539,7 +540,8 @@ impl std::ops::Drop for DynamicSchema {
                     free_as_box(&mut &e.arena);
                 }
                 TypeVariant::Capability(c) => {
-                    free_as_box(&mut &c.encoded_node);
+                    free_as_box(&mut &c.arena.words);
+                    free_as_box(&mut &c.arena);
                 }
                 TypeVariant::List(_) => todo!(),
                 _ => (), // do nothing unless it's something we allocated memory for
@@ -1182,11 +1184,9 @@ impl AnnotationList {
                     arena: &EMPTY_ARENA,
                     annotation_types: dynamic_annotation_marker,
                 }),
-                crate::schema_capnp::value::Which::Struct(_) => {
-                    todo!();
-                }
+                crate::schema_capnp::value::Which::Struct(_) => todo!(),
                 crate::schema_capnp::value::Which::Interface(_) => {
-                    TypeVariant::Capability(RawCapabilitySchema::empty())
+                    TypeVariant::Capability(RawCapabilitySchema::new(&EMPTY_ARENA))
                 }
                 crate::schema_capnp::value::Which::AnyPointer(_) => TypeVariant::AnyPointer,
             }
@@ -1222,6 +1222,71 @@ impl ::core::iter::IntoIterator for AnnotationList {
     }
 }
 
+/// A method
+#[derive(Clone, Copy)]
+pub struct Method {
+    pub proto: crate::schema_capnp::method::Reader<'static>,
+    pub ordinal: u16,
+    pub parent: CapabilitySchema,
+    pub params: introspect::Type,
+    pub results: introspect::Type,
+}
+
+/// A list of methods of an interface.
+#[derive(Clone, Copy)]
+pub struct MethodList {
+    pub(crate) methods: crate::struct_list::Reader<'static, crate::schema_capnp::method::Owned>,
+    pub(crate) parent: CapabilitySchema,
+}
+
+impl MethodList {
+    pub fn len(&self) -> u16 {
+        self.methods.len().try_into().unwrap()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    #[allow(unpredictable_function_pointer_comparisons)]
+    pub fn get(self, ordinal: u16) -> Method {
+        Method {
+            proto: self.methods.get(ordinal as u32),
+            ordinal,
+            parent: self.parent,
+            params: if self.parent._raw.params_types != dynamic_struct_marker {
+                (self.parent._raw.params_types)(ordinal)
+            } else {
+                todo!()
+            },
+            results: if self.parent._raw.result_types != dynamic_struct_marker {
+                (self.parent._raw.result_types)(ordinal)
+            } else {
+                todo!()
+            },
+        }
+    }
+
+    pub fn iter(self) -> ShortListIter<Self, Method> {
+        ShortListIter::new(self, self.len())
+    }
+}
+
+impl IndexMove<u16, Method> for MethodList {
+    fn index_move(&self, index: u16) -> Method {
+        self.get(index)
+    }
+}
+
+impl ::core::iter::IntoIterator for MethodList {
+    type Item = Method;
+    type IntoIter = ShortListIter<Self, Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
 /// A capability schema
 #[derive(Clone, Copy)]
 pub struct CapabilitySchema {
@@ -1231,9 +1296,9 @@ pub struct CapabilitySchema {
 
 impl CapabilitySchema {
     pub fn new(raw: RawCapabilitySchema) -> Self {
-        let proto = crate::any_pointer::Reader::new(unsafe {
-            layout::PointerReader::get_root_unchecked(raw.encoded_node.as_ptr() as *const u8)
-        })
+        let proto = crate::any_pointer::Reader::new(
+            layout::PointerReader::get_root_from_arena(raw.arena).unwrap(),
+        )
         .get_as()
         .unwrap();
         Self { _raw: raw, proto }
@@ -1243,30 +1308,15 @@ impl CapabilitySchema {
         self.proto
     }
 
-    pub fn get_params_struct_schema(&self, id: u16) -> RawBrandedStructSchema {
-        #[allow(unpredictable_function_pointer_comparisons)]
-        if self._raw.params_types != dynamic_struct_marker {
-            match (self._raw.params_types)(id).which() {
-                TypeVariant::Struct(res_struct) => res_struct,
-                _ => unreachable!(),
-            }
+    pub fn get_methods(self) -> Result<MethodList> {
+        if let node::Interface(s) = self.proto.which()? {
+            Ok(MethodList {
+                methods: s.get_methods()?,
+                parent: self,
+            })
         } else {
-            todo!()
+            panic!()
         }
-    }
-    pub fn get_results_struct_schema(&self, id: u16) -> RawBrandedStructSchema {
-        #[allow(unpredictable_function_pointer_comparisons)]
-        if self._raw.params_types != dynamic_struct_marker {
-            match (self._raw.result_types)(id).which() {
-                TypeVariant::Struct(res_struct) => res_struct,
-                _ => unreachable!(),
-            }
-        } else {
-            todo!()
-        }
-    }
-    pub fn get_methods(self) -> Result<()> {
-        todo!();
     }
 }
 

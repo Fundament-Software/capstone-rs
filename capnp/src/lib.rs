@@ -35,9 +35,12 @@
 #[macro_use]
 extern crate alloc;
 
+pub mod introspect_capnp;
 /// Code generated from
 /// [schema.capnp](https://github.com/capnproto/capnproto/blob/master/c%2B%2B/src/capnp/schema.capnp).
 pub mod schema_capnp;
+/// [stream.capnp](https://github.com/capnproto/capnproto/blob/master/c%2B%2B/src/capnp/stream.capnp).
+pub mod stream_capnp;
 
 pub mod any_pointer;
 pub mod any_pointer_list;

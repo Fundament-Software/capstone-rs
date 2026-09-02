@@ -395,8 +395,7 @@ impl FromClientHook for alloc::boxed::Box<dyn ClientHook> {
 
 impl crate::introspect::Introspect for alloc::boxed::Box<dyn ClientHook> {
     fn introspect() -> crate::introspect::Type {
-        crate::introspect::TypeVariant::Capability(crate::introspect::RawCapabilitySchema::empty())
-            .into()
+        crate::introspect::TypeVariant::AnyPointer.into()
     }
 }
 
@@ -496,8 +495,7 @@ impl<_T: Server + Clone> crate::capability::Server for UntypedDispatch<_T> {
 #[cfg(feature = "alloc")]
 impl crate::introspect::Introspect for Client {
     fn introspect() -> crate::introspect::Type {
-        crate::introspect::TypeVariant::Capability(crate::introspect::RawCapabilitySchema::empty())
-            .into()
+        crate::introspect::TypeVariant::AnyPointer.into()
     }
 }
 

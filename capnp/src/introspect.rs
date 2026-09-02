@@ -366,15 +366,16 @@ impl core::fmt::Debug for RawEnumSchema {
 #[derive(Clone, Copy, Hash)]
 pub struct RawCapabilitySchema {
     /// The Node (as defined in schema.capnp), as a single segment message.
-    pub encoded_node: &'static [crate::Word],
+    pub arena: &'static crate::private::arena::GeneratedCodeArena,
     pub params_types: fn(u16) -> Type,
     pub result_types: fn(u16) -> Type,
 }
 
 impl RawCapabilitySchema {
-    pub const fn empty() -> Self {
+    /// Constructs a new `RawStructSchema`.
+    pub const fn new(arena: &'static crate::private::arena::GeneratedCodeArena) -> Self {
         Self {
-            encoded_node: &[],
+            arena,
             params_types: crate::schema::dynamic_struct_marker,
             result_types: crate::schema::dynamic_struct_marker,
         }
@@ -383,7 +384,7 @@ impl RawCapabilitySchema {
 
 impl core::cmp::PartialEq for RawCapabilitySchema {
     fn eq(&self, other: &Self) -> bool {
-        ::core::ptr::eq(self.encoded_node, other.encoded_node)
+        ::core::ptr::eq(self.arena, other.arena)
     }
 }
 
@@ -391,11 +392,7 @@ impl core::cmp::Eq for RawCapabilitySchema {}
 
 impl core::fmt::Debug for RawCapabilitySchema {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::result::Result<(), core::fmt::Error> {
-        write!(
-            f,
-            "RawCapabilitySchema({:?})",
-            self.encoded_node as *const _
-        )
+        write!(f, "RawCapabilitySchema({:?})", self.arena as *const _)
     }
 }
 impl RawEnumSchema {

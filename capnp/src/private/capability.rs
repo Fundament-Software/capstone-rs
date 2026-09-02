@@ -85,6 +85,27 @@ pub trait ClientHook {
     fn when_resolved(&self) -> Promise<(), crate::Error>;
 
     fn is_local_client(&self) -> bool;
+
+    /// Calls the universal introspect function to dynamically retrieve what interfaces this capability implements
+    fn introspect(
+        &self,
+    ) -> Request<
+        crate::introspect_capnp::introspect::introspect_params::Owned,
+        crate::introspect_capnp::introspect::introspect_results::Owned,
+    > {
+        let typeless = self.new_call(
+            crate::introspect_capnp::introspect::_private::TYPE_ID,
+            0,
+            Some(MessageSize {
+                word_count: 0,
+                cap_count: 0,
+            }),
+        );
+        Request {
+            hook: typeless.hook,
+            marker: core::marker::PhantomData,
+        }
+    }
 }
 
 impl Clone for alloc::boxed::Box<dyn ClientHook> {
@@ -162,4 +183,16 @@ impl Clone for alloc::boxed::Box<dyn PipelineHook> {
 pub enum PipelineOp {
     Noop,
     GetPointerField(u16),
+}
+
+#[inline]
+pub fn build_introspect(
+    _params: Params<crate::any_pointer::Owned>,
+    results: Results<crate::any_pointer::Owned>,
+    schemas: &[u64],
+) -> Result<(), crate::Error> {
+    //crate::private::capability::internal_get_typed_params(params),
+    let mut results: crate::introspect_capnp::introspect::IntrospectResults =
+        internal_get_typed_results(results);
+    results.get().set_schemas(schemas)
 }

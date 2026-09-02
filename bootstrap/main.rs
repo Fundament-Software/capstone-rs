@@ -34,4 +34,18 @@ pub fn main() {
         .output_directory(root.join("capnp-rpc/src"))
         .run(output.as_slice())
         .expect("failed to bootstrap RPC schema");
+
+    let output = capnp_sys::call(
+        ["capnp/stream.capnp", "capnp/introspect.capnp"].iter(),
+        [root.to_str().unwrap()].iter(),
+        ["capnp/".to_string()].iter(),
+        false,
+    )
+    .expect("Failed to run capnp command");
+
+    ::capnpc::codegen::CodeGenerationCommand::new()
+        .output_directory(root.join("capnp/src"))
+        .capnp_root("crate")
+        .run(output.as_slice())
+        .expect("failed to bootstrap RPC schema");
 }
