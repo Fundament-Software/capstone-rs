@@ -220,8 +220,8 @@ impl<VatId> Drop for QuestionRef<VatId> {
         let Some(q) = &mut questions.slots[self.id as usize] else {
             unreachable!()
         };
-        if let Ok(ref mut c) = *self.connection_state.connection.borrow_mut() {
-            if !q.skip_finish {
+        if let Ok(ref mut c) = *self.connection_state.connection.borrow_mut()
+            && !q.skip_finish {
                 let mut message = c.new_outgoing_message(5);
                 {
                     let root: message::Builder = message.get_body().unwrap().init_as();
@@ -237,7 +237,6 @@ impl<VatId> Drop for QuestionRef<VatId> {
                 }
                 let _ = message.send();
             }
-        }
 
         if q.is_awaiting_return {
             // Still waiting for return, so just remove the QuestionRef pointer from the table.
@@ -516,7 +515,7 @@ impl<VatId> ConnectionState<VatId> {
 
         {
             let answer_slots = &mut self.answers.borrow_mut().slots;
-            for (_, ref mut answer) in answer_slots.iter_mut() {
+            for ref mut answer in answer_slots.values_mut() {
                 // TODO tail call
                 pipelines_to_release.push(answer.pipeline.take())
             }
@@ -538,7 +537,7 @@ impl<VatId> ConnectionState<VatId> {
 
         {
             let import_slots = &mut self.imports.borrow_mut().slots;
-            for (_, ref mut import) in import_slots.iter_mut() {
+            for ref mut import in import_slots.values_mut() {
                 if let Some(f) = import.promise_client_to_resolve.take()
                     && let Some(promise_client) = f.upgrade()
                 {
@@ -1440,8 +1439,8 @@ impl<VatId> ConnectionState<VatId> {
         while let Some(resolved) = inner.get_resolved() {
             inner = resolved;
         }
-        if inner.get_brand() == state.get_brand() {
-            if let Some(c) = Client::from_ptr(inner.get_ptr(), state) {
+        if inner.get_brand() == state.get_brand()
+            && let Some(c) = Client::from_ptr(inner.get_ptr(), state) {
                 return Ok(c.write_descriptor(descriptor));
             }
             // The hook claims to belong to this connection but the downcast
@@ -1451,7 +1450,6 @@ impl<VatId> ConnectionState<VatId> {
             // through and export it as if it were foreign: the receiver gets
             // a functioning capability (at the cost of an extra round-trip)
             // instead of the event loop panicking.
-        }
         {
             let ptr = inner.get_ptr();
             let contains_key = state.exports_by_cap.borrow().contains_key(&ptr);
@@ -2989,14 +2987,13 @@ impl<VatId> Drop for PromiseClient<VatId> {
             // the import still exists and the pointer still points back to this object because this
             // object may actually outlive the import.
             let slots = &mut self.connection_state.imports.borrow_mut().slots;
-            if let Some(import) = slots.get_mut(&id) {
-                if let Some(c) = &import.app_client
+            if let Some(import) = slots.get_mut(&id)
+                && let Some(c) = &import.app_client
                     && let Some(cs) = c.upgrade()
                     && cs.get_ptr() == self_ptr
                 {
                     import.app_client = None;
                 }
-            }
         }
 
         assert!(

@@ -104,13 +104,12 @@ impl crate::FlowController for FixedWindowFlowController {
                         }
                     }
 
-                    if inner.in_flight == 0 {
-                        if let Some(f) = inner.empty_fulfiller.take() {
+                    if inner.in_flight == 0
+                        && let Some(f) = inner.empty_fulfiller.take() {
                             let _ = f.send(Promise::from_future(
                                 tasks.on_empty().map_err(crate::canceled_to_error),
                             ));
                         }
-                    }
                 }
                 State::Failed(_) => {
                     // A previous call failed, but this one -- which was already in-flight at the
@@ -145,8 +144,8 @@ impl crate::FlowController for FixedWindowFlowController {
 
     fn wait_all_acked(&mut self) -> Promise<(), Error> {
         let mut inner = self.inner.borrow_mut();
-        if let State::Running(ref blocked_sends) = inner.state {
-            if !blocked_sends.is_empty() {
+        if let State::Running(ref blocked_sends) = inner.state
+            && !blocked_sends.is_empty() {
                 let (snd, rcv) = oneshot::channel();
                 inner.empty_fulfiller = Some(snd);
                 return Promise::from_future(async move {
@@ -156,7 +155,6 @@ impl crate::FlowController for FixedWindowFlowController {
                     }
                 });
             }
-        }
         Promise::from_future(self.tasks.on_empty().map_err(crate::canceled_to_error))
     }
 }

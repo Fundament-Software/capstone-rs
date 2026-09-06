@@ -1021,7 +1021,7 @@ impl<'a> SingleSegmentAllocator<'a> {
     pub fn new(segment: &'a mut [u8]) -> SingleSegmentAllocator<'a> {
         #[cfg(not(feature = "unaligned"))]
         {
-            if segment.as_ptr() as usize % BYTES_PER_WORD != 0 {
+            if !(segment.as_ptr() as usize).is_multiple_of(BYTES_PER_WORD) {
                 panic!(
                     "Segment must be 8-byte aligned, or you must enable the \"unaligned\" \
                         feature in the capnp crate"
@@ -1094,7 +1094,7 @@ where
         ptr: core::ptr::NonNull<u8>,
         word_size: u32,
         words_used: u32,
-    ) {
+    ) { unsafe {
         (*self).deallocate_segment(ptr, word_size, words_used)
-    }
+    }}
 }

@@ -22,7 +22,6 @@
 //! Asynchronous reading and writing of messages using the
 //! [packed stream encoding](https://capnproto.org/encoding.html#packing).
 
-use std::mem::MaybeUninit;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 

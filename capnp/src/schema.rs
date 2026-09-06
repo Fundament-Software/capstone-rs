@@ -168,7 +168,7 @@ impl DynamicSchema {
         Ok(field.get_name()?.to_str()?)
     }
 
-    fn get_enumerant_name(
+    pub fn get_enumerant_name(
         enumerant: crate::schema_capnp::enumerant::Reader<'_>,
     ) -> crate::Result<&str> {
         Ok(enumerant.get_name()?.to_str()?)
@@ -696,6 +696,7 @@ impl StructSchema {
         })
     }
 
+    #[cfg(all(feature = "std", feature = "alloc"))]
     fn get_field_type(&self, idx: u16) -> crate::introspect::Type {
         #[allow(unpredictable_function_pointer_comparisons)]
         if self.raw.field_types == dynamic_field_marker {
@@ -778,7 +779,7 @@ impl Field {
         self.proto
     }
 
-    #[cfg(all(feature = "std", feature = "alloc"))]
+    /*#[cfg(all(feature = "std", feature = "alloc"))]
     fn resolve_type_reader(
         reader: &crate::schema_capnp::type_::Reader,
         token: DynamicSchemaToken,
@@ -813,7 +814,7 @@ impl Field {
                     .map_err(|e| crate::Error::failed(e.to_string()))?
             }
         })
-    }
+    }*/
 
     pub fn get_type(&self) -> introspect::Type {
         self.ty
@@ -871,10 +872,15 @@ impl FieldList {
     }
 
     pub fn get(self, index: u16) -> Field {
+        #[cfg(all(feature = "std", feature = "alloc"))]
+        let ty = self.parent.get_field_type(index);
+        #[cfg(not(all(feature = "std", feature = "alloc")))]
+        let ty = crate::introspect::TypeVariant::AnyPointer.into();
+
         Field {
             proto: self.fields.get(index as u32),
             index,
-            ty: self.parent.get_field_type(index),
+            ty,
             parent: self.parent,
         }
     }

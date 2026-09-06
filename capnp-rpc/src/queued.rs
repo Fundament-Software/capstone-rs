@@ -84,9 +84,9 @@ impl PipelineInnerSender {
 
 impl Drop for PipelineInnerSender {
     fn drop(&mut self) {
-        if self.resolve_on_drop {
-            if let Some(weak_queued) = self.inner.take() {
-                if let Some(pipeline_inner) = weak_queued.upgrade() {
+        if self.resolve_on_drop
+            && let Some(weak_queued) = self.inner.take()
+                && let Some(pipeline_inner) = weak_queued.upgrade() {
                     PipelineInner::resolve(
                         &pipeline_inner,
                         Ok(Box::new(crate::broken::Pipeline::new(Error::failed(
@@ -94,18 +94,15 @@ impl Drop for PipelineInnerSender {
                         )))),
                     );
                 }
-            }
-        }
     }
 }
 
 impl PipelineInnerSender {
     pub(crate) fn complete(mut self, pipeline: Box<dyn PipelineHook>) {
-        if let Some(weak_queued) = self.inner.take() {
-            if let Some(pipeline_inner) = weak_queued.upgrade() {
+        if let Some(weak_queued) = self.inner.take()
+            && let Some(pipeline_inner) = weak_queued.upgrade() {
                 crate::queued::PipelineInner::resolve(&pipeline_inner, Ok(pipeline));
             }
-        }
     }
 }
 

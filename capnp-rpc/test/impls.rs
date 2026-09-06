@@ -28,7 +28,7 @@ use crate::test_capnp::{
 use capnp::Error;
 use capnp::capability::FromClientHook;
 use capnp::capability::Promise;
-use futures_util::{FutureExt, TryFutureExt};
+use futures_util::TryFutureExt;
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;

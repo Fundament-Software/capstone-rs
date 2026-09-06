@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // Copyright (c) 2013-2017 Sandstorm Development Group, Inc. and contributors
 // Licensed under the MIT License:
 //
@@ -392,6 +394,7 @@ impl Mode {
     }
 }
 
+#[allow(unused_variables)]
 fn do_testcase<C, S, T>(
     testcase: T,
     mode: Mode,

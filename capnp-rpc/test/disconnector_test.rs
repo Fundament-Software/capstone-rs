@@ -172,7 +172,7 @@ fn mock_setup() -> (
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn disconnector_waits_for_connection_shutdown() {
-    let (mut pool, tx, _shutdown_called, mut disconnector_handle) = mock_setup();
+    let (pool, tx, _shutdown_called, mut disconnector_handle) = mock_setup();
 
     assert!(
         (&mut disconnector_handle).now_or_never().is_none(),
@@ -180,7 +180,7 @@ async fn disconnector_waits_for_connection_shutdown() {
     );
 
     tx.send(Ok(())).unwrap();
-    pool.run_until(disconnector_handle).await;
+    pool.run_until(disconnector_handle).await.unwrap();
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

@@ -21,8 +21,6 @@
 
 //! Untyped pointer that can be cast to any struct, list, or capability type.
 
-#[cfg(feature = "alloc")]
-use alloc::{boxed::Box, vec::Vec};
 
 use crate::Result;
 #[cfg(feature = "alloc")]
