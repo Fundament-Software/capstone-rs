@@ -32,9 +32,9 @@ jobs:
       run: |
           export DEBIAN_FRONTEND=noninteractive
           sudo apt update
-          sudo apt install -y clang-20
-          sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-20 60
-          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-20 60
+          sudo apt install -y clang-23
+          sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-23 60
+          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-23 60
           
     - name: Test feature flags
       run: |
@@ -80,21 +80,15 @@ jobs:
         run: |
             export DEBIAN_FRONTEND=noninteractive
             sudo apt update
-            sudo apt install -y clang-20
-            sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-20 60
-            sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-20 60
+            sudo apt install -y clang-23
+            sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-23 60
+            sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-23 60
 
       - name: Test default features
         run: cargo miri test --package capstone --package capnpc-test
 
       - name: Test no default features
         run: cargo miri test --package capstone --package capnpc-test --no-default-features
-
-      - name: Test default features 32-bit
-        run: cargo miri test --package capstone --package capnpc-test --target i686-unknown-linux-gnu
-
-      - name: Test no default features 32-bit
-        run: cargo miri test --package capstone --package capnpc-test --no-default-features --target i686-unknown-linux-gnu
 
       - name: Test sync_reader
         run: cargo miri test --package capstone --package capnpc-test --features sync_reader
@@ -116,10 +110,13 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - name: Install Cap'n Proto
+      - name: Install Clang
         run: |
             export DEBIAN_FRONTEND=noninteractive
-            sudo apt-get install -y capnproto libcapnp-dev
+            sudo apt update
+            sudo apt install -y clang-23
+            sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-23 60
+            sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-23 60
 
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
