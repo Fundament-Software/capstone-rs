@@ -439,11 +439,11 @@ mod wire_helpers {
         src: *const T,
         dst: *mut T,
         count: usize,
-    ) {
+    ) { unsafe {
         if count > 0 {
             ptr::copy_nonoverlapping(src, dst, count);
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn allocate(
@@ -452,7 +452,7 @@ mod wire_helpers {
         segment_id: u32,
         amount: WordCount32,
         kind: WirePointerKind,
-    ) -> (*mut u8, *mut WirePointer, u32) {
+    ) -> (*mut u8, *mut WirePointer, u32) { unsafe {
         let is_null = (*reff).is_null();
         if !is_null {
             zero_object(arena, segment_id, reff)
@@ -494,7 +494,7 @@ mod wire_helpers {
                 (ptr, reff, segment_id)
             }
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn follow_builder_fars(
@@ -502,7 +502,7 @@ mod wire_helpers {
         reff: *mut WirePointer,
         ref_target: *mut u8,
         segment_id: u32,
-    ) -> Result<(*mut u8, *mut WirePointer, u32)> {
+    ) -> Result<(*mut u8, *mut WirePointer, u32)> { unsafe {
         // If `ref` is a far pointer, follow it. On return, `ref` will have been updated to point at
         // a WirePointer that contains the type information about the target object, and a pointer
         // to the object contents is returned. The caller must NOT use `ref->target()` as this may
@@ -533,7 +533,7 @@ mod wire_helpers {
         } else {
             Ok((ref_target, reff, segment_id))
         }
-    }
+    }}
 
     /// Follows a WirePointer to get a triple containing:
     ///   - the pointed-to object
@@ -544,7 +544,7 @@ mod wire_helpers {
         arena: &dyn ReaderArena,
         reff: *const WirePointer,
         segment_id: u32,
-    ) -> Result<(*const u8, *const WirePointer, u32)> {
+    ) -> Result<(*const u8, *const WirePointer, u32)> { unsafe {
         if (*reff).kind() == WirePointerKind::Far {
             let far_segment_id = (*reff).far_segment_id();
 
@@ -587,13 +587,13 @@ mod wire_helpers {
                 segment_id,
             ))
         }
-    }
+    }}
 
     pub(crate) unsafe fn zero_object(
         arena: &mut dyn BuilderArena,
         segment_id: u32,
         reff: *mut WirePointer,
-    ) {
+    ) { unsafe {
         //# Zero out the pointed-to object. Use when the pointer is
         //# about to be overwritten making the target object no longer
         //# reachable.
@@ -623,14 +623,14 @@ mod wire_helpers {
                 }
             }
         }
-    }
+    }}
 
     pub(crate) unsafe fn zero_object_helper(
         arena: &mut dyn BuilderArena,
         segment_id: u32,
         tag: *mut WirePointer,
         ptr: *mut u8,
-    ) {
+    ) { unsafe {
         match (*tag).kind() {
             WirePointerKind::Other => {
                 panic!("Don't know how to handle OTHER")
@@ -699,14 +699,14 @@ mod wire_helpers {
                 panic!("Unexpected FAR pointer")
             }
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn zero_pointer_and_fars(
         arena: &mut dyn BuilderArena,
         _segment_id: u32,
         reff: *mut WirePointer,
-    ) -> Result<()> {
+    ) -> Result<()> { unsafe {
         // Zero out the pointer itself and, if it is a far pointer, zero the landing pad as well,
         // but do not zero the object body. Used when upgrading.
 
@@ -719,14 +719,14 @@ mod wire_helpers {
         }
         ptr::write_bytes(reff, 0, 1);
         Ok(())
-    }
+    }}
 
     pub(crate) unsafe fn total_size(
         arena: &dyn ReaderArena,
         segment_id: u32,
         reff: *const WirePointer,
         mut nesting_limit: i32,
-    ) -> Result<MessageSize> {
+    ) -> Result<MessageSize> { unsafe {
         let mut result = MessageSize {
             word_count: 0,
             cap_count: 0,
@@ -866,7 +866,7 @@ mod wire_helpers {
         }
 
         Ok(result)
-    }
+    }}
 
     // Helper for copy_message().
     unsafe fn copy_struct(
@@ -877,7 +877,7 @@ mod wire_helpers {
         src: *const u8,
         data_size: usize,
         pointer_count: usize,
-    ) {
+    ) { unsafe {
         copy_nonoverlapping_check_zero(src, dst, data_size * BYTES_PER_WORD);
 
         let src_refs: *const WirePointer = (src as *const WirePointer).add(data_size);
@@ -892,7 +892,7 @@ mod wire_helpers {
                 src_refs.add(ii),
             );
         }
-    }
+    }}
 
     // Copies from a trusted message.
     // Returns (new_dst_ptr, new_dst, new_segment_id).
@@ -902,7 +902,7 @@ mod wire_helpers {
         cap_table: CapTableBuilder,
         dst: *mut WirePointer,
         src: *const WirePointer,
-    ) -> (*mut u8, *mut WirePointer, u32) {
+    ) -> (*mut u8, *mut WirePointer, u32) { unsafe {
         match (*src).kind() {
             WirePointerKind::Struct => {
                 if (*src).is_null() {
@@ -1027,7 +1027,7 @@ mod wire_helpers {
                 panic!("Unchecked message contained a far pointer.")
             }
         }
-    }
+    }}
 
     pub(crate) unsafe fn transfer_pointer(
         arena: &mut dyn BuilderArena,
@@ -1035,7 +1035,7 @@ mod wire_helpers {
         dst: *mut WirePointer,
         src_segment_id: u32,
         src: *mut WirePointer,
-    ) {
+    ) { unsafe {
         //# Make *dst point to the same object as *src. Both must
         //# reside in the same message, but can be in different
         //# segments. Not always-inline because this is rarely used.
@@ -1063,7 +1063,7 @@ mod wire_helpers {
         } else {
             ptr::copy_nonoverlapping(src, dst, 1);
         }
-    }
+    }}
 
     pub(crate) unsafe fn transfer_pointer_split(
         arena: &mut dyn BuilderArena,
@@ -1072,7 +1072,7 @@ mod wire_helpers {
         src_segment_id: u32,
         src_tag: *mut WirePointer,
         src_ptr: *mut u8,
-    ) {
+    ) { unsafe {
         // Like the other transfer_pointer, but splits src into a tag and a
         // target. Particularly useful for OrphanBuilder.
 
@@ -1137,7 +1137,7 @@ mod wire_helpers {
                 }
             }
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn init_struct_pointer(
@@ -1146,7 +1146,7 @@ mod wire_helpers {
         segment_id: u32,
         cap_table: CapTableBuilder,
         size: StructSize,
-    ) -> StructBuilder<'_> {
+    ) -> StructBuilder<'_> { unsafe {
         let (ptr, reff, segment_id) = allocate(
             arena,
             reff,
@@ -1165,7 +1165,7 @@ mod wire_helpers {
             data_size: u32::from(size.data) * BitCount32::try_from(BITS_PER_WORD).unwrap(),
             pointer_count: size.pointers,
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn get_writable_struct_pointer<'a>(
@@ -1175,7 +1175,7 @@ mod wire_helpers {
         cap_table: CapTableBuilder,
         size: StructSize,
         default: Option<&'a [crate::Word]>,
-    ) -> Result<StructBuilder<'a>> {
+    ) -> Result<StructBuilder<'a>> { unsafe {
         let mut ref_target = WirePointer::mut_target(reff);
 
         if (*reff).is_null() {
@@ -1280,7 +1280,7 @@ mod wire_helpers {
                 pointer_count: old_pointer_count,
             })
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn init_list_pointer(
@@ -1290,7 +1290,7 @@ mod wire_helpers {
         cap_table: CapTableBuilder,
         element_count: ElementCount32,
         element_size: ElementSize,
-    ) -> ListBuilder<'_> {
+    ) -> ListBuilder<'_> { unsafe {
         assert!(
             element_size != InlineComposite,
             "Should have called initStructListPointer() instead"
@@ -1316,7 +1316,7 @@ mod wire_helpers {
             struct_data_size: data_size,
             struct_pointer_count: u16::try_from(pointer_count).unwrap(),
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn init_struct_list_pointer(
@@ -1326,7 +1326,7 @@ mod wire_helpers {
         cap_table: CapTableBuilder,
         element_count: ElementCount32,
         element_size: StructSize,
-    ) -> ListBuilder<'_> {
+    ) -> ListBuilder<'_> { unsafe {
         let words_per_element = element_size.total();
 
         //# Allocate the list, prefixed by a single WirePointer.
@@ -1367,7 +1367,7 @@ mod wire_helpers {
                 * (u32::try_from(BITS_PER_WORD).unwrap()),
             struct_pointer_count: element_size.pointers,
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn get_writable_list_pointer(
@@ -1377,7 +1377,7 @@ mod wire_helpers {
         cap_table: CapTableBuilder,
         element_size: ElementSize,
         default_value: *const u8,
-    ) -> Result<ListBuilder<'_>> {
+    ) -> Result<ListBuilder<'_>> { unsafe {
         assert!(
             element_size != InlineComposite,
             "Use get_writable_struct_list_pointer() for struct lists"
@@ -1502,7 +1502,7 @@ mod wire_helpers {
                 struct_pointer_count: u16::try_from(pointer_count).unwrap(),
             })
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn get_writable_struct_list_pointer(
@@ -1512,7 +1512,7 @@ mod wire_helpers {
         cap_table: CapTableBuilder,
         element_size: StructSize,
         default_value: *const u8,
-    ) -> Result<ListBuilder<'_>> {
+    ) -> Result<ListBuilder<'_>> { unsafe {
         let mut orig_ref_target = WirePointer::mut_target(orig_ref);
 
         if (*orig_ref).is_null() {
@@ -1763,7 +1763,7 @@ mod wire_helpers {
                 })
             }
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn init_text_pointer(
@@ -1771,7 +1771,7 @@ mod wire_helpers {
         reff: *mut WirePointer,
         segment_id: u32,
         size: ByteCount32,
-    ) -> SegmentAnd<text::Builder<'_>> {
+    ) -> SegmentAnd<text::Builder<'_>> { unsafe {
         assert!(size < (1 << 29), "text size too large");
 
         //# The byte list must include a NUL terminator.
@@ -1793,7 +1793,7 @@ mod wire_helpers {
             segment_id,
             value: text::Builder::new(slice::from_raw_parts_mut(ptr, size as usize)),
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn set_text_pointer<'a>(
@@ -1801,7 +1801,7 @@ mod wire_helpers {
         reff: *mut WirePointer,
         segment_id: u32,
         value: crate::text::Reader<'_>,
-    ) -> SegmentAnd<text::Builder<'a>> {
+    ) -> SegmentAnd<text::Builder<'a>> { unsafe {
         let value_bytes = value.as_bytes();
         // TODO make sure the string is not longer than 2 ** 29.
         let mut allocation = init_text_pointer(
@@ -1816,7 +1816,7 @@ mod wire_helpers {
             .as_bytes_mut()
             .copy_from_slice(value_bytes);
         allocation
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn get_writable_text_pointer<'a>(
@@ -1824,7 +1824,7 @@ mod wire_helpers {
         mut reff: *mut WirePointer,
         mut segment_id: u32,
         default: Option<&'a [crate::Word]>,
-    ) -> Result<text::Builder<'a>> {
+    ) -> Result<text::Builder<'a>> { unsafe {
         let ref_target = if (*reff).is_null() {
             match default {
                 None => return Ok(text::Builder::new(&mut [])),
@@ -1866,7 +1866,7 @@ mod wire_helpers {
             slice::from_raw_parts_mut(ptr, (count - 1) as usize),
             (count - 1) as usize,
         ))
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn init_data_pointer(
@@ -1874,7 +1874,7 @@ mod wire_helpers {
         reff: *mut WirePointer,
         segment_id: u32,
         size: ByteCount32,
-    ) -> SegmentAnd<data::Builder<'_>> {
+    ) -> SegmentAnd<data::Builder<'_>> { unsafe {
         //# Allocate the space.
         let (ptr, reff, segment_id) = allocate(
             arena,
@@ -1891,7 +1891,7 @@ mod wire_helpers {
             segment_id,
             value: data::builder_from_raw_parts(ptr, size),
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn set_data_pointer<'a>(
@@ -1899,7 +1899,7 @@ mod wire_helpers {
         reff: *mut WirePointer,
         segment_id: u32,
         value: &[u8],
-    ) -> SegmentAnd<data::Builder<'a>> {
+    ) -> SegmentAnd<data::Builder<'a>> { unsafe {
         let allocation = init_data_pointer(
             arena,
             reff,
@@ -1908,7 +1908,7 @@ mod wire_helpers {
         );
         allocation.value.copy_from_slice(value);
         allocation
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn get_writable_data_pointer<'a>(
@@ -1916,7 +1916,7 @@ mod wire_helpers {
         mut reff: *mut WirePointer,
         mut segment_id: u32,
         default: Option<&'a [crate::Word]>,
-    ) -> Result<data::Builder<'a>> {
+    ) -> Result<data::Builder<'a>> { unsafe {
         let ref_target = if (*reff).is_null() {
             match default {
                 None => return Ok(&mut []),
@@ -1952,7 +1952,7 @@ mod wire_helpers {
             ptr,
             (*reff).list_element_count(),
         ))
-    }
+    }}
 
     pub(crate) unsafe fn set_struct_pointer(
         arena: &mut dyn BuilderArena,
@@ -1961,14 +1961,14 @@ mod wire_helpers {
         reff: *mut WirePointer,
         value: StructReader,
         canonicalize: bool,
-    ) -> Result<SegmentAnd<*mut u8>> {
+    ) -> Result<SegmentAnd<*mut u8>> { unsafe {
         let mut data_size: ByteCount32 = round_bits_up_to_bytes(u64::from(value.data_size));
         let mut ptr_count = value.pointer_count;
 
         if canonicalize {
             // StructReaders should not have bitwidths other than 1, but let's be safe
             if !(value.data_size == 1
-                || value.data_size % u32::try_from(BITS_PER_BYTE).unwrap() == 0)
+                || value.data_size.is_multiple_of(u32::try_from(BITS_PER_BYTE).unwrap()))
             {
                 return Err(Error::from_kind(
                     ErrorKind::StructReaderHadBitwidthOtherThan1,
@@ -2035,7 +2035,7 @@ mod wire_helpers {
             segment_id,
             value: ptr,
         })
-    }
+    }}
 
     #[cfg(feature = "alloc")]
     pub(crate) unsafe fn set_capability_pointer(
@@ -2044,10 +2044,10 @@ mod wire_helpers {
         mut cap_table: CapTableBuilder,
         reff: *mut WirePointer,
         cap: alloc::boxed::Box<dyn ClientHook>,
-    ) {
+    ) { unsafe {
         // TODO if ref is not null, zero object.
         (*reff).set_cap(u32::try_from(cap_table.inject_cap(cap)).unwrap());
-    }
+    }}
 
     pub(crate) unsafe fn set_list_pointer(
         arena: &mut dyn BuilderArena,
@@ -2056,7 +2056,7 @@ mod wire_helpers {
         reff: *mut WirePointer,
         value: ListReader,
         canonicalize: bool,
-    ) -> Result<SegmentAnd<*mut u8>> {
+    ) -> Result<SegmentAnd<*mut u8>> { unsafe {
         let total_size =
             round_bits_up_to_words(u64::from(value.element_count) * u64::from(value.step));
 
@@ -2220,7 +2220,7 @@ mod wire_helpers {
                 value: ptr,
             })
         }
-    }
+    }}
 
     pub(crate) unsafe fn deep_copy_pointee(
         dst_arena: &mut dyn BuilderArena,
@@ -2229,7 +2229,7 @@ mod wire_helpers {
         dst: *mut WirePointer,
         src: PointerReader,
         canonicalize: bool,
-    ) -> Result<SegmentAnd<*mut u8>> {
+    ) -> Result<SegmentAnd<*mut u8>> { unsafe {
         if (*src.pointer).is_null() {
             ptr::write_bytes(dst, 0, 1);
             return Ok(SegmentAnd {
@@ -2416,7 +2416,7 @@ mod wire_helpers {
                 return Err(Error::from_kind(ErrorKind::UnknownPointerType));
             }
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn read_struct_pointer<'a>(
@@ -2426,7 +2426,7 @@ mod wire_helpers {
         mut reff: *const WirePointer,
         default: Option<&'a [crate::Word]>,
         nesting_limit: i32,
-    ) -> Result<StructReader<'a>> {
+    ) -> Result<StructReader<'a>> { unsafe {
         if (*reff).is_null() {
             match default {
                 None => return Ok(StructReader::new_default()),
@@ -2475,7 +2475,7 @@ mod wire_helpers {
             pointer_count: (*reff).struct_ptr_count(),
             nesting_limit: nesting_limit - 1,
         })
-    }
+    }}
 
     #[inline]
     #[cfg(feature = "alloc")]
@@ -2485,7 +2485,7 @@ mod wire_helpers {
         cap_table: CapTableReader,
         reff: *const WirePointer,
         _nesting_limit: i32,
-    ) -> Result<alloc::boxed::Box<dyn ClientHook>> {
+    ) -> Result<alloc::boxed::Box<dyn ClientHook>> { unsafe {
         if (*reff).is_null() {
             Err(Error::from_kind(
                 ErrorKind::MessageContainsNullCapabilityPointer,
@@ -2503,7 +2503,7 @@ mod wire_helpers {
                 )),
             }
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn read_list_pointer(
@@ -2514,7 +2514,7 @@ mod wire_helpers {
         default_value: *const u8,
         expected_element_size: Option<ElementSize>,
         nesting_limit: i32,
-    ) -> Result<ListReader<'_>> {
+    ) -> Result<ListReader<'_>> { unsafe {
         if (*reff).is_null() {
             if default_value.is_null() || (*(default_value as *const WirePointer)).is_null() {
                 return Ok(ListReader::new_default());
@@ -2687,7 +2687,7 @@ mod wire_helpers {
                 })
             }
         }
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn read_text_pointer<'a>(
@@ -2695,7 +2695,7 @@ mod wire_helpers {
         mut segment_id: u32,
         mut reff: *const WirePointer,
         default: Option<&[crate::Word]>,
-    ) -> Result<text::Reader<'a>> {
+    ) -> Result<text::Reader<'a>> { unsafe {
         if (*reff).is_null() {
             match default {
                 None => return Ok("".into()),
@@ -2748,7 +2748,7 @@ mod wire_helpers {
             str_ptr,
             size as usize - 1,
         )))
-    }
+    }}
 
     #[inline]
     pub(crate) unsafe fn read_data_pointer<'a>(
@@ -2756,7 +2756,7 @@ mod wire_helpers {
         mut segment_id: u32,
         mut reff: *const WirePointer,
         default: Option<&'a [crate::Word]>,
-    ) -> Result<data::Reader<'a>> {
+    ) -> Result<data::Reader<'a>> { unsafe {
         if (*reff).is_null() {
             match default {
                 None => return Ok(&[]),
@@ -2793,7 +2793,7 @@ mod wire_helpers {
         )?;
 
         Ok(data::reader_from_raw_parts(ptr as *const _, size))
-    }
+    }}
 }
 
 static ZERO: u64 = 0;
@@ -2966,6 +2966,7 @@ impl<'a> PointerReader<'a> {
         }
     }
 
+    #[cfg(test)]
     pub(crate) unsafe fn get_root_unchecked<'b>(location: *const u8) -> PointerReader<'b> {
         PointerReader {
             arena: &NULL_ARENA,
@@ -3419,9 +3420,9 @@ impl<'a> PointerBuilder<'a> {
         }
     }
 
-    pub unsafe fn set_other_pointer(&mut self, index: u64) {
+    pub unsafe fn set_other_pointer(&mut self, index: u64) { unsafe {
         (*self.pointer).set_other_pointer(index);
-    }
+    }}
 
     pub fn copy_from(&mut self, other: PointerReader, canonicalize: bool) -> Result<()> {
         if other.pointer.is_null() {
@@ -3645,7 +3646,7 @@ impl<'a> StructReader<'a> {
             return Ok(false);
         }
 
-        if self.get_data_section_size() % u32::try_from(BITS_PER_WORD).unwrap() != 0 {
+        if !self.get_data_section_size().is_multiple_of(u32::try_from(BITS_PER_WORD).unwrap()) {
             // legacy non-word-size struct
             return Ok(false);
         }
@@ -4062,7 +4063,7 @@ impl<'a> ListReader<'a> {
                 if !core::ptr::eq(self.ptr, read_head.get()) {
                     return Ok(false);
                 }
-                if self.struct_data_size % u32::try_from(BITS_PER_WORD).unwrap() != 0 {
+                if !self.struct_data_size.is_multiple_of(u32::try_from(BITS_PER_WORD).unwrap()) {
                     return Ok(false);
                 }
                 let struct_size = (self.struct_data_size / u32::try_from(BITS_PER_WORD).unwrap())

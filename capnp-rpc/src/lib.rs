@@ -64,7 +64,6 @@ use capnp::private::capability::ClientHook;
 use futures_util::{FutureExt, TryFutureExt};
 use std::cell::RefCell;
 use std::future::Future;
-use std::marker::PhantomData;
 use std::pin::Pin;
 use std::rc::{Rc, Weak};
 use std::task::{Context, Poll};

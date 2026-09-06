@@ -45,6 +45,7 @@ std = ["embedded-io?/std"]
 # If enabled, ReadLimiter will use `AtomicUsize` instead of `Cell<usize>`, allowing
 # message readers to be `Sync`. Note that AtomicUsize is not supported by all
 # rustc targets.
+sync_reader = []
 
 [lints]
 

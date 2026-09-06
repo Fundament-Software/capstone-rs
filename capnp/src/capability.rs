@@ -24,8 +24,6 @@
 //! Roughly corresponds to capability.h in the C++ implementation.
 
 #[cfg(feature = "alloc")]
-use alloc::boxed::Box;
-#[cfg(feature = "alloc")]
 use core::future::Future;
 #[cfg(feature = "alloc")]
 use core::marker::PhantomData;
@@ -37,7 +35,6 @@ use core::pin::Pin;
 use core::task::Poll;
 
 use crate::any_pointer;
-use crate::introspect::RawCapabilitySchema;
 #[cfg(feature = "alloc")]
 use crate::private::capability::{ClientHook, ParamsHook, RequestHook, ResponseHook, ResultsHook};
 #[cfg(feature = "alloc")]
@@ -528,6 +525,7 @@ impl FromClientHook for Client {
 pub type Rc<T> = alloc::rc::Rc<T>;
 
 /// An untyped server.
+#[allow(async_fn_in_trait)]
 #[cfg(feature = "alloc")]
 pub trait Server {
     async fn dispatch_call(

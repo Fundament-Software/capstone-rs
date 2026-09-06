@@ -1399,8 +1399,8 @@ async fn promise_resolve_twice() {
     .await;
 }
 
-#[test]
-fn get_self() {
+#[tokio::test]
+async fn get_self() {
     rpc_and_local_top_level(|client| async move {
         let response = client.test_more_stuff_request().send().promise.await?;
         let client = response.get()?.get_cap()?;
@@ -1423,7 +1423,9 @@ fn get_self() {
         assert_eq!(response4.get()?.get_x(), 3);
 
         Ok(())
-    });
+    })
+    .await
+    .unwrap();
 }
 
 #[test]

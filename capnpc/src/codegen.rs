@@ -409,7 +409,7 @@ fn path_to_stem_string<P: AsRef<::std::path::Path>>(path: P) -> ::capnp::Result<
         )))
     }
 }
-
+/* 
 fn snake_to_upper_case(s: &str) -> String {
     let mut result_chars: Vec<char> = Vec::new();
     for c in s.chars() {
@@ -420,7 +420,7 @@ fn snake_to_upper_case(s: &str) -> String {
         }
     }
     result_chars.into_iter().collect()
-}
+}*/
 
 fn snake_to_camel_case(s: &str) -> String {
     let mut result_chars: Vec<char> = Vec::new();
@@ -1693,12 +1693,11 @@ fn check_fields_of_struct_for_lifetimes(
                     )?;
                 }
                 type_::Which::Interface(_) => (),
-                type_::Which::AnyPointer(_) => {
-                    if slot.get_type()?.is_parameter()? {
+                type_::Which::AnyPointer(_)
+                    if slot.get_type()?.is_parameter()? => {
                         *lifetime = "'a, ";
                         return Ok(());
                     }
-                }
                 _ => (),
             },
             capnp::schema_capnp::field::Which::Group(group) => {
@@ -4001,7 +4000,7 @@ fn generate_node(
 
             let names = &ctx.scope_map[&node_id];
             let mut client_impl_interior = Vec::new();
-            let mut shared_client_impl_interior = Vec::new();
+            let shared_client_impl_interior = Vec::new();
             let mut shared_client_match_arms = String::new();
             let mut server_interior = Vec::new();
             let mut mod_interior = Vec::new();
@@ -4040,6 +4039,7 @@ fn generate_node(
             mod_interior.push(line("#![allow(clippy::needless_lifetimes)]"));
             mod_interior.push(line("#![allow(clippy::useless_conversion)]"));
             mod_interior.push(line("#![allow(clippy::identity_op)]"));
+            mod_interior.push(line("#![allow(clippy::type_complexity)]"));
 
             mod_interior.push(BlankLine);
             let methods = interface.get_methods()?;
@@ -4793,6 +4793,8 @@ fn generate_node(
             ]));
 
             shared_client_match_arms.push_str("\n       _ => unreachable!()");
+            // TODO: Unsure if this is still necessary but currently causes lints about loops that don't actually loop 
+            /*
             client_impl_interior.push(Line(fmt!(
                 ctx,
                 "pub fn start_shared(&self) -> Result<SharedClient, {capnp}::Error> {{"
@@ -4801,6 +4803,7 @@ fn generate_node(
             client_impl_interior.push(indent(Line(fmt!(ctx,
                             "let (tx, mut rx) = {capnp}::tokio::sync::mpsc::channel::<(u8, {capnp}::message::Builder<{capnp}::message::HeapAllocator>, {capnp}::tokio::sync::oneshot::Sender<{capnp}::Result<{capnp}::message::Builder<{capnp}::message::HeapAllocator>>>)>(100);\n      let client = self.clone();\n      {capnp}::tokio::task::spawn_local(async move {{\n      loop {{\n      let (ordinal, message, oneshot) = rx.recv().await.unwrap();\n      match ordinal {{{shared_client_match_arms}\n      }}}}}});\n      Ok(SharedClient{{_mpsc: tx}})\n      }}"
                         ))));
+*/
 
             mod_interior.push(Branch(vec![
                 Line(format!(
@@ -5034,7 +5037,7 @@ fn generate_node(
                                     let type_string = typ.type_string(ctx, Leaf::Owned)?;
                                     Line(format!(
                                         "pub const {}: {} = {}::{};",
-                                        styled_name, &type_string, &type_string, variant
+                                        styled_name, type_string, type_string, variant
                                     ))
                                 } else {
                                     return Err(Error::failed(format!(

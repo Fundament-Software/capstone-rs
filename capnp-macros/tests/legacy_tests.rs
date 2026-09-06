@@ -1,4 +1,4 @@
-#![cfg(FALSE)]
+#![cfg(false)]
 
 // Original file with tests for capnp_build! and capnp_let!.
 // They should be restructured or maybe deleted, but some of these might be more readable than

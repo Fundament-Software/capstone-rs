@@ -23,7 +23,7 @@ use capnp_rpc::{RpcSystem, rpc_twoparty_capnp, twoparty};
 
 use crate::hello_world_capnp::hello_world;
 
-use std::{net::ToSocketAddrs, rc::Rc};
+use std::net::ToSocketAddrs;
 
 struct HelloWorldImpl;
 

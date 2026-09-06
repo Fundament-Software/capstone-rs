@@ -344,7 +344,7 @@ pub fn try_read_message_no_alloc<R>(
 where
     R: Read,
 {
-    if !cfg!(feature = "unaligned") && buffer.as_ptr() as usize % BYTES_PER_WORD != 0 {
+    if !cfg!(feature = "unaligned") && !(buffer.as_ptr() as usize).is_multiple_of(BYTES_PER_WORD) {
         return Err(Error::from_kind(ErrorKind::UnalignedSegment));
     }
 
@@ -400,13 +400,12 @@ where
         num_segment_counts_read += 1;
     }
 
-    if let Some(limit) = options.traversal_limit_in_words {
-        if total_body_words > limit {
+    if let Some(limit) = options.traversal_limit_in_words
+        && total_body_words > limit {
             return Err(Error::from_kind(ErrorKind::MessageTooLarge(
                 total_body_words,
             )));
         }
-    }
 
     let start = (num_segment_counts_read + 1) * 4;
     let end = start + (total_body_words * 8);
@@ -652,7 +651,7 @@ where
                             .to_le_bytes(),
                     );
                 }
-                if segment_count % 2 == 0 {
+                if segment_count.is_multiple_of(2) {
                     let start_idx = buf.len() - 4;
                     for b in &mut buf[start_idx..] {
                         *b = 0
