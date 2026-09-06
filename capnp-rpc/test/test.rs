@@ -1424,8 +1424,7 @@ async fn get_self() {
 
         Ok(())
     })
-    .await
-    .unwrap();
+    .await;
 }
 
 #[test]

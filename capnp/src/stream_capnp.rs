@@ -4,147 +4,217 @@
 // capnp binary version: 2.0.0
 // capnpc crate version: 0.18.0
 
-
 pub mod stream_result {
-#![allow(clippy::extra_unused_type_parameters)]
-#![allow(clippy::needless_lifetimes)]
+    #![allow(clippy::extra_unused_type_parameters)]
+    #![allow(clippy::needless_lifetimes)]
 
-pub struct StreamResult {  
-}
-impl  StreamResult {
-pub fn build_capnp_struct(self, mut _builder: Builder<'_,>) {  
-}
-}
+    pub struct StreamResult {}
+    impl StreamResult {
+        pub fn build_capnp_struct(self, mut _builder: Builder<'_>) {}
+    }
 
     #[derive(Copy, Clone)]
     pub struct Owned(());
-    impl crate::introspect::Introspect for Owned { fn introspect() -> crate::introspect::Type { crate::introspect::TypeVariant::Struct(crate::introspect::RawBrandedStructSchema { generic: &_private::RAW_SCHEMA, field_types: _private::get_field_types, annotation_types: _private::get_annotation_types, type_id: Ok(::core::any::TypeId::of::<Owned>()) }).into() } }
-    impl crate::traits::Owned for Owned { type Reader<'a> = Reader<'a>; type Builder<'a> = Builder<'a>; }
-    impl crate::traits::OwnedStruct for Owned { type Reader<'a> = Reader<'a>; type Builder<'a> = Builder<'a>; }
-    impl crate::traits::Pipelined for Owned { type Pipeline = Pipeline; }
-
-    pub struct Reader<'a> { reader: crate::private::layout::StructReader<'a> }
-    impl <> ::core::marker::Copy for Reader<'_,>  {}
-    impl <> ::core::clone::Clone for Reader<'_,>  {
-        fn clone(&self) -> Self { *self }
+    impl crate::introspect::Introspect for Owned {
+        fn introspect() -> crate::introspect::Type {
+            crate::introspect::TypeVariant::Struct(crate::introspect::RawBrandedStructSchema {
+                generic: &_private::RAW_SCHEMA,
+                field_types: _private::get_field_types,
+                annotation_types: _private::get_annotation_types,
+                type_id: Ok(::core::any::TypeId::of::<Owned>()),
+            })
+            .into()
+        }
+    }
+    impl crate::traits::Owned for Owned {
+        type Reader<'a> = Reader<'a>;
+        type Builder<'a> = Builder<'a>;
+    }
+    impl crate::traits::OwnedStruct for Owned {
+        type Reader<'a> = Reader<'a>;
+        type Builder<'a> = Builder<'a>;
+    }
+    impl crate::traits::Pipelined for Owned {
+        type Pipeline = Pipeline;
     }
 
-    impl <> crate::traits::HasTypeId for Reader<'_,>  {
+    pub struct Reader<'a> {
+        reader: crate::private::layout::StructReader<'a>,
+    }
+    impl ::core::marker::Copy for Reader<'_> {}
+    impl ::core::clone::Clone for Reader<'_> {
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+
+    impl crate::traits::HasTypeId for Reader<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
-    impl <'a,> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a,>  {
+    impl<'a> ::core::convert::From<crate::private::layout::StructReader<'a>> for Reader<'a> {
         fn from(reader: crate::private::layout::StructReader<'a>) -> Self {
-            Self { reader,  }
+            Self { reader }
         }
     }
 
-    impl <'a,> ::core::convert::From<Reader<'a,>> for crate::dynamic_value::Reader<'a>  {
-        fn from(reader: Reader<'a,>) -> Self {
-            Self::Struct(crate::dynamic_struct::Reader::new(reader.reader, crate::schema::StructSchema::new(crate::introspect::RawBrandedStructSchema { generic: &_private::RAW_SCHEMA, field_types: _private::get_field_types::<>, annotation_types: _private::get_annotation_types::<>, type_id: Ok(::core::any::TypeId::of::<Owned<>>())})))
+    impl<'a> ::core::convert::From<Reader<'a>> for crate::dynamic_value::Reader<'a> {
+        fn from(reader: Reader<'a>) -> Self {
+            Self::Struct(crate::dynamic_struct::Reader::new(
+                reader.reader,
+                crate::schema::StructSchema::new(crate::introspect::RawBrandedStructSchema {
+                    generic: &_private::RAW_SCHEMA,
+                    field_types: _private::get_field_types,
+                    annotation_types: _private::get_annotation_types,
+                    type_id: Ok(::core::any::TypeId::of::<Owned>()),
+                }),
+            ))
         }
     }
 
-    impl <> ::core::fmt::Debug for Reader<'_,>  {
-        fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::result::Result<(), ::core::fmt::Error> {
-            core::fmt::Debug::fmt(&::core::convert::Into::<crate::dynamic_value::Reader<'_>>::into(*self), f)
+    impl ::core::fmt::Debug for Reader<'_> {
+        fn fmt(
+            &self,
+            f: &mut ::core::fmt::Formatter<'_>,
+        ) -> ::core::result::Result<(), ::core::fmt::Error> {
+            core::fmt::Debug::fmt(
+                &::core::convert::Into::<crate::dynamic_value::Reader<'_>>::into(*self),
+                f,
+            )
         }
     }
 
-    impl <'a,> crate::traits::FromPointerReader<'a> for Reader<'a,>  {
-        fn get_from_pointer(reader: &crate::private::layout::PointerReader<'a>, default: ::core::option::Option<&'a [crate::Word]>) -> crate::Result<Self> {
+    impl<'a> crate::traits::FromPointerReader<'a> for Reader<'a> {
+        fn get_from_pointer(
+            reader: &crate::private::layout::PointerReader<'a>,
+            default: ::core::option::Option<&'a [crate::Word]>,
+        ) -> crate::Result<Self> {
             ::core::result::Result::Ok(reader.get_struct(default)?.into())
         }
     }
 
-    impl <'a,> crate::traits::IntoInternalStructReader<'a> for Reader<'a,>  {
+    impl<'a> crate::traits::IntoInternalStructReader<'a> for Reader<'a> {
         fn into_internal_struct_reader(self) -> crate::private::layout::StructReader<'a> {
             self.reader
         }
     }
 
-    impl <'a,> crate::traits::Imbue<'a> for Reader<'a,>  {
+    impl<'a> crate::traits::Imbue<'a> for Reader<'a> {
         fn imbue(&mut self, cap_table: &'a crate::private::layout::CapTable) {
-            self.reader.imbue(crate::private::layout::CapTableReader::from_ref(cap_table))
+            self.reader
+                .imbue(crate::private::layout::CapTableReader::from_ref(cap_table))
         }
     }
 
-    impl <> Reader<'_,>  {
-        pub fn reborrow(&self) -> Reader<'_,> {
-            Self { .. *self }
+    impl Reader<'_> {
+        pub fn reborrow(&self) -> Reader<'_> {
+            Self { ..*self }
         }
 
         pub fn total_size(&self) -> crate::Result<crate::MessageSize> {
             self.reader.total_size()
         }
         pub fn get(&self) -> crate::Result<StreamResult> {
-        Ok(StreamResult {
-        })
+            Ok(StreamResult {})
         }
     }
 
-    pub struct Builder<'a> { builder: crate::private::layout::StructBuilder<'a> }
-    impl <'a,> crate::traits::HasStructSize for Builder<'a,>  {
-        const STRUCT_SIZE: crate::private::layout::StructSize = crate::private::layout::StructSize { data: 0, pointers: 0 };
+    pub struct Builder<'a> {
+        builder: crate::private::layout::StructBuilder<'a>,
     }
-    impl <> crate::traits::HasTypeId for Builder<'_,>  {
+    impl<'a> crate::traits::HasStructSize for Builder<'a> {
+        const STRUCT_SIZE: crate::private::layout::StructSize =
+            crate::private::layout::StructSize {
+                data: 0,
+                pointers: 0,
+            };
+    }
+    impl crate::traits::HasTypeId for Builder<'_> {
         const TYPE_ID: u64 = _private::TYPE_ID;
     }
-    impl <'a,> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a,>  {
+    impl<'a> ::core::convert::From<crate::private::layout::StructBuilder<'a>> for Builder<'a> {
         fn from(builder: crate::private::layout::StructBuilder<'a>) -> Self {
-            Self { builder,  }
+            Self { builder }
         }
     }
 
-    impl <'a,> ::core::convert::From<Builder<'a,>> for crate::dynamic_value::Builder<'a>  {
-        fn from(builder: Builder<'a,>) -> Self {
-            Self::Struct(crate::dynamic_struct::Builder::new(builder.builder, crate::schema::StructSchema::new(crate::introspect::RawBrandedStructSchema { generic: &_private::RAW_SCHEMA, field_types: _private::get_field_types::<>, annotation_types: _private::get_annotation_types::<>, type_id: Ok(::core::any::TypeId::of::<Owned<>>())})))
+    impl<'a> ::core::convert::From<Builder<'a>> for crate::dynamic_value::Builder<'a> {
+        fn from(builder: Builder<'a>) -> Self {
+            Self::Struct(crate::dynamic_struct::Builder::new(
+                builder.builder,
+                crate::schema::StructSchema::new(crate::introspect::RawBrandedStructSchema {
+                    generic: &_private::RAW_SCHEMA,
+                    field_types: _private::get_field_types,
+                    annotation_types: _private::get_annotation_types,
+                    type_id: Ok(::core::any::TypeId::of::<Owned>()),
+                }),
+            ))
         }
     }
 
-    impl <'a,> crate::traits::ImbueMut<'a> for Builder<'a,>  {
+    impl<'a> crate::traits::ImbueMut<'a> for Builder<'a> {
         fn imbue_mut(&mut self, cap_table: &'a mut crate::private::layout::CapTable) {
-            self.builder.imbue(crate::private::layout::CapTableBuilder::from_ref(cap_table))
+            self.builder
+                .imbue(crate::private::layout::CapTableBuilder::from_ref(cap_table))
         }
     }
 
-    impl <'a,> crate::traits::FromPointerBuilder<'a> for Builder<'a,>  {
+    impl<'a> crate::traits::FromPointerBuilder<'a> for Builder<'a> {
         fn init_pointer(builder: crate::private::layout::PointerBuilder<'a>, _size: u32) -> Self {
-            builder.init_struct(<Self as crate::traits::HasStructSize>::STRUCT_SIZE).into()
+            builder
+                .init_struct(<Self as crate::traits::HasStructSize>::STRUCT_SIZE)
+                .into()
         }
-        fn get_from_pointer(builder: crate::private::layout::PointerBuilder<'a>, default: ::core::option::Option<&'a [crate::Word]>) -> crate::Result<Self> {
-            ::core::result::Result::Ok(builder.get_struct(<Self as crate::traits::HasStructSize>::STRUCT_SIZE, default)?.into())
+        fn get_from_pointer(
+            builder: crate::private::layout::PointerBuilder<'a>,
+            default: ::core::option::Option<&'a [crate::Word]>,
+        ) -> crate::Result<Self> {
+            ::core::result::Result::Ok(
+                builder
+                    .get_struct(<Self as crate::traits::HasStructSize>::STRUCT_SIZE, default)?
+                    .into(),
+            )
         }
     }
 
-    impl <> crate::traits::SetterInput<Owned<>> for Reader<'_,>  {
-        fn set_pointer_builder(mut pointer: crate::private::layout::PointerBuilder<'_>, value: Self, canonicalize: bool) -> crate::Result<()> { pointer.set_struct(&value.reader, canonicalize) }
+    impl crate::traits::SetterInput<Owned> for Reader<'_> {
+        fn set_pointer_builder(
+            mut pointer: crate::private::layout::PointerBuilder<'_>,
+            value: Self,
+            canonicalize: bool,
+        ) -> crate::Result<()> {
+            pointer.set_struct(&value.reader, canonicalize)
+        }
     }
 
-    impl <'a,> Builder<'a,>  {
-        pub fn into_reader(self) -> Reader<'a,> {
+    impl<'a> Builder<'a> {
+        pub fn into_reader(self) -> Reader<'a> {
             self.builder.into_reader().into()
         }
-        pub fn reborrow(&mut self) -> Builder<'_,> {
-            Builder { builder: self.builder.reborrow() }
+        pub fn reborrow(&mut self) -> Builder<'_> {
+            Builder {
+                builder: self.builder.reborrow(),
+            }
         }
-        pub fn reborrow_as_reader(&self) -> Reader<'_,> {
+        pub fn reborrow_as_reader(&self) -> Reader<'_> {
             self.builder.as_reader().into()
         }
 
         pub fn total_size(&self) -> crate::Result<crate::MessageSize> {
             self.builder.as_reader().total_size()
         }
-
     }
 
-    pub struct Pipeline { _typeless: crate::any_pointer::Pipeline }
+    pub struct Pipeline {
+        _typeless: crate::any_pointer::Pipeline,
+    }
     impl crate::capability::FromTypelessPipeline for Pipeline {
         fn new(typeless: crate::any_pointer::Pipeline) -> Self {
-            Self { _typeless: typeless,  }
+            Self {
+                _typeless: typeless,
+            }
         }
     }
-    impl Pipeline  {
-    }
+    impl Pipeline {}
     mod _private {
         pub(crate) static ENCODED_NODE: [crate::Word; 18] = [
             crate::word(0, 0, 0, 0, 6, 0, 6, 0),
@@ -169,19 +239,24 @@ pub fn build_capnp_struct(self, mut _builder: Builder<'_,>) {
         pub(crate) fn get_field_types(index: u16) -> crate::introspect::Type {
             crate::introspect::panic_invalid_field_index(index)
         }
-        pub(crate) fn get_annotation_types(child_index: Option<u16>, index: u32) -> crate::introspect::Type {
+        pub(crate) fn get_annotation_types(
+            child_index: Option<u16>,
+            index: u32,
+        ) -> crate::introspect::Type {
             crate::introspect::panic_invalid_annotation_indices(child_index, index)
         }
-        pub(crate) static ARENA: crate::private::arena::GeneratedCodeArena = crate::private::arena::GeneratedCodeArena::new(&ENCODED_NODE);
-        pub(crate) static RAW_SCHEMA: crate::introspect::RawStructSchema = crate::introspect::RawStructSchema::new(
-            &ARENA,
-            NONUNION_MEMBERS,
-            MEMBERS_BY_DISCRIMINANT,
-            MEMBERS_BY_NAME
-        );
-        pub(crate) static NONUNION_MEMBERS : &[u16] = &[];
-        pub(crate) static MEMBERS_BY_DISCRIMINANT : &[u16] = &[];
-        pub(crate) static MEMBERS_BY_NAME : &[u16] = &[];
+        pub(crate) static ARENA: crate::private::arena::GeneratedCodeArena =
+            crate::private::arena::GeneratedCodeArena::new(&ENCODED_NODE);
+        pub(crate) static RAW_SCHEMA: crate::introspect::RawStructSchema =
+            crate::introspect::RawStructSchema::new(
+                &ARENA,
+                NONUNION_MEMBERS,
+                MEMBERS_BY_DISCRIMINANT,
+                MEMBERS_BY_NAME,
+            );
+        pub(crate) static NONUNION_MEMBERS: &[u16] = &[];
+        pub(crate) static MEMBERS_BY_DISCRIMINANT: &[u16] = &[];
+        pub(crate) static MEMBERS_BY_NAME: &[u16] = &[];
         pub(crate) const TYPE_ID: u64 = 0x995f_9a33_77c0_b16e;
     }
 }

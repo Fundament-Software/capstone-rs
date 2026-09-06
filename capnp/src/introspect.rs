@@ -363,7 +363,7 @@ impl core::fmt::Debug for RawEnumSchema {
 
 /// To use one of this, you will usually want to convert it to a `schema::CapabilitySchema`,
 /// which can be done via `into()`.
-#[derive(Clone, Copy, Hash)]
+#[derive(Clone, Copy)]
 pub struct RawCapabilitySchema {
     /// The Node (as defined in schema.capnp), as a single segment message.
     pub arena: &'static crate::private::arena::GeneratedCodeArena,
@@ -379,6 +379,12 @@ impl RawCapabilitySchema {
             params_types: crate::schema::dynamic_struct_marker,
             result_types: crate::schema::dynamic_struct_marker,
         }
+    }
+}
+
+impl core::hash::Hash for RawCapabilitySchema {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.arena.hash(state);
     }
 }
 

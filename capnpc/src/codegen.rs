@@ -409,7 +409,7 @@ fn path_to_stem_string<P: AsRef<::std::path::Path>>(path: P) -> ::capnp::Result<
         )))
     }
 }
-/* 
+/*
 fn snake_to_upper_case(s: &str) -> String {
     let mut result_chars: Vec<char> = Vec::new();
     for c in s.chars() {
@@ -1041,6 +1041,7 @@ fn zero_fields_of_group(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn generate_setter(
     ctx: &GeneratorContext,
     discriminant_offset: u32,
@@ -1693,11 +1694,10 @@ fn check_fields_of_struct_for_lifetimes(
                     )?;
                 }
                 type_::Which::Interface(_) => (),
-                type_::Which::AnyPointer(_)
-                    if slot.get_type()?.is_parameter()? => {
-                        *lifetime = "'a, ";
-                        return Ok(());
-                    }
+                type_::Which::AnyPointer(_) if slot.get_type()?.is_parameter()? => {
+                    *lifetime = "'a, ";
+                    return Ok(());
+                }
                 _ => (),
             },
             capnp::schema_capnp::field::Which::Group(group) => {
@@ -2820,32 +2820,30 @@ fn generate_get_params_results(
             ordinal
         )));
         } else {
-            
-        let result_node = &ctx.node_map[&result_id];
-        let result_scopes = if result_node.get_scope_id() == 0 {
-            let mut names = names.to_owned();
-            let local_name = module_name(&format!("{name}Results"));
-            names.push(local_name);
-            names
-        } else {
-            ctx.scope_map[&result_node.get_id()].clone()
-        };
-        
-        let result_type = 
-            do_branding(
-            ctx,
-            result_id,
-            method.get_result_brand()?,
-            Leaf::Owned,
-            &result_scopes.join("::"),
-        )?;
+            let result_node = &ctx.node_map[&result_id];
+            let result_scopes = if result_node.get_scope_id() == 0 {
+                let mut names = names.to_owned();
+                let local_name = module_name(&format!("{name}Results"));
+                names.push(local_name);
+                names
+            } else {
+                ctx.scope_map[&result_node.get_id()].clone()
+            };
 
-        results_branches.push(Line(fmt!(
-            ctx,
-            "{} => <{} as {capnp}::introspect::Introspect>::introspect(),",
-            ordinal,
-            result_type
-        )));
+            let result_type = do_branding(
+                ctx,
+                result_id,
+                method.get_result_brand()?,
+                Leaf::Owned,
+                &result_scopes.join("::"),
+            )?;
+
+            results_branches.push(Line(fmt!(
+                ctx,
+                "{} => <{} as {capnp}::introspect::Introspect>::introspect(),",
+                ordinal,
+                result_type
+            )));
         }
     }
     let params_body = if params_branches.is_empty() {
@@ -4030,7 +4028,7 @@ fn generate_node(
             )?);
 
             private_mod_interior.push(
-                Line(fmt!(ctx, 
+                Line(fmt!(ctx,
                     "pub(crate) static ARENA: {capnp}::private::arena::GeneratedCodeArena = {capnp}::private::arena::GeneratedCodeArena::new(&ENCODED_NODE);")));
 
             mod_interior.push(line("#![allow(unused_variables)]"));
@@ -4040,6 +4038,7 @@ fn generate_node(
             mod_interior.push(line("#![allow(clippy::useless_conversion)]"));
             mod_interior.push(line("#![allow(clippy::identity_op)]"));
             mod_interior.push(line("#![allow(clippy::type_complexity)]"));
+            mod_interior.push(line("#![allow(clippy::cast_possible_truncation)]"));
 
             mod_interior.push(BlankLine);
             let methods = interface.get_methods()?;
@@ -4180,7 +4179,7 @@ fn generate_node(
 
                     client_impl_interior.push(indent(Line(fmt!(
                     ctx,
-                    "let mut req: {capnp}::capability::Request<{},{}> = self.client.new_call(_private::TYPE_ID, {ordinal}, ::core::option::Option::None);\n      let mut _builder = req.get();{builder_params_inner_string}\n      req", 
+                    "let mut req: {capnp}::capability::Request<{},{}> = self.client.new_call(_private::TYPE_ID, {ordinal}, ::core::option::Option::None);\n      let mut _builder = req.get();{builder_params_inner_string}\n      req",
                     param_type,
                     result_type
                 ))));
@@ -4268,7 +4267,7 @@ fn generate_node(
 
                 let mut introspect_ids = vec![node_id];
                 introspect_ids.extend(extends.iter().map(|x| x.get_id()));
-                base_dispatch_arms.push(Line(fmt!(ctx, 
+                base_dispatch_arms.push(Line(fmt!(ctx,
                     "0x{:x} => {capnp}::private::capability::build_introspect(params, results, &{introspect_ids:?}),", <capnp::introspect_capnp::introspect::Client as capnp::traits::HasTypeId>::TYPE_ID)));
 
                 for ext in &extends {
@@ -4281,8 +4280,8 @@ fn generate_node(
                             ctx, type_id, brand, Leaf::ServerDispatch, &the_mod)?)));
                     base_stream_arms.push(Line(format!(
                         "0x{type_id:x} => {}::is_streaming_internal(&self.server, method_id),",
-                        do_branding(
-                            ctx, type_id, brand, Leaf::ServerDispatch, &the_mod)?)));
+                        do_branding(ctx, type_id, brand, Leaf::ServerDispatch, &the_mod)?
+                    )));
                     base_traits.push(do_branding(ctx, type_id, brand, Leaf::Server, &the_mod)?);
 
                     let node_reader = &ctx.node_map[&ext.get_id()];
@@ -4658,7 +4657,7 @@ fn generate_node(
                         //Line(fmt!(ctx,
                         //        "{method_count} => <_T as Server{bracketed_params}>::{}(this, {capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,",
                         //        module_name(name))));
-                                
+
                         //method_count += 1;
                     }
                 }
@@ -4793,17 +4792,17 @@ fn generate_node(
             ]));
 
             shared_client_match_arms.push_str("\n       _ => unreachable!()");
-            // TODO: Unsure if this is still necessary but currently causes lints about loops that don't actually loop 
+            // TODO: Unsure if this is still necessary but currently causes lints about loops that don't actually loop
             /*
-            client_impl_interior.push(Line(fmt!(
-                ctx,
-                "pub fn start_shared(&self) -> Result<SharedClient, {capnp}::Error> {{"
-            )));
+                        client_impl_interior.push(Line(fmt!(
+                            ctx,
+                            "pub fn start_shared(&self) -> Result<SharedClient, {capnp}::Error> {{"
+                        )));
 
-            client_impl_interior.push(indent(Line(fmt!(ctx,
-                            "let (tx, mut rx) = {capnp}::tokio::sync::mpsc::channel::<(u8, {capnp}::message::Builder<{capnp}::message::HeapAllocator>, {capnp}::tokio::sync::oneshot::Sender<{capnp}::Result<{capnp}::message::Builder<{capnp}::message::HeapAllocator>>>)>(100);\n      let client = self.clone();\n      {capnp}::tokio::task::spawn_local(async move {{\n      loop {{\n      let (ordinal, message, oneshot) = rx.recv().await.unwrap();\n      match ordinal {{{shared_client_match_arms}\n      }}}}}});\n      Ok(SharedClient{{_mpsc: tx}})\n      }}"
-                        ))));
-*/
+                        client_impl_interior.push(indent(Line(fmt!(ctx,
+                                        "let (tx, mut rx) = {capnp}::tokio::sync::mpsc::channel::<(u8, {capnp}::message::Builder<{capnp}::message::HeapAllocator>, {capnp}::tokio::sync::oneshot::Sender<{capnp}::Result<{capnp}::message::Builder<{capnp}::message::HeapAllocator>>>)>(100);\n      let client = self.clone();\n      {capnp}::tokio::task::spawn_local(async move {{\n      loop {{\n      let (ordinal, message, oneshot) = rx.recv().await.unwrap();\n      match ordinal {{{shared_client_match_arms}\n      }}}}}});\n      Ok(SharedClient{{_mpsc: tx}})\n      }}"
+                                    ))));
+            */
 
             mod_interior.push(Branch(vec![
                 Line(format!(
@@ -4928,7 +4927,7 @@ fn generate_node(
                     indent(indent(indent(Line(fmt!(ctx,"_ => Err({capnp}::Error::unimplemented(\"Method not implemented.\".to_string()))"))))),
                     indent(indent(line("}"))),
                     indent(line("}")),
-                    
+
                     indent(Line(fmt!(ctx,"pub fn is_streaming_internal(this: &{capnp}::capability::Rc<_T>, method_id: u16) -> bool {{"))),
                     indent(indent(line("match method_id {"))),
                     indent(indent(indent(stream_arms))),

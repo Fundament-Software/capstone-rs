@@ -4,7 +4,7 @@ name = "shared-secret-capability"
 version = "0.0.0"
 authors = ["Adam Schwab <aschwab@cloudflare.com>"]
 edition = "2021"
-
+license.workspace = true
 build = "build.rs"
 
 [[bin]]

@@ -144,12 +144,10 @@ impl<T: PrimitiveElement> Reader<'_, T> {
         if self.reader.get_element_size() == T::element_size() {
             let bytes = self.reader.into_raw_bytes();
             let bits_per_element = data_bits_per_element(T::element_size()) as usize;
-            let slice_length = if bits_per_element > 0 {
-                8 * bytes.len() / bits_per_element
-            } else {
+            let slice_length = (8 * bytes.len())
+                .checked_div(bits_per_element)
                 // This is a List(Void).
-                self.len() as usize
-            };
+                .unwrap_or(self.len() as usize);
             if slice_length == 0 {
                 Some(&[])
             } else {
@@ -242,12 +240,11 @@ where
         if self.builder.get_element_size() == T::element_size() {
             let bytes = self.builder.as_raw_bytes();
             let bits_per_element = data_bits_per_element(T::element_size()) as usize;
-            let slice_length = if bits_per_element > 0 {
-                8 * bytes.len() / bits_per_element
-            } else {
+            let slice_length = (8 * bytes.len())
+                .checked_div(bits_per_element)
                 // This is a List(Void).
-                self.len() as usize
-            };
+                .unwrap_or(self.len() as usize);
+
             if slice_length == 0 {
                 Some(&mut [])
             } else {

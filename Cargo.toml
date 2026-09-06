@@ -1,5 +1,5 @@
 [workspace]
-rust-version = "1.94.0"
+rust-version = "1.93.0"
 resolver = "2"
 
 members = [
@@ -34,7 +34,7 @@ default-members = ["capnp"]
 [workspace.package]
 version = "0.18.0"
 edition = "2024"
-rust-version = "1.94.0"
+rust-version = "1.93.0"
 license = "MIT"
 repository = "https://github.com/fundament-software/capstone-rs"
 documentation = "https://docs.rs/capstone/"
@@ -62,7 +62,7 @@ syn = { version = "2.0", features = ["full"] }
 proc-macro2 = "1.0"
 quote = "1.0"
 tempfile = "3.*"
-convert_case = "0.10"
+convert_case = "0.12"
 
 [workspace.lints.rust]
 unreachable_pub = "deny"
@@ -71,6 +71,5 @@ unreachable_pub = "deny"
 type_complexity = "allow"
 missing_safety_doc = "allow"
 
-
-[patch."https://github.com/Fundament-Software/capstone"]
-capnp-sys = { path = "../capstone/c++/src/capnp" }
+#[patch."https://github.com/Fundament-Software/capstone"]
+#capnp-sys = { path = "../capstone/c++/src/capnp" }

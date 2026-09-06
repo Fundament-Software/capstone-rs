@@ -35,6 +35,7 @@
 #[macro_use]
 extern crate alloc;
 
+#[cfg(feature = "alloc")]
 pub mod introspect_capnp;
 /// Code generated from
 /// [schema.capnp](https://github.com/capnproto/capnproto/blob/master/c%2B%2B/src/capnp/schema.capnp).
@@ -472,6 +473,7 @@ pub enum ErrorKind {
 impl Error {
     /// Writes to the `extra` field. Does nothing if the "alloc" feature is not enabled.
     /// This is intended to be used with the `write!()` macro from core.
+    #[allow(unused_variables)]
     pub fn write_fmt(&mut self, fmt: core::fmt::Arguments<'_>) {
         #[cfg(feature = "alloc")]
         {
