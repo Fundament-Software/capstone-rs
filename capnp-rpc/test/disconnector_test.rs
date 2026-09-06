@@ -185,7 +185,7 @@ async fn disconnector_waits_for_connection_shutdown() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn disconnector_propagates_shutdown_error() {
-    let (mut pool, tx, _shutdown_called, disconnector_handle) = mock_setup();
+    let (pool, tx, _shutdown_called, disconnector_handle) = mock_setup();
 
     tx.send(Err(Error::failed("mock shutdown failure".into())))
         .unwrap();

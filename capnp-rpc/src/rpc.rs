@@ -221,22 +221,23 @@ impl<VatId> Drop for QuestionRef<VatId> {
             unreachable!()
         };
         if let Ok(ref mut c) = *self.connection_state.connection.borrow_mut()
-            && !q.skip_finish {
-                let mut message = c.new_outgoing_message(5);
-                {
-                    let root: message::Builder = message.get_body().unwrap().init_as();
-                    let mut builder = root.init_finish();
-                    builder.set_question_id(self.id);
+            && !q.skip_finish
+        {
+            let mut message = c.new_outgoing_message(5);
+            {
+                let root: message::Builder = message.get_body().unwrap().init_as();
+                let mut builder = root.init_finish();
+                builder.set_question_id(self.id);
 
-                    // If we're still awaiting a return, then this request is being
-                    // canceled, and we're going to ignore any capabilities in the return
-                    // message, so set releaseResultCaps true. If we already received the
-                    // return, then we've already built local proxies for the caps and will
-                    // send Release messages when those are destroyed.
-                    builder.set_release_result_caps(q.is_awaiting_return);
-                }
-                let _ = message.send();
+                // If we're still awaiting a return, then this request is being
+                // canceled, and we're going to ignore any capabilities in the return
+                // message, so set releaseResultCaps true. If we already received the
+                // return, then we've already built local proxies for the caps and will
+                // send Release messages when those are destroyed.
+                builder.set_release_result_caps(q.is_awaiting_return);
             }
+            let _ = message.send();
+        }
 
         if q.is_awaiting_return {
             // Still waiting for return, so just remove the QuestionRef pointer from the table.
@@ -1440,16 +1441,17 @@ impl<VatId> ConnectionState<VatId> {
             inner = resolved;
         }
         if inner.get_brand() == state.get_brand()
-            && let Some(c) = Client::from_ptr(inner.get_ptr(), state) {
-                return Ok(c.write_descriptor(descriptor));
-            }
-            // The hook claims to belong to this connection but the downcast
-            // map has no live entry for it (e.g. a stale entry left by a
-            // since-dropped duplicate wrapper — see the reuse logic in
-            // `import()`). The hook itself still works for calls, so fall
-            // through and export it as if it were foreign: the receiver gets
-            // a functioning capability (at the cost of an extra round-trip)
-            // instead of the event loop panicking.
+            && let Some(c) = Client::from_ptr(inner.get_ptr(), state)
+        {
+            return Ok(c.write_descriptor(descriptor));
+        }
+        // The hook claims to belong to this connection but the downcast
+        // map has no live entry for it (e.g. a stale entry left by a
+        // since-dropped duplicate wrapper — see the reuse logic in
+        // `import()`). The hook itself still works for calls, so fall
+        // through and export it as if it were foreign: the receiver gets
+        // a functioning capability (at the cost of an extra round-trip)
+        // instead of the event loop panicking.
         {
             let ptr = inner.get_ptr();
             let contains_key = state.exports_by_cap.borrow().contains_key(&ptr);
@@ -2989,11 +2991,11 @@ impl<VatId> Drop for PromiseClient<VatId> {
             let slots = &mut self.connection_state.imports.borrow_mut().slots;
             if let Some(import) = slots.get_mut(&id)
                 && let Some(c) = &import.app_client
-                    && let Some(cs) = c.upgrade()
-                    && cs.get_ptr() == self_ptr
-                {
-                    import.app_client = None;
-                }
+                && let Some(cs) = c.upgrade()
+                && cs.get_ptr() == self_ptr
+            {
+                import.app_client = None;
+            }
         }
 
         assert!(

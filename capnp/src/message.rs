@@ -1094,7 +1094,7 @@ where
         ptr: core::ptr::NonNull<u8>,
         word_size: u32,
         words_used: u32,
-    ) { unsafe {
-        (*self).deallocate_segment(ptr, word_size, words_used)
-    }}
+    ) {
+        unsafe { (*self).deallocate_segment(ptr, word_size, words_used) }
+    }
 }

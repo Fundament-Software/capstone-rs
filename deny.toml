@@ -19,19 +19,11 @@ allow = [
     "MPL-2.0",
     "BSD-3-Clause",
     "Unicode-3.0",
+    "CC0-1.0",
+    "Unicode-DFS-2016",
 ]
 confidence-threshold = 0.8
-exceptions = [
-    { allow = [
-        "CC0-1.0",
-    ], crate = "tiny-keccak" },
-    { allow = [
-        "CC0-1.0",
-    ], crate = "constant_time_eq" },
-    { allow = [
-        "Unicode-DFS-2016",
-    ], crate = "unicode-ident" },
-]
+exceptions = [{ allow = ["Unicode-DFS-2016"], crate = "unicode-ident" }]
 
 [licenses.private]
 ignore = false
@@ -48,3 +40,6 @@ unknown-registry = "warn"
 unknown-git = "warn"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 allow-git = []
+
+[sources.allow-org]
+github = ["Fundament-Software"]

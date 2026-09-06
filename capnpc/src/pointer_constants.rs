@@ -117,10 +117,7 @@ pub(crate) fn generate_pointer_constant(
                 ctx,
                 "static ARENA: {capnp}::private::arena::GeneratedCodeArena = {capnp}::private::arena::GeneratedCodeArena::new(&WORDS);"
             )),
-            Line(fmt!(
-                ctx,
-                "{capnp}::constant::Reader::new(&ARENA)"
-            )),
+            Line(fmt!(ctx, "{capnp}::constant::Reader::new(&ARENA)")),
         ]))),
         line("};"),
     ]))

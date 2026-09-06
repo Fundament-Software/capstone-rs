@@ -401,11 +401,12 @@ where
     }
 
     if let Some(limit) = options.traversal_limit_in_words
-        && total_body_words > limit {
-            return Err(Error::from_kind(ErrorKind::MessageTooLarge(
-                total_body_words,
-            )));
-        }
+        && total_body_words > limit
+    {
+        return Err(Error::from_kind(ErrorKind::MessageTooLarge(
+            total_body_words,
+        )));
+    }
 
     let start = (num_segment_counts_read + 1) * 4;
     let end = start + (total_body_words * 8);

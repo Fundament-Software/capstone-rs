@@ -10,6 +10,7 @@ use crate::schema_capnp::{annotation, enumerant, field, node};
 use crate::struct_list;
 use crate::traits::{IndexMove, ListIter, ShortListIter};
 
+#[cfg(feature = "alloc")]
 use crate::message::Reader;
 #[cfg(feature = "alloc")]
 use crate::serialize::OwnedSegments;
@@ -174,6 +175,7 @@ impl DynamicSchema {
         Ok(enumerant.get_name()?.to_str()?)
     }
 
+    #[allow(clippy::cast_possible_truncation)]
     fn get_indexes(
         st: crate::schema_capnp::node::struct_::Reader,
     ) -> (&'static mut [u16], &'static mut [u16], &'static mut [u16]) {
@@ -218,6 +220,7 @@ impl DynamicSchema {
         value: T,
         total_size: crate::MessageSize,
     ) -> Result<&'static mut [crate::Word]> {
+        #[allow(clippy::cast_possible_truncation)]
         let allocator = crate::message::HeapAllocator::new()
             .first_segment_words(total_size.word_count as u32 + 1);
         let mut message = crate::message::Builder::new(allocator);
@@ -696,9 +699,9 @@ impl StructSchema {
         })
     }
 
-    #[cfg(all(feature = "std", feature = "alloc"))]
     fn get_field_type(&self, idx: u16) -> crate::introspect::Type {
         #[allow(unpredictable_function_pointer_comparisons)]
+        #[allow(clippy::cast_possible_truncation)]
         if self.raw.field_types == dynamic_field_marker {
             #[cfg(all(feature = "std", feature = "alloc"))]
             for (index, field) in self.get_fields().unwrap().fields.iter().enumerate() {
@@ -872,15 +875,10 @@ impl FieldList {
     }
 
     pub fn get(self, index: u16) -> Field {
-        #[cfg(all(feature = "std", feature = "alloc"))]
-        let ty = self.parent.get_field_type(index);
-        #[cfg(not(all(feature = "std", feature = "alloc")))]
-        let ty = crate::introspect::TypeVariant::AnyPointer.into();
-
         Field {
             proto: self.fields.get(index as u32),
             index,
-            ty,
+            ty: self.parent.get_field_type(index),
             parent: self.parent,
         }
     }

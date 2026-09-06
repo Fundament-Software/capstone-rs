@@ -21,7 +21,6 @@
 
 //! Untyped pointer that can be cast to any struct, list, or capability type.
 
-
 use crate::Result;
 #[cfg(feature = "alloc")]
 use crate::capability::FromClientHook;

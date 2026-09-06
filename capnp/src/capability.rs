@@ -390,6 +390,7 @@ impl FromClientHook for alloc::boxed::Box<dyn ClientHook> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl crate::introspect::Introspect for alloc::boxed::Box<dyn ClientHook> {
     fn introspect() -> crate::introspect::Type {
         crate::introspect::TypeVariant::AnyPointer.into()
