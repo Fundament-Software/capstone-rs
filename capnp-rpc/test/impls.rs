@@ -881,6 +881,12 @@ impl TestSelfImpl {
     }
 }
 
+impl Default for TestSelfImpl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl test_self::Server for TestSelfImpl {
     async fn foo(
         self: Rc<Self>,
