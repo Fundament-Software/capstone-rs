@@ -1431,7 +1431,7 @@ async fn get_self() {
 fn broken_cap_returns_supplied_error() {
     let error = Error::failed("membrane denied access".to_string());
 
-    let _ = tokio::runtime::Runtime::new()
+    tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(async move {
             // A broken capability, cast to a concrete interface type.
