@@ -138,6 +138,7 @@ impl Word {
     }
 }
 
+#[allow(clippy::cast_possible_truncation)]
 #[cfg(any(feature = "proptest", test))]
 pub const fn word_u64(n: u64) -> Word {
     Word {
