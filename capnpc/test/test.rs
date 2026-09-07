@@ -2125,10 +2125,8 @@ mod tests {
         assert_eq!(4, iter.next().unwrap().get_u_int32_field());
         assert_eq!(5, iter.next().unwrap().get_u_int32_field());
 
-        let mut c = 2;
-        for s in structs.iter().skip(2) {
+        for (c, s) in (2..).zip(structs.iter().skip(2)) {
             assert_eq!(c, s.get_u_int32_field());
-            c += 1;
         }
 
         {

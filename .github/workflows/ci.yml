@@ -20,7 +20,7 @@ jobs:
         rust:
           - beta
           - stable
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
     - uses: actions/checkout@v7
@@ -32,9 +32,9 @@ jobs:
       run: |
           export DEBIAN_FRONTEND=noninteractive
           sudo apt update
-          sudo apt install -y clang-23
-          sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-23 60
-          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-23 60
+          sudo apt install -y clang-22
+          sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-22 60
+          sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-22 60
           
     - name: Test feature flags
       run: |
@@ -64,7 +64,7 @@ jobs:
 
   miri:
     name: "Miri"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - uses: actions/checkout@v7
@@ -80,9 +80,9 @@ jobs:
         run: |
             export DEBIAN_FRONTEND=noninteractive
             sudo apt update
-            sudo apt install -y clang-23
-            sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-23 60
-            sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-23 60
+            sudo apt install -y clang-22
+            sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-22 60
+            sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-22 60
 
       - name: Test default features
         run: cargo miri test --package capstone --package capnpc-test
@@ -98,7 +98,7 @@ jobs:
 
   fmt:
     name: formatting
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@nightly
@@ -108,15 +108,15 @@ jobs:
 
   clippy:
     name: lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Install Clang
         run: |
             export DEBIAN_FRONTEND=noninteractive
             sudo apt update
-            sudo apt install -y clang-23
-            sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-23 60
-            sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-23 60
+            sudo apt install -y clang-22
+            sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/clang++-22 60
+            sudo update-alternatives --install /usr/bin/cc cc /usr/bin/clang-22 60
 
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
@@ -128,7 +128,7 @@ jobs:
           args: --all --all-targets
 
   cargo-deny:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - uses: actions/checkout@v7
     - uses: EmbarkStudios/cargo-deny-action@v2
