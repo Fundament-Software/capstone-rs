@@ -18,7 +18,6 @@ capstone-gen.workspace = true
 capstone.workspace = true
 capstone-rpc.workspace = true
 tokio = { version = "1.0.0", features = ["net", "rt", "macros"] }
-tokio-util = { version = "0.7.4", features = ["compat"] }
 futures-util.workspace = true
 
 [lints]

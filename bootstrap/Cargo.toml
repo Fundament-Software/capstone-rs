@@ -13,3 +13,6 @@ path = "main.rs"
 [dependencies]
 capstone-gen.workspace = true
 capnp-sys.workspace = true
+
+[lints]
+workspace = true
