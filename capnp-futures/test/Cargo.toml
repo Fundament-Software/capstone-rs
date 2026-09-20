@@ -12,10 +12,12 @@ name = "capnp_futures_test"
 path = "test.rs"
 
 [dependencies]
-capstone-futures.workspace = true
 capstone.workspace = true
 tokio.workspace = true
+
+[dev-dependencies]
 async-byte-channel.workspace = true
+capstone-futures.workspace = true
 futures-util.workspace = true
 
 [build-dependencies]
