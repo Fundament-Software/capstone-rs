@@ -38,7 +38,6 @@ rust-version = "1.93.0"
 license = "MIT"
 repository = "https://github.com/fundament-software/capstone-rs"
 documentation = "https://docs.rs/capstone/"
-readme = "README.md"
 
 [workspace.dependencies]
 tokio = { version = "1.40", features = [
@@ -48,7 +47,6 @@ tokio = { version = "1.40", features = [
     "macros",
     "sync",
 ] }
-tokio-util = { version = "0.7", features = ["compat"] }
 tokio-stream = "0.1"
 capstone = { version = "0.18", path = "./capnp" }
 capstone-gen = { version = "0.18", path = "./capnpc" }
@@ -61,7 +59,6 @@ futures-util = "0.3"
 syn = { version = "2.0", features = ["full"] }
 proc-macro2 = "1.0"
 quote = "1.0"
-tempfile = "3.*"
 convert_case = "0.12"
 
 [workspace.lints.rust]
