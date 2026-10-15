@@ -40,7 +40,7 @@ repository = "https://github.com/fundament-software/capstone-rs"
 documentation = "https://docs.rs/capstone/"
 
 [workspace.dependencies]
-tokio = { version = "1.40", features = [
+tokio = { version = "1.53.3", features = [
     "net",
     "rt",
     "rt-multi-thread",
