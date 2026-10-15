@@ -1113,7 +1113,10 @@ fn generate_setter(
                     params_struct_generics.insert("'a".to_string());
                 }
                 let bracketed_params = if !lifetime.is_empty() || !used_params.is_empty() {
-                    format!("<{lifetime}{}>", used_params.into_iter().collect::<Vec<String>>().join(","))
+                    format!(
+                        "<{lifetime}{}>",
+                        used_params.into_iter().collect::<Vec<String>>().join(",")
+                    )
                 } else {
                     "".to_string()
                 };
@@ -2399,7 +2402,10 @@ fn generate_union(
                     for par in &used_params {
                         union_params.insert(par.to_string());
                     }
-                    let bracketed_params = format!("<{lifetime}{}>", used_params.into_iter().collect::<Vec<String>>().join(","));
+                    let bracketed_params = format!(
+                        "<{lifetime}{}>",
+                        used_params.into_iter().collect::<Vec<String>>().join(",")
+                    );
                     if possibly_cyclical {
                         params_enum_string.push_str(
                             format!(
