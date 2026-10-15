@@ -4791,9 +4791,8 @@ fn generate_node(
                 line("}"),
             ]));
 
-            shared_client_match_arms.push_str("\n       _ => unreachable!()");
-
             if !shared_client_match_arms.is_empty() {
+                shared_client_match_arms.push_str("\n       _ => unreachable!()");
                 client_impl_interior.push(Line(fmt!(
                     ctx,
                     "pub fn start_shared(&self) -> Result<SharedClient, {capnp}::Error> {{"
