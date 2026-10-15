@@ -4793,14 +4793,16 @@ fn generate_node(
 
             shared_client_match_arms.push_str("\n       _ => unreachable!()");
 
-            client_impl_interior.push(Line(fmt!(
-                ctx,
-                "pub fn start_shared(&self) -> Result<SharedClient, {capnp}::Error> {{"
-            )));
+            if !shared_client_match_arms.is_empty() {
+                client_impl_interior.push(Line(fmt!(
+                    ctx,
+                    "pub fn start_shared(&self) -> Result<SharedClient, {capnp}::Error> {{"
+                )));
 
-            client_impl_interior.push(indent(Line(fmt!(ctx,
+                client_impl_interior.push(indent(Line(fmt!(ctx,
                                         "let (tx, mut rx) = {capnp}::tokio::sync::mpsc::channel::<(u8, {capnp}::message::Builder<{capnp}::message::HeapAllocator>, {capnp}::tokio::sync::oneshot::Sender<{capnp}::Result<{capnp}::message::Builder<{capnp}::message::HeapAllocator>>>)>(100);\n      let client = self.clone();\n      {capnp}::tokio::task::spawn_local(async move {{\n      loop {{\n      let (ordinal, message, oneshot) = rx.recv().await.unwrap();\n      match ordinal {{{shared_client_match_arms}\n      }}}}}});\n      Ok(SharedClient{{_mpsc: tx}})\n      }}"
                                     ))));
+            }
 
             mod_interior.push(Branch(vec![
                 Line(format!(
