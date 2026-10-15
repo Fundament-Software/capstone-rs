@@ -34,14 +34,13 @@ impl Parse for CapnpLetFieldPattern {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let name: Ident = input.parse()?;
         let colon_token: Option<Token![:]> = input.parse()?;
-        let res: Self;
-        if colon_token.is_none() {
-            res = Self::Name(name);
+        let res = if colon_token.is_none() {
+            Self::Name(name)
         } else if input.peek(Brace) {
-            res = Self::ExtractWithPattern(name, input.parse()?);
+            Self::ExtractWithPattern(name, input.parse()?)
         } else {
             let name2: Ident = input.parse()?;
-            res = Self::ExtractToSymbol(name, name2);
+            Self::ExtractToSymbol(name, name2)
         };
         Ok(res)
     }

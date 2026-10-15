@@ -1113,7 +1113,10 @@ fn generate_setter(
                     params_struct_generics.insert("'a".to_string());
                 }
                 let bracketed_params = if !lifetime.is_empty() || !used_params.is_empty() {
-                    format! {"<{lifetime}{}>", used_params.into_iter().collect::<Vec<String>>().join(",")}
+                    format!(
+                        "<{lifetime}{}>",
+                        used_params.into_iter().collect::<Vec<String>>().join(",")
+                    )
                 } else {
                     "".to_string()
                 };
@@ -1429,7 +1432,7 @@ fn generate_setter(
                         lifetime = "'a";
                     }
                     let bracketed_params = if !lifetime.is_empty() || maybe_generics.len() > 1 {
-                        format! {"<{lifetime}{maybe_generics}>", }
+                        format!("<{lifetime}{maybe_generics}>")
                     } else {
                         "".to_string()
                     };
@@ -1787,7 +1790,7 @@ fn vec_of_list_element_types(
             )?;
             let maybe_generics = &maybe_generics[the_mod.len() + 9..maybe_generics.len() - 1];
             let bracketed_params = if !temp.is_empty() || maybe_generics.len() > 1 {
-                format! {"<{temp}{maybe_generics}>", }
+                format!("<{temp}{maybe_generics}>")
             } else {
                 "".to_string()
             };
@@ -1840,14 +1843,13 @@ fn build_impl_for_list_type(
     union: bool,
     is_params_struct: bool,
 ) -> capnp::Result<String> {
-    let vec_source: String;
-    if union {
-        vec_source = "t".to_string();
+    let vec_source = if union {
+        "t".to_string()
     } else if is_params_struct {
-        vec_source = format!("_{name}");
+        format!("_{name}")
     } else {
-        vec_source = format!("self._{name}");
-    }
+        format!("self._{name}")
+    };
     Ok(match list.reborrow().get_element_type()?.which()? {
         type_::Which::Text(_) => {
             format!(
@@ -2219,7 +2221,7 @@ fn generate_union(
                             let maybe_generics =
                                 &maybe_generics[the_mod.len() + 9..maybe_generics.len() - 1];
                             let bracketed_params = if !temp.is_empty() || maybe_generics.len() > 1 {
-                                format! {"<{temp}{maybe_generics}>", }
+                                format!("<{temp}{maybe_generics}>")
                             } else {
                                 "".to_string()
                             };
@@ -2400,7 +2402,10 @@ fn generate_union(
                     for par in &used_params {
                         union_params.insert(par.to_string());
                     }
-                    let bracketed_params = format! {"<{lifetime}{}>", used_params.into_iter().collect::<Vec<String>>().join(",")};
+                    let bracketed_params = format!(
+                        "<{lifetime}{}>",
+                        used_params.into_iter().collect::<Vec<String>>().join(",")
+                    );
                     if possibly_cyclical {
                         params_enum_string.push_str(
                             format!(
@@ -3998,7 +4003,7 @@ fn generate_node(
 
             let names = &ctx.scope_map[&node_id];
             let mut client_impl_interior = Vec::new();
-            let shared_client_impl_interior = Vec::new();
+            let mut shared_client_impl_interior = Vec::new();
             let mut shared_client_match_arms = String::new();
             let mut server_interior = Vec::new();
             let mut mod_interior = Vec::new();
@@ -4042,10 +4047,10 @@ fn generate_node(
 
             mod_interior.push(BlankLine);
             let methods = interface.get_methods()?;
-            //let mut method_count = 0;
+            let mut method_count = 0;
             for (ordinal, method) in methods.into_iter().enumerate() {
                 let name = method.get_name()?.to_str()?;
-                //method_count += 1;
+                method_count += 1;
 
                 let param_id = method.get_param_struct_type();
                 let param_node = &ctx.node_map[&param_id];
@@ -4093,8 +4098,7 @@ fn generate_node(
                 if result_id != STREAM_RESULT_ID {
                     dispatch_arms.push(
                         Line(fmt!(ctx,
-                            "{ordinal} => <_T as Server{bracketed_params}>::{}(this, {capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,",
-                                      module_name(name))));
+                            "{ordinal} => Server::{}(self.server, {capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,", module_name(name))));
 
                     stream_arms.push(line(format!("{ordinal} => false,")));
 
@@ -4185,19 +4189,19 @@ fn generate_node(
                 ))));
                     client_impl_interior.push(line("}"));
                     if builder_params.is_empty() && !is_generic {
-                        /*shared_client_impl_interior.push(Line(fmt!(
+                        shared_client_impl_interior.push(Line(fmt!(
                             ctx,
-                            "pub fn build_{}_request<'a{builder_params}>(&'a self{}) -> {capnp}::Result<{capnp}::message::TypedReader<{capnp}::message::Builder<{capnp}::message::HeapAllocator>, {result_type}>> {} {{",
+                            "pub async fn build_{}_request<'a{builder_params}>(&'a self{}) -> {capnp}::Result<{capnp}::message::TypedReader<{capnp}::message::Builder<{capnp}::message::HeapAllocator>, {result_type}>> {} {{",
                             camel_to_snake_case(name),
                             params_type_string,
                             params.where_clause
                         )));
 
-                                shared_client_impl_interior.push(indent(Line(fmt!(
+                        shared_client_impl_interior.push(indent(Line(fmt!(
                             ctx,
                             "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as {capnp}::traits::Owned>::Builder<'_>>();{builder_params_inner_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({ordinal}, message, tx)).await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))??.into_reader().into_typed())\n     }}",
                             param_type
-                        ))));*/
+                        ))));
 
                         shared_client_match_arms.push_str(fmt!(ctx, "\n       {ordinal} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
                     }
@@ -4205,9 +4209,7 @@ fn generate_node(
                     // It's a streaming method.
                     dispatch_arms.push(
                         Line(fmt!(ctx,
-                        "{ordinal} => <_T as Server{bracketed_params}>::{}(this, {capnp}::private::capability::internal_get_typed_params(params)).await,",
-
-                                  module_name(name))));
+                        "{ordinal} => Server::{}(self.server, {capnp}::private::capability::internal_get_typed_params(params)).await,", module_name(name))));
 
                     stream_arms.push(line(format!("{ordinal} => true,")));
 
@@ -4275,9 +4277,7 @@ fn generate_node(
                     let brand = ext.get_brand()?;
                     let the_mod = ctx.get_qualified_module(type_id);
                     base_dispatch_arms.push(Line(format!(
-                        "0x{type_id:x} => {}::dispatch_call_internal(self.server, method_id, params, results).await,",
-                        do_branding(
-                            ctx, type_id, brand, Leaf::ServerDispatch, &the_mod)?)));
+                        "0x{type_id:x} => Self::dispatch_call_internal(self, method_id + {method_count}, params, results).await,")));
                     base_stream_arms.push(Line(format!(
                         "0x{type_id:x} => {}::is_streaming_internal(&self.server, method_id),",
                         do_branding(ctx, type_id, brand, Leaf::ServerDispatch, &the_mod)?
@@ -4362,7 +4362,7 @@ fn generate_node(
                                                 builder_params_string.push_str(
                                                     format!("_{styled_name}: &'a str,").as_str(),
                                                 );
-                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name}.into());").as_str());
+                                                builder_params_impl_string.push_str(format!("\n  _builder.set_{styled_name}(_{styled_name});").as_str());
                                             }
                                         }
                                         type_::Data(()) => {
@@ -4446,7 +4446,7 @@ fn generate_node(
                                             let bracketed_params = if !lifetime.is_empty()
                                                 || maybe_generics.len() > 1
                                             {
-                                                format! {"<{lifetime}{maybe_generics}>"}
+                                                format!("<{lifetime}{maybe_generics}>")
                                             } else {
                                                 "".to_string()
                                             };
@@ -4582,43 +4582,44 @@ fn generate_node(
                             extra_params.push(fmt!(ctx, "{par}: {capnp}::traits::Owned"));
                         }
 
+                        let mut duplicate_prefix = "".to_string();
                         // Interfaces can shadow their parent function names, so we simply don't emit extra handlers for
                         // any names that have already been taken.
-                        if call_name_set.insert(name) {
-                            if result_id != STREAM_RESULT_ID {
-                                client_impl_interior.push(Line(fmt!(
+                        if !call_name_set.insert(name) {
+                            duplicate_prefix = format!("{}_", ctx.get_last_name(type_id)?);
+                        }
+                        if result_id != STREAM_RESULT_ID {
+                            client_impl_interior.push(Line(fmt!(
                                     ctx,
-                                    "pub fn {}_request<'a,{}>(&'a self) -> {capnp}::capability::Request<{},{}> {{",
+                                    "pub fn {duplicate_prefix}{}_request<'a,{}>(&'a self) -> {capnp}::capability::Request<{},{}> {{",
                                     camel_to_snake_case(name),
                                     extra_params.join(","),
                                     param_type,
                                     result_type
                                 )));
 
-                                client_impl_interior.push(indent(Line(format!(
+                            client_impl_interior.push(indent(Line(format!(
                                     "self.client.new_call(0x{type_id:x}, {ordinal}, ::core::option::Option::None)"
                                 ))));
-                                client_impl_interior.push(line("}"));
-                            } else {
-                                // Streaming method
-                                client_impl_interior.push(Line(fmt!(
+                            client_impl_interior.push(line("}"));
+                        } else {
+                            // Streaming method
+                            client_impl_interior.push(Line(fmt!(
                                     ctx,
-                                    "pub fn {}_request(&self) -> {capnp}::capability::StreamingRequest<{}> {{",
+                                    "pub fn {duplicate_prefix}{}_request(&self) -> {capnp}::capability::StreamingRequest<{}> {{",
                                     camel_to_snake_case(name),
                                     param_type
                                 )));
 
-                                client_impl_interior.push(indent(Line(format!(
+                            client_impl_interior.push(indent(Line(format!(
                                     "self.client.new_streaming_call(0x{type_id:x}, {ordinal}, ::core::option::Option::None)"
                                 ))));
 
-                                client_impl_interior.push(line("}"));
-                            }
+                            client_impl_interior.push(line("}"));
                         }
 
-                        // TODO restore this logic
-                        /*client_impl_interior.push(Line(fmt!(ctx,
-                            "pub fn build_{}_request<'a,{}>(&'a self, {}) -> {capnp}::capability::Request<{},{}> {} {{",
+                        client_impl_interior.push(Line(fmt!(ctx,
+                            "pub fn build_{duplicate_prefix}{}_request<'a,{}>(&'a self, {}) -> {capnp}::capability::Request<{},{}> {} {{",
                             camel_to_snake_case(name),
                             extra_params.join(","),
                             builder_params_string,
@@ -4633,32 +4634,31 @@ fn generate_node(
                             result_type,
                             builder_params_impl_string
                         ))));
-                        client_impl_interior.push(line("}"));*/
+                        client_impl_interior.push(line("}"));
 
                         if extra_params.is_empty() && !is_generic {
-                            /*shared_client_impl_interior.push(Line(fmt!(
+                            shared_client_impl_interior.push(Line(fmt!(
                                 ctx,
-                                "pub fn build_{}_request<'a,{}>(&'a self, {}) -> {capnp}::Result<{capnp}::message::TypedReader<{capnp}::message::Builder<{capnp}::message::HeapAllocator>, {result_type}>> {} {{",
+                                "pub async fn build_{duplicate_prefix}{}_request<'a,{}>(&'a self, {}) -> {capnp}::Result<{capnp}::message::TypedReader<{capnp}::message::Builder<{capnp}::message::HeapAllocator>, {result_type}>> {} {{",
                                 camel_to_snake_case(name),
                                 extra_params.join(","),
                                 builder_params_string,
                                 params.where_clause
                             )));
 
-                                shared_client_impl_interior.push(indent(Line(fmt!(
+                            shared_client_impl_interior.push(indent(Line(fmt!(
                                 ctx,
                                 "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as {capnp}::traits::Owned>::Builder<'_>>();{builder_params_impl_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({method_count}, message, tx)).await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))??.into_reader().into_typed())\n     }}",
                                 param_type
-                            ))));*/
-                            //shared_client_match_arms.push_str(fmt!(ctx, "\n       {method_count} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
+                            ))));
+                            shared_client_match_arms.push_str(fmt!(ctx, "\n       {method_count} => {{\n       let mut req = client.{duplicate_prefix}{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
                         }
 
-                        //dispatch_arms.push(
-                        //Line(fmt!(ctx,
-                        //        "{method_count} => <_T as Server{bracketed_params}>::{}(this, {capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,",
-                        //        module_name(name))));
+                        dispatch_arms.push(
+                        Line(fmt!(ctx,
+                                "{method_count} => <_T as {the_mod}::Server>::{}(self.server, {capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,", module_name(name))));
 
-                        //method_count += 1;
+                        method_count += 1;
                     }
                 }
 
@@ -4791,18 +4791,17 @@ fn generate_node(
                 line("}"),
             ]));
 
-            shared_client_match_arms.push_str("\n       _ => unreachable!()");
-            // TODO: Unsure if this is still necessary but currently causes lints about loops that don't actually loop
-            /*
-                        client_impl_interior.push(Line(fmt!(
-                            ctx,
-                            "pub fn start_shared(&self) -> Result<SharedClient, {capnp}::Error> {{"
-                        )));
+            if !shared_client_match_arms.is_empty() {
+                shared_client_match_arms.push_str("\n       _ => unreachable!()");
+                client_impl_interior.push(Line(fmt!(
+                    ctx,
+                    "pub fn start_shared(&self) -> Result<SharedClient, {capnp}::Error> {{"
+                )));
 
-                        client_impl_interior.push(indent(Line(fmt!(ctx,
+                client_impl_interior.push(indent(Line(fmt!(ctx,
                                         "let (tx, mut rx) = {capnp}::tokio::sync::mpsc::channel::<(u8, {capnp}::message::Builder<{capnp}::message::HeapAllocator>, {capnp}::tokio::sync::oneshot::Sender<{capnp}::Result<{capnp}::message::Builder<{capnp}::message::HeapAllocator>>>)>(100);\n      let client = self.clone();\n      {capnp}::tokio::task::spawn_local(async move {{\n      loop {{\n      let (ordinal, message, oneshot) = rx.recv().await.unwrap();\n      match ordinal {{{shared_client_match_arms}\n      }}}}}});\n      Ok(SharedClient{{_mpsc: tx}})\n      }}"
                                     ))));
-            */
+            }
 
             mod_interior.push(Branch(vec![
                 Line(format!(
@@ -4895,7 +4894,7 @@ fn generate_node(
                     }),
                     indent(Line(fmt!(ctx,"async fn dispatch_call(self, interface_id: u64, method_id: u16, params: {capnp}::capability::Params<{capnp}::any_pointer::Owned>, results: {capnp}::capability::Results<{capnp}::any_pointer::Owned>) -> Result<(), {capnp}::Error> {{"))),
                     indent(indent(line("match interface_id {"))),
-                    indent(indent(indent(line("_private::TYPE_ID => Self::dispatch_call_internal(self.server, method_id, params, results).await,")))),
+                    indent(indent(indent(line("_private::TYPE_ID => Self::dispatch_call_internal(self, method_id, params, results).await,")))),
                     indent(indent(indent(base_dispatch_arms))),
                     indent(indent(indent(Line(fmt!(ctx,"_ => Err({capnp}::Error::unimplemented(\"Method not implemented.\".to_string()))"))))),
                     indent(indent(line("}"))),
@@ -4921,7 +4920,7 @@ fn generate_node(
                         line("impl <_T :Server> ServerDispatch<_T> {")
                     }),
 
-                    indent(Line(fmt!(ctx,"pub async fn dispatch_call_internal(this: {capnp}::capability::Rc<_T>, method_id: u16, params: {capnp}::capability::Params<{capnp}::any_pointer::Owned>, results: {capnp}::capability::Results<{capnp}::any_pointer::Owned>) -> Result<(), {capnp}::Error> {{"))),
+                    indent(Line(fmt!(ctx,"pub async fn dispatch_call_internal(self, method_id: u16, params: {capnp}::capability::Params<{capnp}::any_pointer::Owned>, results: {capnp}::capability::Results<{capnp}::any_pointer::Owned>) -> Result<(), {capnp}::Error> {{"))),
                     indent(indent(line("match method_id {"))),
                     indent(indent(indent(dispatch_arms))),
                     indent(indent(indent(Line(fmt!(ctx,"_ => Err({capnp}::Error::unimplemented(\"Method not implemented.\".to_string()))"))))),
