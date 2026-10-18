@@ -4579,7 +4579,7 @@ fn generate_node(
                         }
                         let mut extra_params = Vec::new();
                         for par in used_params_in_method {
-                            extra_params.push(fmt!(ctx, "{par}: {capnp}::traits::Owned"));
+                            extra_params.push(fmt!(ctx, "{par}: {capnp}::traits::Owned + 'static"));
                         }
 
                         let mut duplicate_prefix = "".to_string();
@@ -4656,7 +4656,7 @@ fn generate_node(
 
                         dispatch_arms.push(
                         Line(fmt!(ctx,
-                                "{method_count} => <_T as {the_mod}::Server>::{}(self.server, {capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,", module_name(name))));
+                                "{method_count} => {the_mod}::Server::{}(self.server, {capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,", module_name(name))));
 
                         method_count += 1;
                     }
