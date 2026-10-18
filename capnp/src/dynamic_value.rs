@@ -30,6 +30,30 @@ pub enum Reader<'a> {
 }
 
 impl<'a> Reader<'a> {
+    pub(crate) fn display_type(&self) -> &str {
+        match self {
+            Self::Void => "Void",
+            Self::Bool(_) => "Bool",
+            Self::Int8(_) => "Int8",
+            Self::Int16(_) => "Int16",
+            Self::Int32(_) => "Int32",
+            Self::Int64(_) => "Int64",
+            Self::UInt8(_) => "UInt8",
+            Self::UInt16(_) => "UInt16",
+            Self::UInt32(_) => "UInt32",
+            Self::UInt64(_) => "UInt64",
+            Self::Float32(_) => "Float32",
+            Self::Float64(_) => "Float64",
+            Self::Text(_) => "Text",
+            Self::Data(_) => "Data",
+            Self::Struct(_) => "Struct",
+            Self::AnyPointer(_) => "AnyPointer",
+            Self::Capability(_) => "Capability",
+            Self::Enum(_) => "Enum",
+            Self::List(_) => "List",
+        }
+    }
+
     pub fn new(value: value::Reader<'a>, ty: introspect::Type) -> Result<Self> {
         match (value.which()?, ty.which()) {
             (value::Void(()), _) => Ok(Reader::Void),
@@ -61,7 +85,10 @@ impl<'a> Reader<'a> {
                 Ok(Reader::Capability(Capability::new(c.into())))
             }
             (value::AnyPointer(a), TypeVariant::AnyPointer) => Ok(a.into()),
-            _ => Err(crate::Error::from_kind(crate::ErrorKind::TypeMismatch)),
+            _ => Err(crate::Error::from_kind_context(
+                crate::ErrorKind::TypeMismatch,
+                format!("{ty} does not match reader type"),
+            )),
         }
     }
 
