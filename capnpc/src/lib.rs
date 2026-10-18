@@ -81,7 +81,7 @@ pub(crate) fn convert_io_err(err: std::io::Error) -> capnp::Error {
         | io::ErrorKind::NotConnected => capnp::ErrorKind::Disconnected,
         _ => capnp::ErrorKind::Failed,
     };
-    capnp::Error::from_kind_context(kind, format!("{err}"))
+    capnp::Error::from_kind_context(kind, format_args!("{err}"))
 }
 
 /// A builder object for schema compiler commands.

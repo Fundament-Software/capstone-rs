@@ -87,7 +87,7 @@ impl<'a> Reader<'a> {
             (value::AnyPointer(a), TypeVariant::AnyPointer) => Ok(a.into()),
             _ => Err(crate::Error::from_kind_context(
                 crate::ErrorKind::TypeMismatch,
-                format!("{ty} does not match reader type"),
+                format_args!("{ty} does not match reader type"),
             )),
         }
     }

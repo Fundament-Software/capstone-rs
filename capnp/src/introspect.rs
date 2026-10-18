@@ -23,7 +23,7 @@ pub struct Type {
     list_count: usize,
 }
 
-impl std::fmt::Display for Type {
+impl core::fmt::Display for Type {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         for _ in 0..self.list_count {
             f.write_str("List(")?;
@@ -187,7 +187,7 @@ pub enum TypeVariant {
     List(Type),
 }
 
-impl std::fmt::Display for TypeVariant {
+impl core::fmt::Display for TypeVariant {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Void => f.write_str("Void"),
@@ -262,7 +262,7 @@ enum BaseType {
     Enum(RawEnumSchema),
 }
 
-impl std::fmt::Display for BaseType {
+impl core::fmt::Display for BaseType {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
             Self::Void => f.write_str("Void"),

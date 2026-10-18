@@ -345,7 +345,7 @@ impl<'a> Builder<'a> {
             }
             (t, r) => Err(Error::from_kind_context(
                 ErrorKind::TypeMismatch,
-                format!("{t} does not match reader type {}", r.display_type()),
+                format_args!("{t} does not match reader type {}", r.display_type()),
             )),
         }
     }
