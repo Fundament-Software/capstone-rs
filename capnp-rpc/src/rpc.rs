@@ -405,7 +405,7 @@ fn remote_exception_to_error(exception: exception::Reader) -> Error {
     let reason_str = reason
         .to_str()
         .unwrap_or("<malformed utf-8 in error reason>");
-    ::capnp::Error::from_kind_context(kind, format!("remote exception: {reason_str}"))
+    ::capnp::Error::from_kind_context(kind, format_args!("remote exception: {reason_str}"))
 }
 
 pub(crate) struct ConnectionErrorHandler<VatId>

@@ -505,13 +505,21 @@ impl Error {
         };
     }
 
-    #[cfg(feature = "alloc")]
-    pub fn from_kind_context(kind: ErrorKind, context: String) -> Self {
-        Self {
-            kind,
-            extra: context,
-            #[cfg(feature = "backtrace")]
-            backtrace: std::backtrace::Backtrace::capture(),
+    pub fn from_kind_context(kind: ErrorKind, context: impl core::fmt::Display) -> Self {
+        #[cfg(feature = "alloc")]
+        {
+            use alloc::string::ToString;
+            Self {
+                kind,
+                extra: context.to_string(),
+                #[cfg(feature = "backtrace")]
+                backtrace: std::backtrace::Backtrace::capture(),
+            }
+        }
+        #[cfg(not(feature = "alloc"))]
+        {
+            let _ = context; // drop it
+            Self::from_kind(kind)
         }
     }
 

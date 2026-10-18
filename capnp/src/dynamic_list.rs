@@ -343,7 +343,10 @@ impl<'a> Builder<'a> {
             (TypeVariant::Capability(_), dynamic_value::Reader::Capability(_)) => {
                 Err(Error::from_kind(ErrorKind::ListCapabilityNotSupported))
             }
-            (_, _) => Err(Error::from_kind(ErrorKind::TypeMismatch)),
+            (t, r) => Err(Error::from_kind_context(
+                ErrorKind::TypeMismatch,
+                format_args!("{t} does not match reader type {}", r.display_type()),
+            )),
         }
     }
 

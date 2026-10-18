@@ -23,6 +23,19 @@ pub struct Type {
     list_count: usize,
 }
 
+impl core::fmt::Display for Type {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        for _ in 0..self.list_count {
+            f.write_str("List(")?;
+        }
+        self.base.fmt(f)?;
+        for _ in 0..self.list_count {
+            f.write_str(")")?;
+        }
+        Ok(())
+    }
+}
+
 impl Type {
     /// Constructs a new `Type` that is not a list.
     fn new_base(base: BaseType) -> Self {
@@ -174,6 +187,32 @@ pub enum TypeVariant {
     List(Type),
 }
 
+impl core::fmt::Display for TypeVariant {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Void => f.write_str("Void"),
+            Self::Bool => f.write_str("Bool"),
+            Self::Int8 => f.write_str("Int8"),
+            Self::Int16 => f.write_str("Int16"),
+            Self::Int32 => f.write_str("Int32"),
+            Self::Int64 => f.write_str("Int64"),
+            Self::UInt8 => f.write_str("UInt8"),
+            Self::UInt16 => f.write_str("UInt16"),
+            Self::UInt32 => f.write_str("UInt32"),
+            Self::UInt64 => f.write_str("UInt64"),
+            Self::Float32 => f.write_str("Float32"),
+            Self::Float64 => f.write_str("Float64"),
+            Self::Text => f.write_str("Text"),
+            Self::Data => f.write_str("Data"),
+            Self::Struct(_) => f.write_str("Struct"),
+            Self::AnyPointer => f.write_str("AnyPointer"),
+            Self::Capability(_) => f.write_str("Capability"),
+            Self::Enum(_) => f.write_str("Enum"),
+            Self::List(_) => f.write_str("List"),
+        }
+    }
+}
+
 impl From<TypeVariant> for Type {
     fn from(tv: TypeVariant) -> Type {
         match tv {
@@ -221,6 +260,31 @@ enum BaseType {
     AnyPointer,
     Capability(RawCapabilitySchema),
     Enum(RawEnumSchema),
+}
+
+impl core::fmt::Display for BaseType {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Self::Void => f.write_str("Void"),
+            Self::Bool => f.write_str("Bool"),
+            Self::Int8 => f.write_str("Int8"),
+            Self::Int16 => f.write_str("Int16"),
+            Self::Int32 => f.write_str("Int32"),
+            Self::Int64 => f.write_str("Int64"),
+            Self::UInt8 => f.write_str("UInt8"),
+            Self::UInt16 => f.write_str("UInt16"),
+            Self::UInt32 => f.write_str("UInt32"),
+            Self::UInt64 => f.write_str("UInt64"),
+            Self::Float32 => f.write_str("Float32"),
+            Self::Float64 => f.write_str("Float64"),
+            Self::Text => f.write_str("Text"),
+            Self::Data => f.write_str("Data"),
+            Self::Struct(_) => f.write_str("Struct"),
+            Self::AnyPointer => f.write_str("AnyPointer"),
+            Self::Capability(_) => f.write_str("Capability"),
+            Self::Enum(_) => f.write_str("Enum"),
+        }
+    }
 }
 
 macro_rules! primitive_introspect(

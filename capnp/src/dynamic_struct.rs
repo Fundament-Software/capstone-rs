@@ -194,10 +194,18 @@ impl<'a> Reader<'a> {
                         .reader
                         .get_pointer_field(offset as usize)
                         .get_capability()?),
-                    _ => Err(Error::from_kind(ErrorKind::TypeMismatch)),
+                    _ => Err(Error::from_kind_context(
+                        ErrorKind::TypeMismatch,
+                        format_args!(
+                            "Target field {ty} must be a capability and default_value must be an interface",
+                        ),
+                    )),
                 }
             }
-            field::Group(_) => Err(Error::from_kind(ErrorKind::TypeMismatch)),
+            field::Group(_) => Err(Error::from_kind_context(
+                ErrorKind::TypeMismatch,
+                format_args!("Field was a group instead of an actual slot"),
+            )),
         }
     }
 
@@ -439,7 +447,10 @@ impl<'a> Builder<'a> {
                 if let TypeVariant::Struct(schema) = ty.which() {
                     Ok(Builder::new(self.builder, schema.into()).into())
                 } else {
-                    Err(Error::from_kind(ErrorKind::GroupFieldButTypeIsNotStruct))
+                    Err(Error::from_kind_context(
+                        ErrorKind::GroupFieldButTypeIsNotStruct,
+                        format_args!("type: {ty}"),
+                    ))
                 }
             }
         }
@@ -495,10 +506,16 @@ impl<'a> Builder<'a> {
                         unsafe { builder.set_other_pointer(value.into()) };
                         Ok(())
                     }
-                    _ => Err(Error::from_kind(ErrorKind::TypeMismatch)),
+                    _ => Err(Error::from_kind_context(
+                        ErrorKind::TypeMismatch,
+                        format_args!("{ty} was not a capability or any pointer"),
+                    )),
                 }
             }
-            _ => Err(Error::from_kind(ErrorKind::TypeMismatch)),
+            _ => Err(Error::from_kind_context(
+                ErrorKind::TypeMismatch,
+                format_args!("field was a group instead of a slot."),
+            )),
         }
     }
 
@@ -603,15 +620,19 @@ impl<'a> Builder<'a> {
                             dynamic_value::Reader::Capability(_) => Err(Error::from_kind(
                                 ErrorKind::SettingDynamicCapabilitiesIsUnsupported,
                             )),
-                            _ => Err(Error::from_kind(
+                            x => Err(Error::from_kind_context(
                                 ErrorKind::CannotSetAnyPointerFieldToAPrimitiveValue,
+                                format_args!("type: {}", x.display_type()),
                             )),
                         }
                     }
                     (TypeVariant::Capability(_), _, _) => Err(Error::from_kind(
                         ErrorKind::SettingDynamicCapabilitiesIsUnsupported,
                     )),
-                    _ => Err(Error::from_kind(ErrorKind::TypeMismatch)),
+                    _ => Err(Error::from_kind_context(
+                        ErrorKind::TypeMismatch,
+                        format_args!("{ty} does not match reader {}", value.display_type()),
+                    )),
                 }
             }
             field::Group(_group) => {
@@ -663,15 +684,19 @@ impl<'a> Builder<'a> {
                         p.clear();
                         Ok(crate::any_pointer::Builder::new(p).into())
                     }
-                    _ => Err(Error::from_kind(
+                    x => Err(Error::from_kind_context(
                         ErrorKind::InitIsOnlyValidForStructAndAnyPointerFields,
+                        format_args!("field type: {x}"),
                     )),
                 }
             }
             field::Group(_) => {
                 self.clear(field)?;
                 let TypeVariant::Struct(schema) = ty.which() else {
-                    return Err(Error::from_kind(ErrorKind::NotAStruct));
+                    return Err(Error::from_kind_context(
+                        ErrorKind::NotAStruct,
+                        format_args!("type: {ty}"),
+                    ));
                 };
                 Ok((Builder::new(self.builder, schema.into())).into())
             }
@@ -806,7 +831,10 @@ impl<'a> Builder<'a> {
             }
             field::Group(_) => {
                 let TypeVariant::Struct(schema) = ty.which() else {
-                    return Err(Error::from_kind(ErrorKind::NotAStruct));
+                    return Err(Error::from_kind_context(
+                        ErrorKind::NotAStruct,
+                        format_args!("type: {ty}"),
+                    ));
                 };
                 let mut group = Builder::new(self.builder.reborrow(), schema.into());
 
