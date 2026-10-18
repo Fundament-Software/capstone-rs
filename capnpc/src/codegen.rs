@@ -4656,7 +4656,7 @@ fn generate_node(
 
                         dispatch_arms.push(
                         Line(fmt!(ctx,
-                                "{method_count} => <_T as {the_mod}::Server>::{}(self.server, {capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,", module_name(name))));
+                                "{method_count} => {the_mod}::Server::{}(self.server, {capnp}::private::capability::internal_get_typed_params(params), {capnp}::private::capability::internal_get_typed_results(results)).await,", module_name(name))));
 
                         method_count += 1;
                     }
