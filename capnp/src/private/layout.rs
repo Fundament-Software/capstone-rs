@@ -2479,6 +2479,16 @@ mod wire_helpers {
                 }
                 WirePointerKind::Far => Err(Error::from_kind(ErrorKind::MalformedDoubleFarPointer)),
                 WirePointerKind::Other => {
+                    // HACK: We allow copying invalid capabilities if the message doesn't have a cap table in the first place.
+                    #[cfg(feature = "alloc")]
+                    if !canonicalize && matches!(src.cap_table, CapTableReader::Dummy) {
+                        ptr::copy_nonoverlapping(src_ptr, dst, 1);
+                        return Ok(SegmentAnd {
+                            segment_id: dst_segment_id,
+                            value: ptr::null_mut(),
+                        });
+                    }
+
                     if !(*src_ptr).is_capability() {
                         return Err(Error::from_kind(ErrorKind::UnknownPointerType));
                     }
