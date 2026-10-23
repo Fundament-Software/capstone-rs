@@ -2479,9 +2479,12 @@ mod wire_helpers {
                 }
                 WirePointerKind::Far => Err(Error::from_kind(ErrorKind::MalformedDoubleFarPointer)),
                 WirePointerKind::Other => {
-                    // HACK: We allow copying invalid capabilities if the message doesn't have a cap table in the first place.
+                    // HACK: We allow copying invalid capabilities if neither message has a cap table set up.
                     #[cfg(feature = "alloc")]
-                    if !canonicalize && matches!(src.cap_table, CapTableReader::Dummy) {
+                    if !canonicalize
+                        && matches!(src.cap_table, CapTableReader::Dummy)
+                        && matches!(dst_cap_table, CapTableBuilder::Dummy)
+                    {
                         ptr::copy_nonoverlapping(src_ptr, dst, 1);
                         return Ok(SegmentAnd {
                             segment_id: dst_segment_id,
