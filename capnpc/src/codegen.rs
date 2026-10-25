@@ -781,7 +781,7 @@ pub fn getter_text(
             let should_get_option = is_option_field(*field)?;
 
             let typ = if should_get_option {
-                format!("Option<{inner_type}>")
+                format!("::core::option::Option<{inner_type}>")
             } else {
                 inner_type
             };
@@ -1438,10 +1438,10 @@ fn generate_setter(
                     };
                     if no_discriminant && !field.has_annotations() {
                         set_types.push_str(
-                            format!(", _{styled_name}: Option<{type_string}{bracketed_params}>")
+                            format!(", _{styled_name}: ::core::option::Option<{type_string}{bracketed_params}>")
                                 .as_str(),
                         );
-                        set_inner.push_str(format!("\n  if let Some(st) = _{styled_name} {{st.build_capnp_struct(self.reborrow().init_{styled_name}());}}").as_str());
+                        set_inner.push_str(format!("\n  if let ::core::option::Option::Some(st) = _{styled_name} {{st.build_capnp_struct(self.reborrow().init_{styled_name}());}}").as_str());
                         result.push(Line(fmt!(ctx, "pub fn set_{styled_name}_from_struct(&mut self, st: {type_string}{bracketed_params}) {{\n      st.build_capnp_struct({capnp}::traits::FromPointerBuilder::init_pointer(self.reborrow().builder.get_pointer_field({offset}), 0));\n    }}")));
 
                         if type_string
@@ -1450,21 +1450,21 @@ fn generate_setter(
                         {
                             rust_struct_inner.push_str(
                                 format!(
-                                    "{params_struct_prefix}_{styled_name}: Option<Box<{type_string}{bracketed_params}>>,"
+                                    "{params_struct_prefix}_{styled_name}: ::core::option::Option<Box<{type_string}{bracketed_params}>>,"
                                 )
                                 .as_str(),
                             );
-                            rust_struct_impl_inner.push_str(format!("\n  if let Some(st) = {params_struct_impl_prefix}_{styled_name} {{st.build_capnp_struct(_builder.reborrow().init_{styled_name}());}}").as_str());
-                            get_inner.push(line(format!("_{styled_name}: if self.has_{styled_name}() {{Some(Box::new(self.get_{styled_name}()?.get()?))}} else {{None}},")));
+                            rust_struct_impl_inner.push_str(format!("\n  if let ::core::option::Option::Some(st) = {params_struct_impl_prefix}_{styled_name} {{st.build_capnp_struct(_builder.reborrow().init_{styled_name}());}}").as_str());
+                            get_inner.push(line(format!("_{styled_name}: if self.has_{styled_name}() {{::core::option::Option::Some(Box::new(self.get_{styled_name}()?.get()?))}} else {{::core::option::Option::None}},")));
                         } else {
                             rust_struct_inner.push_str(
                                 format!(
-                                    "{params_struct_prefix}_{styled_name}: Option<{type_string}{bracketed_params}>,"
+                                    "{params_struct_prefix}_{styled_name}: ::core::option::Option<{type_string}{bracketed_params}>,"
                                 )
                                 .as_str(),
                             );
-                            rust_struct_impl_inner.push_str(format!("\n  if let Some(st) = {params_struct_impl_prefix}_{styled_name} {{st.build_capnp_struct(_builder.reborrow().init_{styled_name}());}}").as_str());
-                            get_inner.push(line(format!("_{styled_name}: if self.has_{styled_name}() {{Some(self.get_{styled_name}()?.get()?)}} else {{None}},")));
+                            rust_struct_impl_inner.push_str(format!("\n  if let ::core::option::Option::Some(st) = {params_struct_impl_prefix}_{styled_name} {{st.build_capnp_struct(_builder.reborrow().init_{styled_name}());}}").as_str());
+                            get_inner.push(line(format!("_{styled_name}: if self.has_{styled_name}() {{::core::option::Option::Some(self.get_{styled_name}()?.get()?)}} else {{::core::option::Option::None}},")));
                         }
                     }
 
@@ -1616,7 +1616,7 @@ fn check_fields_of_struct_for_lifetimes(
     ctx: &GeneratorContext,
     fields: capnp::struct_list::Reader<'_, schema_capnp::field::Owned>,
     lifetime: &mut &str,
-    mut maybe_cyclical_counter: usize,
+    maybe_cyclical_counter: usize,
 ) -> ::capnp::Result<()> {
     for field in fields {
         match field.which()? {
@@ -1652,13 +1652,16 @@ fn check_fields_of_struct_for_lifetimes(
                             if maybe_cyclical_counter > 10 {
                                 break;
                             }
-                            maybe_cyclical_counter += 1;
                             check_fields_of_struct_for_lifetimes(
                                 ctx,
                                 struct_node.get_fields()?,
                                 lifetime,
-                                maybe_cyclical_counter,
+                                maybe_cyclical_counter + 1,
                             )?;
+                            if !lifetime.is_empty() {
+                                return Ok(());
+                            }
+                            break;
                         }
                         type_::Which::AnyPointer(_) => {
                             if slot.get_type()?.is_parameter()? {
@@ -1688,13 +1691,15 @@ fn check_fields_of_struct_for_lifetimes(
                     if maybe_cyclical_counter > 10 {
                         continue;
                     }
-                    maybe_cyclical_counter += 1;
                     check_fields_of_struct_for_lifetimes(
                         ctx,
                         struct_node.get_fields()?,
                         lifetime,
-                        maybe_cyclical_counter,
+                        maybe_cyclical_counter + 1,
                     )?;
+                    if !lifetime.is_empty() {
+                        return Ok(());
+                    }
                 }
                 type_::Which::Interface(_) => (),
                 type_::Which::AnyPointer(_) if slot.get_type()?.is_parameter()? => {
@@ -1712,13 +1717,15 @@ fn check_fields_of_struct_for_lifetimes(
                 if maybe_cyclical_counter > 10 {
                     continue;
                 }
-                maybe_cyclical_counter += 1;
                 check_fields_of_struct_for_lifetimes(
                     ctx,
                     struct_node.get_fields()?,
                     lifetime,
-                    maybe_cyclical_counter,
+                    maybe_cyclical_counter + 1,
                 )?;
+                if !lifetime.is_empty() {
+                    return Ok(());
+                }
             }
         }
     }
@@ -2142,7 +2149,7 @@ fn generate_union(
                             params_enum_string
                                 .push_str(format!("\n _{enumerant_name}(&'a str),").as_str());
                             params_impl_interior.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => _builder.reborrow().set_{}(t),", camel.as_str()).as_str());
-                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t.into()),", camel.as_str()).as_str());
+                            set_inner.push_str(format!("\n {params_union_name}::_{enumerant_name}(t) => self.set_{}(t),", camel.as_str()).as_str());
                             union_into_inner.push_str(format!("\n Which::{enumerant_name}(t) => {params_union_name}::_{enumerant_name}(t?.to_str()?),").as_str());
                         }
                         type_::Which::Data(_) => {
@@ -2921,11 +2928,16 @@ fn annotation_branch(
     let node::Annotation(a) = annotation_decl.which()? else {
         return Err(Error::failed("not an annotation node".into()));
     };
+    // Spelled out rather than `{:?}`, which would emit a bare `Some`/`None`.
+    let child_index = match child_index {
+        Some(i) => format!("::core::option::Option::Some({i})"),
+        None => "::core::option::Option::None".to_string(),
+    };
     if annotation_decl.get_is_generic() {
         let brand = annotation.get_brand()?;
         let the_mod = ctx.get_qualified_module(id);
         let func = do_branding(ctx, id, brand, Leaf::GetType, &the_mod)?;
-        Ok(Line(format!("({child_index:?}, {index}) => {func}(),")))
+        Ok(Line(format!("({child_index}, {index}) => {func}(),")))
     } else {
         // Avoid referring to the annotation in the generated code, so that users can import
         // annotation schemas like `c++.capnp` or `rust.capnp` without needing to generate code
@@ -2933,7 +2945,7 @@ fn annotation_branch(
         let ty = a.get_type()?;
         Ok(Line(fmt!(
             ctx,
-            "({child_index:?}, {index}) => <{} as {capnp}::introspect::Introspect>::introspect(),",
+            "({child_index}, {index}) => <{} as {capnp}::introspect::Introspect>::introspect(),",
             ty.type_string(ctx, Leaf::Owned)?
         )))
     }
@@ -3000,7 +3012,7 @@ fn generate_get_annotation_types(
         Ok(Branch(vec![
             Line(fmt!(
                 ctx,
-                "pub(crate) fn get_annotation_types(child_index: Option<u16>, index: u32) -> {capnp}::introspect::Type {{"
+                "pub(crate) fn get_annotation_types(child_index: ::core::option::Option<u16>, index: u32) -> {capnp}::introspect::Type {{"
             )),
             indent(body),
             Line("}".into()),
@@ -3010,7 +3022,7 @@ fn generate_get_annotation_types(
         Ok(Branch(vec![
             Line(fmt!(
                 ctx,
-                "pub(crate) fn get_annotation_types<{0}>(child_index: Option<u16>, index: u32) -> {capnp}::introspect::Type {1} {{",
+                "pub(crate) fn get_annotation_types<{0}>(child_index: ::core::option::Option<u16>, index: u32) -> {capnp}::introspect::Type {1} {{",
                 params.params,
                 params.where_clause
             )),
@@ -3433,7 +3445,9 @@ fn generate_node(
                 } else {
                     params_union_name = snake_to_camel_case(node_name);
                     params_union_name.push_str("Union");
-                    get_inner.push(line("uni: self.which()?.try_into()?,".to_string()));
+                    get_inner.push(line(
+                        "uni: ::core::convert::TryInto::try_into(self.which()?)?,".to_string(),
+                    ));
                 }
 
                 let (which_enums1, union_getter, typedef, mut default_decls) = generate_union(
@@ -3544,7 +3558,7 @@ fn generate_node(
                 params_enum_string = format!(
                     "pub enum {params_union_name}{enum_bracketed_with_where} {{\n UNINITIALIZED,{params_enum_string}\n}}"
                 );
-                params_enum_string.push_str(fmt!(ctx, "\nimpl {which_bracketed_with_where}TryInto<{params_union_name}{enum_bracketed}> for WhichReader{which_bracketed} {{\n  type Error = {capnp}::Error;\n  fn try_into(self) -> Result<{params_union_name}{enum_bracketed}, Self::Error> {{\n    Ok(match self {{{union_into_inner}\n    }})  \n  }} \n}}").as_str());
+                params_enum_string.push_str(fmt!(ctx, "\nimpl {which_bracketed_with_where}::core::convert::TryInto<{params_union_name}{enum_bracketed}> for WhichReader{which_bracketed} {{\n  type Error = {capnp}::Error;\n  fn try_into(self) -> ::core::result::Result<{params_union_name}{enum_bracketed}, Self::Error> {{\n    ::core::result::Result::Ok(match self {{{union_into_inner}\n    }})  \n  }} \n}}").as_str());
             }
 
             params_struct_impl_string = format!(
@@ -3585,10 +3599,14 @@ fn generate_node(
                     snake_to_camel_case(node_name)
                 ))]));
                 if union_only_struct && !params_enum_string.is_empty() {
-                    reader_members.push(line("  self.which()?.try_into()"));
+                    reader_members
+                        .push(line("  ::core::convert::TryInto::try_into(self.which()?)"));
                 } else {
                     reader_members.push(Branch(vec![
-                        line(format!("Ok({} {{", snake_to_camel_case(node_name))),
+                        line(format!(
+                            "::core::result::Result::Ok({} {{",
+                            snake_to_camel_case(node_name)
+                        )),
                         indent(Branch(get_inner)),
                         line("})"),
                     ]));
@@ -3658,7 +3676,7 @@ fn generate_node(
                     Branch(vec![
                         Line("#[derive(Copy, Clone)]".into()),
                         line("pub struct Owned(());"),
-                        Line(fmt!(ctx,"impl {capnp}::introspect::Introspect for Owned {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Struct({capnp}::introspect::RawBrandedStructSchema {{ generic: &_private::RAW_SCHEMA, field_types: _private::get_field_types, annotation_types: _private::get_annotation_types, type_id: Ok(::core::any::TypeId::of::<Owned>()) }}).into() }} }}")),
+                        Line(fmt!(ctx,"impl {capnp}::introspect::Introspect for Owned {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Struct({capnp}::introspect::RawBrandedStructSchema {{ generic: &_private::RAW_SCHEMA, field_types: _private::get_field_types, annotation_types: _private::get_annotation_types, type_id: ::core::result::Result::Ok(::core::any::TypeId::of::<Owned>()) }}).into() }} }}")),
                         Line(fmt!(ctx, "impl {capnp}::traits::Owned for Owned {{ type Reader<'a> = Reader<'a>; type Builder<'a> = Builder<'a>; }}")),
                         Line(fmt!(ctx,"impl {capnp}::traits::OwnedStruct for Owned {{ type Reader<'a> = Reader<'a>; type Builder<'a> = Builder<'a>; }}")),
                         Line(fmt!(ctx,"impl {capnp}::traits::Pipelined for Owned {{ type Pipeline = Pipeline; }}"))
@@ -3669,7 +3687,7 @@ fn generate_node(
                         Line(format!("pub struct Owned<{}> {{", params.params)),
                             indent(Line(params.phantom_data_type.clone())),
                         line("}"),
-                        Line(fmt!(ctx,"impl <{0}> {capnp}::introspect::Introspect for Owned <{0}> {1} {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Struct({capnp}::introspect::RawBrandedStructSchema {{ generic: &_private::RAW_SCHEMA, field_types: _private::get_field_types::<{0}>, annotation_types: _private::get_annotation_types::<{0}>, type_id: Ok(::core::any::TypeId::of::<Owned<{0}>>()) }}).into() }} }}",
+                        Line(fmt!(ctx,"impl <{0}> {capnp}::introspect::Introspect for Owned <{0}> {1} {{ fn introspect() -> {capnp}::introspect::Type {{ {capnp}::introspect::TypeVariant::Struct({capnp}::introspect::RawBrandedStructSchema {{ generic: &_private::RAW_SCHEMA, field_types: _private::get_field_types::<{0}>, annotation_types: _private::get_annotation_types::<{0}>, type_id: ::core::result::Result::Ok(::core::any::TypeId::of::<Owned<{0}>>()) }}).into() }} }}",
                             params.params, params.where_clause)),
                         Line(fmt!(ctx,"impl <{0}> {capnp}::traits::Owned for Owned <{0}> {1} {{ type Reader<'a> = Reader<'a, {0}>; type Builder<'a> = Builder<'a, {0}>; }}",
                             params.params, params.where_clause)),
@@ -3720,7 +3738,7 @@ fn generate_node(
                             params.params, params.where_clause)),
                 indent(vec![
                     Line(format!("fn from(reader: Reader<'a,{0}>) -> Self {{", params.params)),
-                    indent(Line(fmt!(ctx,"Self::Struct({capnp}::dynamic_struct::Reader::new(reader.reader, {capnp}::schema::StructSchema::new({capnp}::introspect::RawBrandedStructSchema {{ generic: &_private::RAW_SCHEMA, field_types: _private::get_field_types::<{0}>, annotation_types: _private::get_annotation_types::<{0}>, type_id: Ok(::core::any::TypeId::of::<Owned<{0}>>())}})))", params.params))),
+                    indent(Line(fmt!(ctx,"Self::Struct({capnp}::dynamic_struct::Reader::new(reader.reader, {capnp}::schema::StructSchema::new({capnp}::introspect::RawBrandedStructSchema {{ generic: &_private::RAW_SCHEMA, field_types: _private::get_field_types::<{0}>, annotation_types: _private::get_annotation_types::<{0}>, type_id: ::core::result::Result::Ok(::core::any::TypeId::of::<Owned<{0}>>())}})))", params.params))),
                     line("}")
                 ]),
                 line("}"),
@@ -3814,7 +3832,7 @@ fn generate_node(
                             params.params, params.where_clause)),
                 indent(vec![
                         Line(format!("fn from(builder: Builder<'a,{0}>) -> Self {{", params.params)),
-                        indent(Line(fmt!(ctx,"Self::Struct({capnp}::dynamic_struct::Builder::new(builder.builder, {capnp}::schema::StructSchema::new({capnp}::introspect::RawBrandedStructSchema {{ generic: &_private::RAW_SCHEMA, field_types: _private::get_field_types::<{0}>, annotation_types: _private::get_annotation_types::<{0}>, type_id: Ok(::core::any::TypeId::of::<Owned<{0}>>())}})))", params.params))),
+                        indent(Line(fmt!(ctx,"Self::Struct({capnp}::dynamic_struct::Builder::new(builder.builder, {capnp}::schema::StructSchema::new({capnp}::introspect::RawBrandedStructSchema {{ generic: &_private::RAW_SCHEMA, field_types: _private::get_field_types::<{0}>, annotation_types: _private::get_annotation_types::<{0}>, type_id: ::core::result::Result::Ok(::core::any::TypeId::of::<Owned<{0}>>())}})))", params.params))),
                         line("}")
                 ]),
                 line("}"),
@@ -3959,7 +3977,7 @@ fn generate_node(
                     line("}"),
                 ]),
                 line("}"),
-                Line(format!("impl From<{last_name}> for u16 {{")),
+                Line(format!("impl ::core::convert::From<{last_name}> for u16 {{")),
                 indent(line("#[inline]")),
                 indent(Line(format!(
                     "fn from(x: {last_name}) -> u16 {{ x as u16 }}"
@@ -4140,7 +4158,7 @@ fn generate_node(
                     )));
                     server_interior.push(
                         Line(fmt!(ctx,
-                                  "async fn {}(self: {capnp}::capability::Rc<Self>, _: {}Params<{}>, _: {}Results<{}>) -> Result<(), {capnp}::Error> {{ Result::<(), {capnp}::Error>::Err({capnp}::Error::unimplemented(\"method {}::Server::{} not implemented\".to_string())) }}",
+                                  "async fn {}(self: {capnp}::capability::Rc<Self>, _: {}Params<{}>, _: {}Results<{}>) -> ::core::result::Result<(), {capnp}::Error> {{ ::core::result::Result::<(), {capnp}::Error>::Err({capnp}::Error::unimplemented(\"method {}::Server::{} not implemented\".into())) }}",
                                   module_name(name),
                                   capitalize_first_letter(name), params_ty_params,
                                   capitalize_first_letter(name), results_ty_params,
@@ -4199,11 +4217,11 @@ fn generate_node(
 
                         shared_client_impl_interior.push(indent(Line(fmt!(
                             ctx,
-                            "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as {capnp}::traits::Owned>::Builder<'_>>();{builder_params_inner_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({ordinal}, message, tx)).await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))??.into_reader().into_typed())\n     }}",
+                            "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as {capnp}::traits::Owned>::Builder<'_>>();{builder_params_inner_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({ordinal}, message, tx)).await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".into()))?;\n      ::core::result::Result::Ok(rx.await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".into()))??.into_reader().into_typed())\n     }}",
                             param_type
                         ))));
 
-                        shared_client_match_arms.push_str(fmt!(ctx, "\n       {ordinal} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
+                        shared_client_match_arms.push_str(fmt!(ctx, "\n       {ordinal} => {{\n       let mut req = client.{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{::core::result::Result::Ok(r) => match r.get() {{::core::result::Result::Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(::core::result::Result::Ok(reply_builder));}}, ::core::result::Result::Err(e) => {{let _ = oneshot.send(::core::result::Result::Err(e));}}}}, ::core::result::Result::Err(e) => {{let _ = oneshot.send(::core::result::Result::Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
                     }
                 } else {
                     // It's a streaming method.
@@ -4215,7 +4233,7 @@ fn generate_node(
 
                     server_interior.push(
                         Line(fmt!(ctx,
-                                  "async fn {}(self: {capnp}::capability::Rc<Self>, _: {}Params<{}>) -> Result<(), {capnp}::Error> {{ Result::<(), {capnp}::Error>::Err({capnp}::Error::unimplemented(\"method {}::Server::{} not implemented\".to_string())) }}",
+                                  "async fn {}(self: {capnp}::capability::Rc<Self>, _: {}Params<{}>) -> ::core::result::Result<(), {capnp}::Error> {{ ::core::result::Result::<(), {capnp}::Error>::Err({capnp}::Error::unimplemented(\"method {}::Server::{} not implemented\".into())) }}",
                                   module_name(name),
                                   capitalize_first_letter(name), params_ty_params,
                                   node_name, module_name(name)
@@ -4457,19 +4475,19 @@ fn generate_node(
                                                 {
                                                     builder_params_string.push_str(
                                                         format!(
-                                                            "_{styled_name}: Option<Box<{type_string}{bracketed_params}>>,",
+                                                            "_{styled_name}: ::core::option::Option<Box<{type_string}{bracketed_params}>>,",
                                                         )
                                                         .as_str(),
                                                     );
-                                                    builder_params_impl_string.push_str(format!("\n  if let Some(st) = _{styled_name} {{st.build_capnp_struct(_builder.reborrow().init_{styled_name}());}}").as_str());
+                                                    builder_params_impl_string.push_str(format!("\n  if let ::core::option::Option::Some(st) = _{styled_name} {{st.build_capnp_struct(_builder.reborrow().init_{styled_name}());}}").as_str());
                                                 } else {
                                                     builder_params_string.push_str(
                                                         format!(
-                                                            "_{styled_name}: Option<{type_string}{bracketed_params}>,",
+                                                            "_{styled_name}: ::core::option::Option<{type_string}{bracketed_params}>,",
                                                         )
                                                         .as_str(),
                                                     );
-                                                    builder_params_impl_string.push_str(format!("\n  if let Some(st) = _{styled_name} {{st.build_capnp_struct(_builder.reborrow().init_{styled_name}());}}").as_str());
+                                                    builder_params_impl_string.push_str(format!("\n  if let ::core::option::Option::Some(st) = _{styled_name} {{st.build_capnp_struct(_builder.reborrow().init_{styled_name}());}}").as_str());
                                                 }
                                             }
                                         }
@@ -4648,10 +4666,10 @@ fn generate_node(
 
                             shared_client_impl_interior.push(indent(Line(fmt!(
                                 ctx,
-                                "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as {capnp}::traits::Owned>::Builder<'_>>();{builder_params_impl_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({method_count}, message, tx)).await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))?;\n      Ok(rx.await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".to_string()))??.into_reader().into_typed())\n     }}",
+                                "let mut message = {capnp}::message::Builder::new_default();\n      let mut _builder = message.init_root::<<{} as {capnp}::traits::Owned>::Builder<'_>>();{builder_params_impl_string}\n      let (tx, rx) = {capnp}::tokio::sync::oneshot::channel();\n      self._mpsc.send(({method_count}, message, tx)).await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".into()))?;\n      ::core::result::Result::Ok(rx.await.map_err(|_| {capnp}::Error::failed(\"Shared client task crashed/mpsc closed\".into()))??.into_reader().into_typed())\n     }}",
                                 param_type
                             ))));
-                            shared_client_match_arms.push_str(fmt!(ctx, "\n       {method_count} => {{\n       let mut req = client.{duplicate_prefix}{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{Ok(r) => match r.get() {{Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(Ok(reply_builder));}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}}, Err(e) => {{let _ = oneshot.send(Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
+                            shared_client_match_arms.push_str(fmt!(ctx, "\n       {method_count} => {{\n       let mut req = client.{duplicate_prefix}{}_request();\n        req.set(message.get_root_as_reader().unwrap()).unwrap();\n        let mut reply_builder = {capnp}::message::Builder::new_default();\n       let res = req.send().promise.await;\n      match res {{::core::result::Result::Ok(r) => match r.get() {{::core::result::Result::Ok(r) => {{reply_builder.set_root(r).unwrap(); let _ = oneshot.send(::core::result::Result::Ok(reply_builder));}}, ::core::result::Result::Err(e) => {{let _ = oneshot.send(::core::result::Result::Err(e));}}}}, ::core::result::Result::Err(e) => {{let _ = oneshot.send(::core::result::Result::Err(e));}}}};\n       }},", camel_to_snake_case(name)).as_str());
                         }
 
                         dispatch_arms.push(
@@ -4780,7 +4798,7 @@ fn generate_node(
 
             mod_interior.push(Branch(vec![
                 Line(format!(
-                    "impl {bracketed_params} Clone for Client{bracketed_params} {{"
+                    "impl {bracketed_params} ::core::clone::Clone for Client{bracketed_params} {{"
                 )),
                 indent(line("fn clone(&self) -> Self {")),
                 indent(indent(Line(format!(
@@ -4795,11 +4813,11 @@ fn generate_node(
                 shared_client_match_arms.push_str("\n       _ => unreachable!()");
                 client_impl_interior.push(Line(fmt!(
                     ctx,
-                    "pub fn start_shared(&self) -> Result<SharedClient, {capnp}::Error> {{"
+                    "pub fn start_shared(&self) -> ::core::result::Result<SharedClient, {capnp}::Error> {{"
                 )));
 
                 client_impl_interior.push(indent(Line(fmt!(ctx,
-                                        "let (tx, mut rx) = {capnp}::tokio::sync::mpsc::channel::<(u8, {capnp}::message::Builder<{capnp}::message::HeapAllocator>, {capnp}::tokio::sync::oneshot::Sender<{capnp}::Result<{capnp}::message::Builder<{capnp}::message::HeapAllocator>>>)>(100);\n      let client = self.clone();\n      {capnp}::tokio::task::spawn_local(async move {{\n      loop {{\n      let (ordinal, message, oneshot) = rx.recv().await.unwrap();\n      match ordinal {{{shared_client_match_arms}\n      }}}}}});\n      Ok(SharedClient{{_mpsc: tx}})\n      }}"
+                                        "let (tx, mut rx) = {capnp}::tokio::sync::mpsc::channel::<(u8, {capnp}::message::Builder<{capnp}::message::HeapAllocator>, {capnp}::tokio::sync::oneshot::Sender<{capnp}::Result<{capnp}::message::Builder<{capnp}::message::HeapAllocator>>>)>(100);\n      let client = self.clone();\n      {capnp}::tokio::task::spawn_local(async move {{\n      loop {{\n      let (ordinal, message, oneshot) = rx.recv().await.unwrap();\n      match ordinal {{{shared_client_match_arms}\n      }}}}}});\n      ::core::result::Result::Ok(SharedClient{{_mpsc: tx}})\n      }}"
                                     ))));
             }
 
@@ -4892,11 +4910,11 @@ fn generate_node(
                     } else {
                         Line(fmt!(ctx,"impl <_T: Server> {capnp}::capability::Server for ServerDispatch<_T> {{"))
                     }),
-                    indent(Line(fmt!(ctx,"async fn dispatch_call(self, interface_id: u64, method_id: u16, params: {capnp}::capability::Params<{capnp}::any_pointer::Owned>, results: {capnp}::capability::Results<{capnp}::any_pointer::Owned>) -> Result<(), {capnp}::Error> {{"))),
+                    indent(Line(fmt!(ctx,"async fn dispatch_call(self, interface_id: u64, method_id: u16, params: {capnp}::capability::Params<{capnp}::any_pointer::Owned>, results: {capnp}::capability::Results<{capnp}::any_pointer::Owned>) -> ::core::result::Result<(), {capnp}::Error> {{"))),
                     indent(indent(line("match interface_id {"))),
                     indent(indent(indent(line("_private::TYPE_ID => Self::dispatch_call_internal(self, method_id, params, results).await,")))),
                     indent(indent(indent(base_dispatch_arms))),
-                    indent(indent(indent(Line(fmt!(ctx,"_ => Err({capnp}::Error::unimplemented(\"Method not implemented.\".to_string()))"))))),
+                    indent(indent(indent(Line(fmt!(ctx,"_ => ::core::result::Result::Err({capnp}::Error::unimplemented(\"Method not implemented.\".into()))"))))),
                     indent(indent(line("}"))),
                     indent(line("}")),
 
@@ -4920,10 +4938,10 @@ fn generate_node(
                         line("impl <_T :Server> ServerDispatch<_T> {")
                     }),
 
-                    indent(Line(fmt!(ctx,"pub async fn dispatch_call_internal(self, method_id: u16, params: {capnp}::capability::Params<{capnp}::any_pointer::Owned>, results: {capnp}::capability::Results<{capnp}::any_pointer::Owned>) -> Result<(), {capnp}::Error> {{"))),
+                    indent(Line(fmt!(ctx,"pub async fn dispatch_call_internal(self, method_id: u16, params: {capnp}::capability::Params<{capnp}::any_pointer::Owned>, results: {capnp}::capability::Results<{capnp}::any_pointer::Owned>) -> ::core::result::Result<(), {capnp}::Error> {{"))),
                     indent(indent(line("match method_id {"))),
                     indent(indent(indent(dispatch_arms))),
-                    indent(indent(indent(Line(fmt!(ctx,"_ => Err({capnp}::Error::unimplemented(\"Method not implemented.\".to_string()))"))))),
+                    indent(indent(indent(Line(fmt!(ctx,"_ => ::core::result::Result::Err({capnp}::Error::unimplemented(\"Method not implemented.\".to_string()))"))))),
                     indent(indent(line("}"))),
                     indent(line("}")),
 

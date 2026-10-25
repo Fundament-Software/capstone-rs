@@ -2428,4 +2428,51 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn rust_shadowing_tests() -> capnp::Result<()> {
+        use crate::test_capnp::{shadow, shadow_node};
+        use shadow::{Shadow, ShadowUnion};
+
+        fn leaf(uni: ShadowUnion<'_>) -> Shadow<'_> {
+            Shadow {
+                _children: vec![],
+                _next: None,
+                _node: None,
+                uni,
+            }
+        }
+
+        let none = leaf(ShadowUnion::_None(()));
+        let node = shadow_node::ShadowNode {
+            _children: vec![],
+            _shadows: vec![leaf(ShadowUnion::_Result(7))],
+        };
+        let mut message = message::Builder::new_default();
+        message.init_root::<shadow::Builder<'_>>().set(
+            vec![leaf(ShadowUnion::_Ok("child"))],
+            Some(none),
+            Some(node),
+            ShadowUnion::_String("root"),
+        );
+
+        let root = message.get_root_as_reader::<shadow::Reader<'_>>()?;
+        let shadow::Ok(child) = root.get_children()?.get(0).which()? else {
+            panic!("invalid child")
+        };
+        assert_eq!(child?.to_str()?, "child");
+        let shadow::Result(n) = root.get_node()?.get_shadows()?.get(0).which()? else {
+            panic!("invalid shadowed node")
+        };
+        assert_eq!(n, 7);
+
+        let native = root.get()?;
+        assert!(matches!(native.uni, ShadowUnion::_String("root")));
+        assert!(matches!(
+            native._next.expect("next").uni,
+            ShadowUnion::_None(())
+        ));
+        assert!(native._node.is_some());
+        Ok(())
+    }
 }
