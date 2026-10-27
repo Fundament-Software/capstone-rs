@@ -873,3 +873,26 @@ struct Issue260(T, Q) {
 interface TestStream {
   send @0 (data : Data) -> stream;
 }
+
+# tests names that shadow rust keywords
+struct Shadow {
+  children @0 :List(Shadow);
+  next @1 :Shadow;
+  node @2 :ShadowNode;
+
+  union {
+    none @3 :Void;
+    some @4 :ShadowNode;
+    ok @5 :Text;
+    err @6 :List(Shadow);
+    string @7 :Text;
+    option @8 :Data;
+    result @9 :UInt32;
+    tryInto @10 :Bool;
+  }
+}
+
+struct ShadowNode {
+  children @0 :List(ShadowNode);
+  shadows @1 :List(Shadow);
+}
