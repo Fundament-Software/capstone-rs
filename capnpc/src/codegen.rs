@@ -205,6 +205,28 @@ impl CodeGenerationCommand {
     }
 }
 
+fn capnp_file_id<T: capnp::introspect::Introspect>() -> u64 {
+    match <T as capnp::introspect::Introspect>::introspect().which() {
+        capnp::introspect::TypeVariant::Struct(raw) => capnp::schema::StructSchema::new(raw)
+            .get_proto()
+            .get_scope_id(),
+        capnp::introspect::TypeVariant::Capability(raw) => {
+            capnp::schema::CapabilitySchema::new(raw)
+                .get_proto()
+                .get_scope_id()
+        }
+        _ => unreachable!("unknown top-level type"),
+    }
+}
+
+pub fn capnp_builtin_ids() -> Vec<u64> {
+    vec![
+        capnp_file_id::<capnp::schema_capnp::node::Owned>(),
+        capnp_file_id::<capnp::stream_capnp::stream_result::Owned>(),
+        capnp_file_id::<capnp::introspect_capnp::introspect::Owned>(),
+    ]
+}
+
 pub struct GeneratorContext<'a> {
     pub request: schema_capnp::code_generator_request::Reader<'a>,
     pub node_map: collections::hash_map::HashMap<u64, schema_capnp::node::Reader<'a>>,
@@ -217,6 +239,9 @@ pub struct GeneratorContext<'a> {
 
     /// Root path for referencing things in the `capnp` crate from the generated code.
     pub capnp_root: String,
+
+    /// Stores a cache of the built-in schema IDs
+    builtin_ids: Vec<u64>,
 }
 
 impl<'a> GeneratorContext<'a> {
@@ -240,6 +265,7 @@ impl<'a> GeneratorContext<'a> {
             scope_map: collections::hash_map::HashMap::<u64, Vec<String>>::new(),
             node_parents: collections::hash_map::HashMap::new(),
             capnp_root: code_generation_command.capnp_root.clone(),
+            builtin_ids: capnp_builtin_ids(),
         };
 
         let crates_provide = &code_generation_command.crates_provide_map;
@@ -277,6 +303,8 @@ impl<'a> GeneratorContext<'a> {
                 let parent_module_scope = if let Some(krate) = crates_provide.get(&import.get_id())
                 {
                     vec![format!("::{krate}")]
+                } else if ctx.builtin_ids.contains(&import.get_id()) {
+                    vec![ctx.capnp_root.clone()]
                 } else {
                     default_parent_module_scope.clone()
                 };
@@ -309,6 +337,16 @@ impl<'a> GeneratorContext<'a> {
                 Some(n) => Ok(n),
             },
         }
+    }
+
+    fn is_builtin(&self, mut id: u64) -> bool {
+        while let Some(&parent) = self.node_parents.get(&id) {
+            if parent == 0 {
+                break;
+            }
+            id = parent;
+        }
+        self.builtin_ids.contains(&id)
     }
 
     fn populate_scope_map(
@@ -1436,7 +1474,10 @@ fn generate_setter(
                     } else {
                         "".to_string()
                     };
-                    if no_discriminant && !field.has_annotations() {
+                    if no_discriminant
+                        && !field.has_annotations()
+                        && !ctx.is_builtin(st.get_type_id())
+                    {
                         set_types.push_str(
                             format!(", _{styled_name}: ::core::option::Option<{type_string}{bracketed_params}>")
                                 .as_str(),
@@ -1640,6 +1681,9 @@ fn check_fields_of_struct_for_lifetimes(
                             return Ok(());
                         }
                         type_::Which::Struct(inner) => {
+                            if ctx.is_builtin(inner.get_type_id()) {
+                                break; // Skip built-in types that have no native struct
+                            }
                             let capnp::schema_capnp::node::Struct(struct_node) =
                                 ctx.node_map[&inner.get_type_id()].which()?
                             else {
@@ -1679,6 +1723,9 @@ fn check_fields_of_struct_for_lifetimes(
                     }
                 },
                 type_::Which::Struct(inner) => {
+                    if ctx.is_builtin(inner.get_type_id()) {
+                        continue; // skip built-in types that have no native struct
+                    }
                     let capnp::schema_capnp::node::Struct(struct_node) =
                         ctx.node_map[&inner.get_type_id()].which()?
                     else {
@@ -1776,6 +1823,10 @@ fn vec_of_list_element_types(
             Ok(format!("Vec<{enum_mod}>"))
         }
         type_::Which::Struct(st) => {
+            if ctx.is_builtin(st.get_type_id()) {
+                // skip built-in types that have no native struct
+                return Err(capnp::Error::failed("built-in struct in list".to_string()));
+            }
             let capnp::schema_capnp::node::Struct(struct_node) =
                 ctx.node_map[&st.get_type_id()].which()?
             else {
