@@ -12,8 +12,6 @@ use crate::traits::{IndexMove, ListIter, ShortListIter};
 
 #[cfg(feature = "alloc")]
 use crate::message::Reader;
-#[cfg(feature = "alloc")]
-use crate::serialize::OwnedSegments;
 #[cfg(feature = "std")]
 use std::collections::hash_map::HashMap;
 #[cfg(feature = "std")]
@@ -22,8 +20,7 @@ use std::sync::{Arc, LazyLock, Weak, atomic};
 #[cfg(all(feature = "std", feature = "alloc"))]
 // Builds introspection information at runtime to allow building a StructSchema
 pub struct DynamicSchema {
-    #[allow(dead_code)]
-    msg: Option<Reader<OwnedSegments>>,
+    _msg: Box<dyn core::any::Any>,
     scopes: HashMap<(u64, String), u64>,
     // This must never have non-weak refs to it other than this one
     // or dropping DynamicSchema will panic
@@ -371,7 +368,10 @@ impl DynamicSchema {
         Ok(())
     }
 
-    pub fn new<S: crate::message::ReaderSegments>(msg: Reader<S>) -> Result<Self> {
+    pub fn new<S: crate::message::ReaderSegments + 'static>(msg: Reader<S>) -> Result<Self> {
+        // Box the message so it's memory location is pinned.
+        let msg = Box::new(msg);
+
         let mut scopes = HashMap::new();
         let mut node_parents = HashMap::new();
         let token = DynamicSchemaToken::new();
@@ -421,7 +421,7 @@ impl DynamicSchema {
         }
 
         let this = Self {
-            msg: S::reader_into_owned(msg).ok(),
+            _msg: msg,
             scopes,
             nodes: Arc::new(nodes),
             files,
