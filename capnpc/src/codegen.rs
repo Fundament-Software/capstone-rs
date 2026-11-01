@@ -1153,7 +1153,12 @@ fn generate_setter(
                 let bracketed_params = if !lifetime.is_empty() || !used_params.is_empty() {
                     format!(
                         "<{lifetime}{}>",
-                        used_params.into_iter().collect::<Vec<String>>().join(",")
+                        params
+                            .iter()
+                            .filter(|p| used_params.contains(*p))
+                            .cloned()
+                            .collect::<Vec<String>>()
+                            .join(",")
                     )
                 } else {
                     "".to_string()
@@ -1859,13 +1864,14 @@ fn vec_of_list_element_types(
         }
         type_::Which::Interface(i_t) => {
             let the_mod = ctx.get_qualified_module(i_t.get_type_id());
-            let p = get_params(ctx, i_t.get_type_id())?;
-            let bracketed = if p.is_empty() {
-                "".to_string()
-            } else {
-                format!("<{}>", p.join(","))
-            };
-            Ok(format!("Vec<{the_mod}::Client{bracketed}>"))
+            let client = do_branding(
+                ctx,
+                i_t.get_type_id(),
+                i_t.get_brand()?,
+                Leaf::Client,
+                &the_mod,
+            )?;
+            Ok(format!("Vec<{client}>"))
         }
         type_::Which::AnyPointer(an) => {
             match an.which()? {
@@ -2440,7 +2446,7 @@ fn generate_union(
                     )?;
                     if !lifetime.is_empty() {
                         *union_lifetime = "'a,";
-                        lifetime = "'a";
+                        lifetime = "'a,";
                     }
 
                     let mut possibly_cyclical = false;
@@ -2454,7 +2460,7 @@ fn generate_union(
                             field::Which::Group(_) => possibly_cyclical = true,
                         }
                     }
-                    let _params = get_params(ctx, group.get_type_id())?;
+                    let group_params = get_params(ctx, group.get_type_id())?;
                     let mut used_params = HashSet::new();
                     used_params_of_group(ctx, group.get_type_id(), &mut used_params)?;
                     for par in &used_params {
@@ -2462,7 +2468,12 @@ fn generate_union(
                     }
                     let bracketed_params = format!(
                         "<{lifetime}{}>",
-                        used_params.into_iter().collect::<Vec<String>>().join(",")
+                        group_params
+                            .iter()
+                            .filter(|p| used_params.contains(*p))
+                            .cloned()
+                            .collect::<Vec<String>>()
+                            .join(",")
                     );
                     if possibly_cyclical {
                         params_enum_string.push_str(
@@ -2553,9 +2564,11 @@ fn generate_union(
     let bracketed = if !union_params.is_empty() || !union_lifetime.is_empty() {
         format!(
             "<{union_lifetime}{}>",
-            union_params
-                .clone()
-                .into_iter()
+            params
+                .expanded_list
+                .iter()
+                .filter(|p| union_params.contains(*p))
+                .cloned()
                 .collect::<Vec<String>>()
                 .join(",")
         )
@@ -3579,7 +3592,11 @@ fn generate_node(
                 } else if !union_params.is_empty() || !union_lifetime.is_empty() {
                     let mut temp = format!("<{union_lifetime}");
                     let mut temp_where = format!("<{union_lifetime}");
-                    for p in union_params.iter() {
+                    for p in params
+                        .expanded_list
+                        .iter()
+                        .filter(|p| union_params.contains(*p))
+                    {
                         temp.push_str(format!("{p},").as_str());
                         temp_where.push_str(fmt!(ctx, "{p}: {capnp}::traits::Owned,").as_str());
                     }
@@ -3596,9 +3613,9 @@ fn generate_node(
                         && l != '\''
                     {
                         let mut temp = enum_bracketed.clone();
-                        temp.insert_str(1, "'a");
+                        temp.insert_str(1, "'a,");
                         let mut temp2 = enum_bracketed_with_where.clone();
-                        temp2.insert_str(1, "'a");
+                        temp2.insert_str(1, "'a,");
                         (temp, temp2)
                     } else {
                         (enum_bracketed.clone(), enum_bracketed_with_where.clone())
@@ -3609,7 +3626,24 @@ fn generate_node(
                 params_enum_string = format!(
                     "pub enum {params_union_name}{enum_bracketed_with_where} {{\n UNINITIALIZED,{params_enum_string}\n}}"
                 );
-                params_enum_string.push_str(fmt!(ctx, "\nimpl {which_bracketed_with_where}::core::convert::TryInto<{params_union_name}{enum_bracketed}> for WhichReader{which_bracketed} {{\n  type Error = {capnp}::Error;\n  fn try_into(self) -> ::core::result::Result<{params_union_name}{enum_bracketed}, Self::Error> {{\n    ::core::result::Result::Ok(match self {{{union_into_inner}\n    }})  \n  }} \n}}").as_str());
+                let static_params = params
+                    .expanded_list
+                    .iter()
+                    .filter(|p| {
+                        if union_only_struct {
+                            params_struct_generics.contains(*p)
+                        } else {
+                            union_params.contains(*p)
+                        }
+                    })
+                    .map(|p| format!("{p}: 'static"))
+                    .collect::<Vec<String>>();
+                let which_where_clause = if static_params.is_empty() {
+                    "".to_string()
+                } else {
+                    format!(" where {}", static_params.join(", "))
+                };
+                params_enum_string.push_str(fmt!(ctx, "\nimpl {which_bracketed_with_where}::core::convert::TryInto<{params_union_name}{enum_bracketed}> for WhichReader{which_bracketed}{which_where_clause} {{\n  type Error = {capnp}::Error;\n  fn try_into(self) -> ::core::result::Result<{params_union_name}{enum_bracketed}, Self::Error> {{\n    ::core::result::Result::Ok(match self {{{union_into_inner}\n    }})  \n  }} \n}}").as_str());
             }
 
             params_struct_impl_string = format!(

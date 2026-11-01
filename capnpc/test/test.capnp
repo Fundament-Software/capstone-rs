@@ -796,6 +796,7 @@ struct Issue77 {
 
 struct GenericOnce(Foo) {
     genericField @0 : Foo;
+    genericInterface @1 : List(GenericBase);
 }
 
 struct BrandOnce {
@@ -825,6 +826,20 @@ interface GenericExtend extends(GenericBase(Data)) {
 }
 interface GenericExtend2 extends (GenericBase(GenericBase(Data))) {
    foo @0 () -> ();
+}
+
+struct GenericLists(Foo, Bar) {
+  boundConcrete @0 :List(GenericBase(Data));
+  nestedList @1 :List(List(GenericBase(Bar)));
+  structList @2 :List(GenericTwice(Foo, Bar));
+  union {
+    unionIfaceList @3 :List(GenericBase(Foo));
+    unionStructList @4 :List(GenericTwice(Bar, Foo));
+  }
+}
+
+interface GenericListsInterface(Foo) {
+  call @0 (caps :List(GenericBase(Foo)), structs :List(GenericTwice(Foo, Text))) -> (caps :List(GenericBase(Foo)));
 }
 
 struct TestNameAnnotation $Rust.name("RenamedStruct") {
