@@ -2014,7 +2014,9 @@ fn build_list_of_list_impl(list: type_::list::Reader) -> capnp::Result<String> {
         type_::Which::Interface(_) => {
             "\nlist_builder.reborrow().set(i as u32, item.client.hook);".to_string()
         }
-        type_::Which::AnyPointer(_) => "".to_string(),
+        type_::Which::AnyPointer(_) => {
+            "\npanic!(\"cannot build nested List(T) from a native struct\");".to_string()
+        }
         _ => "\nlist_builder.reborrow().set(i as u32, item);".to_string(),
     })
 }

@@ -2475,4 +2475,14 @@ mod tests {
         assert!(native._node.is_some());
         Ok(())
     }
+
+    #[test]
+    #[should_panic(expected = "cannot build nested List(T) from a native struct")]
+    fn catch_native_generic_list() {
+        let mut message = message::Builder::new_default();
+        let native = crate::test_capnp::generic_nested_list::GenericNestedList::<text::Owned> {
+            _lists: vec![vec!["lost".into()]],
+        };
+        native.build_capnp_struct(message.init_root());
+    }
 }

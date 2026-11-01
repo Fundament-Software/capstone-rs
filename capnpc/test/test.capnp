@@ -911,3 +911,6 @@ struct ShadowNode {
   children @0 :List(ShadowNode);
   shadows @1 :List(Shadow);
 }
+struct GenericNestedList(Foo) {
+  lists @0 :List(List(Foo));
+}
