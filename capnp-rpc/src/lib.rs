@@ -493,6 +493,10 @@ where
     pub fn gc(&mut self) {
         self.caps.retain(|_, c| c.strong_count() > 0);
     }
+
+    pub fn len(&self) -> usize {
+        self.caps.len()
+    }
 }
 
 /// Creates a `Client` from a future that resolves to a `Client`.
